@@ -11,7 +11,13 @@ export interface OverlayPlacement {
   displayId: number;
 }
 
+/** Язык названий предметов. */
+export type NameLanguage = 'ru' | 'en' | 'both';
+
 export interface Settings {
+  /** Русские названия покрывают 96% справочника, поэтому это разумное умолчание.
+   *  Часть игроков привыкла к английским — отсюда переключатель. */
+  itemNames: NameLanguage;
   overlay: {
     enabled: boolean;
     mode: OverlayMode;
@@ -24,6 +30,7 @@ export interface Settings {
 }
 
 const DEFAULTS: Settings = {
+  itemNames: 'ru',
   overlay: {
     enabled: false,
     mode: 'compact',
@@ -60,6 +67,7 @@ export class SettingsStore {
       };
       if (raw.version !== SCHEMA_VERSION || !raw.settings) return structuredClone(DEFAULTS);
       return {
+        itemNames: raw.settings.itemNames ?? DEFAULTS.itemNames,
         overlay: { ...DEFAULTS.overlay, ...raw.settings.overlay },
       };
     } catch {
@@ -70,6 +78,15 @@ export class SettingsStore {
 
   get overlay(): Settings['overlay'] {
     return this.data.overlay;
+  }
+
+  get itemNames(): NameLanguage {
+    return this.data.itemNames;
+  }
+
+  setItemNames(language: NameLanguage): void {
+    this.data.itemNames = language;
+    this.save();
   }
 
   patchOverlay(patch: Partial<Settings['overlay']>): Settings['overlay'] {

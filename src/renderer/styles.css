@@ -118,6 +118,34 @@ body {
   font-size: 13px;
 }
 
+.lang-switch {
+  display: flex;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 2px;
+}
+
+.lang-switch button {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.lang-switch button:hover {
+  color: var(--text);
+}
+
+.lang-switch button.on {
+  background: var(--line);
+  color: var(--text);
+}
+
 .overlay-toggle {
   background: var(--surface-2);
   border: 1px solid var(--line);

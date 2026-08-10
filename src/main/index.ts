@@ -7,7 +7,7 @@ import { DebugSink } from './debug.js';
 import { Engine, type Snapshot } from './engine.js';
 import { IconCache, registerIconScheme } from './icons.js';
 import { Overlay } from './overlay.js';
-import { SettingsStore, type OverlayMode } from './settings.js';
+import { SettingsStore, type NameLanguage, type OverlayMode } from './settings.js';
 
 // Схему нужно объявить до готовности приложения.
 registerIconScheme();
@@ -22,18 +22,21 @@ let overlay: Overlay | null = null;
 let settings: SettingsStore | null = null;
 let debugSink: DebugSink | null = null;
 
-function loadItems(): Array<{ id: number; name: string; icon: string | null }> {
+interface CatalogueItem {
+  id: number;
+  name: string;
+  nameRu: string | null;
+  icon: string | null;
+}
+
+function loadItems(): CatalogueItem[] {
   const candidates = [
     join(__dirname, '../../data/items.json'),
     join(process.resourcesPath ?? '', 'data/items.json'),
   ];
   for (const path of candidates) {
     try {
-      return JSON.parse(readFileSync(path, 'utf8')) as Array<{
-        id: number;
-        name: string;
-        icon: string | null;
-      }>;
+      return JSON.parse(readFileSync(path, 'utf8')) as CatalogueItem[];
     } catch {
       continue;
     }
@@ -91,9 +94,9 @@ app.whenReady().then(async () => {
 
   createWindow();
 
-  engine = new Engine(app.getPath('userData'), items);
   settings = new SettingsStore(app.getPath('userData'));
   overlay = new Overlay(settings);
+  engine = new Engine(app.getPath('userData'), items, settings.itemNames);
 
   // Не `--debug`: этот флаг перехватывает сам Node как устаревший отладчик
   // и до приложения он не доходит.
@@ -118,6 +121,13 @@ app.whenReady().then(async () => {
   });
 
   ipcMain.handle('snapshot:get', () => latest);
+
+  ipcMain.handle('settings:itemNames', () => settings?.itemNames ?? 'ru');
+  ipcMain.handle('settings:setItemNames', (_e, language: NameLanguage) => {
+    settings?.setItemNames(language);
+    engine?.setLanguage(language);
+    return language;
+  });
 
   ipcMain.handle('overlay:state', () => settings?.overlay ?? null);
   ipcMain.handle('overlay:toggle', () => {

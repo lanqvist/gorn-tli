@@ -112,10 +112,49 @@ function Header({ snapshot }: { snapshot: Snapshot }) {
         {snapshot.hint && <span className="hint">{snapshot.hint}</span>}
       </div>
       <div className="header-right">
+        <NameLanguageSwitch />
         <OverlayButton />
         {snapshot.seasonId && <span className="season">Сезон {snapshot.seasonId}</span>}
       </div>
     </header>
+  );
+}
+
+/**
+ * Язык названий предметов.
+ *
+ * Русские покрывают 96% справочника, но часть игроков привыкла к английским
+ * — по ним ищут на бирже и в гайдах. Режим «оба» показывает и то и другое.
+ */
+function NameLanguageSwitch() {
+  const [language, setLanguage] = useState<NameLanguage>('ru');
+
+  useEffect(() => {
+    if (!window.gorn) return;
+    void window.gorn.getItemNames().then(setLanguage);
+  }, []);
+
+  if (!window.gorn) return null;
+
+  const options: Array<[NameLanguage, string, string]> = [
+    ['ru', 'Рус', 'Русские названия предметов'],
+    ['en', 'Eng', 'Английские названия — как в гайдах и на бирже'],
+    ['both', 'Оба', 'Русское и английское рядом'],
+  ];
+
+  return (
+    <div className="lang-switch" role="group" aria-label="Язык названий предметов">
+      {options.map(([value, label, hint]) => (
+        <button
+          key={value}
+          className={language === value ? 'on' : ''}
+          title={hint}
+          onClick={() => void window.gorn.setItemNames(value).then(setLanguage)}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
   );
 }
 

@@ -26,9 +26,13 @@ declare global {
     onLocked: (cb: (locked: boolean) => void) => () => void;
   }
 
+  type NameLanguage = 'ru' | 'en' | 'both';
+
   interface GornApi {
     getSnapshot: () => Promise<Snapshot | null>;
     onSnapshot: (cb: (snapshot: Snapshot) => void) => () => void;
+    getItemNames: () => Promise<NameLanguage>;
+    setItemNames: (language: NameLanguage) => Promise<NameLanguage>;
     overlay: GornOverlayApi;
   }
 

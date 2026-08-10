@@ -1,4 +1,4 @@
-import { EventEmitter } from 'node:events';
+﻿import { EventEmitter } from 'node:events';
 import { join } from 'node:path';
 
 import {
@@ -102,8 +102,12 @@ export interface MissingPriceView {
 
 interface ItemInfo {
   name: string;
+  nameRu: string | null;
   icon: string | null;
 }
+
+/** Какие названия предметов показывать. */
+export type NameLanguage = 'ru' | 'en' | 'both';
 
 /**
  * Ядро приложения в main-процессе: держит состояние, дочитывает лог
@@ -136,11 +140,40 @@ export class Engine extends EventEmitter {
   private history: Run[] = [];
   private lastActivityAt = 0;
 
-  constructor(dataDir: string, items: Array<{ id: number; name: string; icon: string | null }>) {
+  constructor(
+    dataDir: string,
+    items: Array<{ id: number; name: string; nameRu?: string | null; icon: string | null }>,
+    language: NameLanguage = 'ru',
+  ) {
     super();
     this.storage = new Storage(join(dataDir, 'gorn.db'));
-    for (const it of items) this.items.set(it.id, { name: it.name, icon: it.icon });
+    for (const it of items) {
+      this.items.set(it.id, { name: it.name, nameRu: it.nameRu ?? null, icon: it.icon });
+    }
     this.prices.registerKnownItems(this.items.keys());
+    this.language = language;
+  }
+
+  private language: NameLanguage;
+
+  /** Переключение языка названий: срез пересобирается сразу. */
+  setLanguage(language: NameLanguage): void {
+    this.language = language;
+    this.emit('snapshot', this.buildSnapshot());
+  }
+
+  /**
+   * Название предмета для показа.
+   *
+   * Русское есть у 96% справочника; для остального (в основном навыки)
+   * остаётся английское — лучше показать английское название, чем «id 7090».
+   */
+  private displayName(id: ConfigBaseId): string {
+    const info = this.items.get(id);
+    if (!info) return `id ${id}`;
+    if (this.language === 'en' || !info.nameRu) return info.name;
+    if (this.language === 'both') return `${info.nameRu} · ${info.name}`;
+    return info.nameRu;
   }
 
   /** Полный старт: разбор накопленных логов, затем слежение за текущим. */
@@ -340,9 +373,10 @@ export class Engine extends EventEmitter {
    */
   private runName(run: Run): string {
     for (const cost of run.costs) {
-      const name = this.items.get(cost.configBaseId)?.name;
-      if (!name) continue;
-      const readable = planeName(name);
+      const info = this.items.get(cost.configBaseId);
+      if (!info) continue;
+      // План ищем по русскому названию маячка, английское — как запасной вариант.
+      const readable = planeName(info.nameRu ?? info.name) ?? planeName(info.name);
       if (readable) return readable;
     }
     return mapName(run.asset, run.areaId);
@@ -359,9 +393,9 @@ export class Engine extends EventEmitter {
     if (stats.costItems.length === 0) return 'Без вложений';
     return stats.costItems
       .map((id) => {
-        const name = this.items.get(id)?.name;
-        if (!name) return `id ${id}`;
-        return planeName(name) ?? name;
+        const info = this.items.get(id);
+        if (!info) return `id ${id}`;
+        return planeName(info.nameRu ?? info.name) ?? this.displayName(id);
       })
       .join(' + ');
   }
@@ -388,7 +422,7 @@ export class Engine extends EventEmitter {
         const unitFe = this.priceOf(configBaseId);
         return {
           configBaseId,
-          name: info?.name ?? `id ${configBaseId}`,
+          name: this.displayName(configBaseId),
           // Отдаём адрес собственной схемы, а не ссылку на чужой CDN:
           // иконка приедет из локального кэша, а при первом показе — скачается.
           icon: info?.icon ? iconUrl(configBaseId) : null,
@@ -470,7 +504,7 @@ export class Engine extends EventEmitter {
           title: this.strategyTitle(s),
           costItems: s.costItems.map((id) => ({
             configBaseId: id,
-            name: this.items.get(id)?.name ?? `id ${id}`,
+            name: this.displayName(id),
             icon: this.items.get(id)?.icon ? iconUrl(id) : null,
           })),
         })),
@@ -478,7 +512,7 @@ export class Engine extends EventEmitter {
         .slice(0, 8)
         .map((m) => ({
           ...m,
-          name: this.items.get(m.configBaseId)?.name ?? `id ${m.configBaseId}`,
+          name: this.displayName(m.configBaseId),
           icon: this.items.get(m.configBaseId)?.icon ? iconUrl(m.configBaseId) : null,
         })),
       totals: {
@@ -541,31 +575,35 @@ export class Engine extends EventEmitter {
  * а не «зона 5348».
  */
 /**
- * Русские названия планов Инобытия.
+ * Названия планов Инобытия в именительном падеже.
  *
- * Официальной русской локализации подтвердить не удалось, поэтому названия
- * согласованы с тем, как их называет русскоязычное сообщество игры.
+ * В словаре они стоят в родительном, потому что там это часть названия
+ * маячка: «Маячок Ледяной бездны». Для заголовка карты нужен именительный,
+ * автоматически такое преобразование не сделать — отсюда таблица.
+ * Сами формулировки взяты из словаря, а не придуманы: раньше здесь было
+ * «Пустоши бездны» вместо «Пустотные земли».
  */
 const PLANES: Array<[RegExp, string]> = [
-  [/Glacial Abyss/i, 'Ледяная бездна'],
-  [/Blistering Lava Sea/i, 'Море лавы'],
-  [/Steel Forge/i, 'Стальная кузня'],
-  [/Thunder Wastes?/i, 'Громовые пустоши'],
-  [/Voidlands/i, 'Пустоши бездны'],
-  [/Deep Space/i, 'Дальний космос'],
+  [/Ледяной бездны|Glacial Abyss/i, 'Ледяная бездна'],
+  [/Кипящей лавы|Blistering Lava/i, 'Кипящая лава'],
+  [/Стальной кузницы|Steel Forge/i, 'Стальная кузница'],
+  [/Громовых пустошей|Thunder Waste/i, 'Громовые пустоши'],
+  [/Пустотных земель|Voidlands/i, 'Пустотные земли'],
+  [/Дальний космос|Deep Space/i, 'Дальний космос'],
 ];
 
 /**
- * Достаёт из названия предмета план и метку времени.
- * «Voidlands Beacon (Timemark 8)» → «Пустоши бездны · метка 8».
+ * Достаёт из названия маячка план и метку времени.
+ * «Маячок Пустотных земель (метка времени 8)» → «Пустотные земли · метка 8».
  * Возвращает null, если предмет картой не является.
  */
 function planeName(itemName: string): string | null {
-  if (!/Beacon/i.test(itemName)) return null;
+  if (!/Маячок|Beacon/i.test(itemName)) return null;
   const plane = PLANES.find(([re]) => re.test(itemName));
   if (!plane) return null;
-  const mark = /Timemark\s*(\d+)/i.exec(itemName);
-  return mark ? `${plane[1]} · метка ${mark[1]}` : plane[1];
+  const mark = /метка времени\s*(\d+)|Timemark\s*(\d+)/i.exec(itemName);
+  const number = mark?.[1] ?? mark?.[2];
+  return number ? `${plane[1]} · метка ${number}` : plane[1];
 }
 
 function mapName(asset: string | null, areaId: number): string {

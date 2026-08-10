@@ -98,7 +98,11 @@ export class IconCache {
       // настройки пользователя учитываются автоматически.
       const response = await net.fetch(url);
       if (!response.ok) {
-        this.failed.add(id);
+        // Безнадёжным считаем только отсутствие файла. Ответы 403 и 429
+        // у этого CDN приходят при частых запросах — после массовой
+        // предзагрузки иконка «пропадала» навсегда, хотя через минуту
+        // тот же адрес отдавал 200.
+        if (response.status === 404 || response.status === 410) this.failed.add(id);
         return null;
       }
       const data = Buffer.from(await response.arrayBuffer());
@@ -122,7 +126,7 @@ export class IconCache {
    * справочник ради того, что никогда не выпадет, — лишняя нагрузка
    * и на чужой CDN, и на диск.
    */
-  async prefetch(ids: Iterable<ConfigBaseId>, concurrency = 4): Promise<number> {
+  async prefetch(ids: Iterable<ConfigBaseId>, concurrency = 2): Promise<number> {
     const queue = [...new Set(ids)].filter(
       (id) => this.sources.has(id) && !existsSync(join(this.dir, `${id}.webp`)),
     );

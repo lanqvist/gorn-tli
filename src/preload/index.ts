@@ -15,6 +15,10 @@ contextBridge.exposeInMainWorld('gorn', {
     return () => ipcRenderer.removeListener('snapshot', handler);
   },
 
+  /** Язык названий предметов: русские, английские или оба. */
+  getItemNames: () => ipcRenderer.invoke('settings:itemNames'),
+  setItemNames: (language: string) => ipcRenderer.invoke('settings:setItemNames', language),
+
   overlay: {
     /** Текущие настройки оверлея. */
     getState: () => ipcRenderer.invoke('overlay:state'),
