@@ -149,6 +149,9 @@ function Hero({ snapshot }: { snapshot: Snapshot }) {
   const { rate, feRate, totals } = snapshot;
   const conf = CONFIDENCE[rate.confidence];
   const spread = rate.p75 - rate.p25;
+  // «Вложено 0» при потраченном маяке выглядит как поломка. Причина обычно
+  // одна: у расходника нет цены, и вычесть нечего.
+  const unpricedCost = snapshot.missing.find((m) => m.isCost);
 
   return (
     <section className="hero">
@@ -186,7 +189,11 @@ function Hero({ snapshot }: { snapshot: Snapshot }) {
         <Tile label="За сессию, в час" value={<Fe value={snapshot.liveRate} />} live />
         <Tile label="Чистый ФЕ в час" value={<Fe value={feRate.median} />} />
         <Tile label="На картах" value={duration(totals.inMapMs)} />
-        <Tile label="Вложено" value={<Fe value={totals.costFe} />} />
+        <Tile
+          label="Вложено"
+          value={<Fe value={totals.costFe} />}
+          {...(unpricedCost ? { warn: `${unpricedCost.name} без цены` } : {})}
+        />
       </div>
     </section>
   );
@@ -207,15 +214,26 @@ function Tile({
   label,
   value,
   live = false,
+  warn,
 }: {
   label: string;
   value: React.ReactNode;
   live?: boolean;
+  /** Пояснение, почему цифре нельзя верить как есть. */
+  warn?: string;
 }) {
   return (
-    <div className={`tile ${live ? 'tile-live' : ''}`}>
-      <div className="tile-label">{label}</div>
+    <div className={`tile ${live ? 'tile-live' : ''} ${warn ? 'tile-warn' : ''}`}>
+      <div className="tile-label">
+        {label}
+        {warn && (
+          <span className="tile-warn-mark" title={warn}>
+            !
+          </span>
+        )}
+      </div>
       <div className="tile-value">{value}</div>
+      {warn && <div className="tile-note">{warn}</div>}
     </div>
   );
 }

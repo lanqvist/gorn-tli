@@ -165,9 +165,23 @@ export const demoSnapshot: Snapshot = {
     },
   ],
   missing: [
-    { configBaseId: 100200, name: 'Flame Sand', icon: null, qty: 234, runs: 12 },
-    { configBaseId: 200028, name: 'Precious Ember', icon: null, qty: 15, runs: 7 },
-    { configBaseId: 5028, name: 'Netherrealm resonance', icon: null, qty: 7, runs: 4 },
+    {
+      configBaseId: 400033,
+      name: 'Voidlands Beacon (Timemark 8)',
+      icon: null,
+      qty: 14,
+      runs: 14,
+      isCost: true,
+    },
+    { configBaseId: 100200, name: 'Flame Sand', icon: null, qty: 234, runs: 12, isCost: false },
+    {
+      configBaseId: 200028,
+      name: 'Precious Ember',
+      icon: null,
+      qty: 15,
+      runs: 7,
+      isCost: false,
+    },
   ],
   diagnostics: {
     unknownProtos: [],

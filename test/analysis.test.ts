@@ -171,9 +171,39 @@ describe('что пробить следующим', () => {
 
     const missing = missingPrices(runs, priceOf);
     expect(missing.map((m) => m.configBaseId)).toEqual([100200, 200028, 6002]);
-    expect(missing[0]).toEqual({ configBaseId: 100200, qty: 234, runs: 2 });
+    expect(missing[0]).toEqual({ configBaseId: 100200, qty: 234, runs: 2, isCost: false });
     // ФЕ стоит сам себя, в список не попадает.
     expect(missing.some((m) => m.configBaseId === 100300)).toBe(false);
+  });
+});
+
+describe('что пробить: расходники важнее числа штук', () => {
+  it('неоценённый маяк идёт выше 305 песчинок по 0,0001', () => {
+    // Песок наверху был ошибкой ранжирования: он ничего не стоит,
+    // а маяк тратится на каждую карту и занижает прибыль напрямую.
+    const runs = [
+      run({
+        startedAt: T0,
+        endedAt: T0 + 60_000,
+        drops: [delta(100200, 305, T0 + 1000)],
+        costs: [delta(400033, 1, T0, true)],
+      }),
+    ];
+
+    const missing = missingPrices(runs, () => null);
+    expect(missing[0]!.configBaseId).toBe(400033);
+    expect(missing[0]!.isCost).toBe(true);
+    expect(missing[1]!.configBaseId).toBe(100200);
+  });
+
+  it('среди дропа порядок по числу забегов, а не по штукам', () => {
+    const runs = [
+      run({ startedAt: T0, endedAt: T0 + 60_000, drops: [delta(1, 500, T0 + 1000)] }),
+      run({ startedAt: T0 + 100_000, endedAt: T0 + 160_000, drops: [delta(2, 3, T0 + 101_000)] }),
+      run({ startedAt: T0 + 200_000, endedAt: T0 + 260_000, drops: [delta(2, 3, T0 + 201_000)] }),
+    ];
+    const missing = missingPrices(runs, () => null);
+    expect(missing[0]!.configBaseId).toBe(2);
   });
 });
 

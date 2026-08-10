@@ -223,6 +223,25 @@ body {
   margin-top: 2px;
 }
 
+/* Плитка, цифре которой нельзя верить как есть. */
+.tile-warn {
+  border-color: rgb(255 157 60 / 35%);
+}
+
+.tile-warn-mark {
+  color: var(--accent);
+  font-weight: 700;
+  margin-left: 5px;
+}
+
+.tile-note {
+  margin-top: 3px;
+  font-size: 11px;
+  line-height: 1.25;
+  color: var(--accent);
+  max-width: 150px;
+}
+
 /* Плитка, которая реагирует на подбор прямо сейчас. */
 .tile-live {
   border-color: rgb(255 157 60 / 35%);

@@ -96,6 +96,8 @@ export interface MissingPriceView {
   icon: string | null;
   qty: number;
   runs: number;
+  /** Тратится на открытие карт — прибыль занижена ровно на его стоимость. */
+  isCost: boolean;
 }
 
 interface ItemInfo {

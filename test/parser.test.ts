@@ -119,11 +119,72 @@ describe('цены с биржи', () => {
     expect(observation!.ts).toBe(Date.UTC(2026, 7, 9, 19, 58, 29, 895));
   });
 
-  it('отступное тело разворачивается в плоские поля', () => {
-    const fields = parseBody(['+prices+1+currency [100300]', '|      | +unitPrices+1 [7.5]']);
-    expect(fields.get('currency')).toBe('100300');
-    expect([...fields.entries()].some(([k, v]) => k.startsWith('unitPrices') && v === '7.5')).toBe(
-      true,
-    );
+  it('отступное тело разворачивается в дерево по колонкам', () => {
+    const body = parseBody(['+prices+1+currency [100300]', '|      | +unitPrices+1 [7.5]']);
+    const prices = body.get('prices') as Map<string, unknown>;
+    const group = prices.get('1') as Map<string, unknown>;
+    expect(group.get('currency')).toBe('100300');
+    expect((group.get('unitPrices') as Map<string, unknown>).get('1')).toBe('7.5');
+  });
+
+  /**
+   * Подлинный ответ по Пламенному песку: две ценовые группы, вторая
+   * в Пламенном песке. Плоский разбор сваливал цены обеих групп в кучу
+   * и брал последнюю валюту, из-за чего цена в ФЕ терялась полностью.
+   */
+  const MULTI_CURRENCY = [
+    '[2026.08.10-12.01.37:968][300]TLNetGame: Display: [Game] ----Socket RecvMessage STT----XchgSearchPrice----SynId = 711',
+    '[2026.08.10-12.01.37:968][300]TLNetGame: Display: [Game] ',
+    '+prices+1+unitPrices+1 [0.0001000100010001]',
+    '|      | |          +2 [0.0002000200020002]',
+    '|      | +currency [100300]',
+    '|      +2+unitPrices+1 [55]',
+    '|      | |          +2 [60]',
+    '|      | +currency [100200]',
+    '[2026.08.10-12.01.37:968][300]TLNetGame: Display: [Game] ----Socket RecvMessage End----',
+  ];
+
+  const REQUEST_SAND = [
+    '[2026.08.10-12.01.37:900][300]TLNetGame: Display: [Game] ----Socket SendMessage STT----XchgSearchPrice----SynId = 711',
+    '[2026.08.10-12.01.37:900][300]TLNetGame: Display: [Game] ',
+    '+filters+1+refer [100200]',
+    '[2026.08.10-12.01.37:900][300]TLNetGame: Display: [Game] ----Socket SendMessage End----',
+  ];
+
+  it('из нескольких валют берётся группа в ФЕ', () => {
+    const parser = new EventParser();
+    let observed: PriceObservationEvent | null = null;
+    for (const line of [...REQUEST_SAND, ...MULTI_CURRENCY]) {
+      const ev = parser.parse(line);
+      if (ev?.kind === 'priceObservation') observed = ev;
+    }
+
+    expect(observed).not.toBeNull();
+    expect(observed!.configBaseId).toBe(100200);
+    expect(observed!.currency).toBe(100300);
+    // Цены из группы за Пламенный песок (55, 60) не должны примешиваться.
+    expect(observed!.unitPrices).toEqual([0.0001000100010001, 0.0002000200020002]);
+  });
+
+  it('если группы в ФЕ нет, валюта не подменяется на ФЕ', () => {
+    // Иначе цена в песке была бы записана как цена в ФЕ — ошибка
+    // в тысячи раз, причём в сторону завышения.
+    const parser = new EventParser();
+    const onlySand = [
+      '[2026.08.10-12.01.37:968][300]TLNetGame: Display: [Game] ----Socket RecvMessage STT----XchgSearchPrice----SynId = 711',
+      '[2026.08.10-12.01.37:968][300]TLNetGame: Display: [Game] ',
+      '+prices+1+unitPrices+1 [55]',
+      '|      | |          +2 [60]',
+      '|      | +currency [100200]',
+      '[2026.08.10-12.01.37:968][300]TLNetGame: Display: [Game] ----Socket RecvMessage End----',
+    ];
+
+    let observed: PriceObservationEvent | null = null;
+    for (const line of [...REQUEST_SAND, ...onlySand]) {
+      const ev = parser.parse(line);
+      if (ev?.kind === 'priceObservation') observed = ev;
+    }
+    expect(observed!.currency).toBe(100200);
+    expect(observed!.unitPrices).toEqual([55, 60]);
   });
 });

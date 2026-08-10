@@ -136,36 +136,58 @@ export function groupByStrategy(
 
 export interface MissingPrice {
   configBaseId: ConfigBaseId;
-  /** Сколько штук уже выпало. */
+  /** Сколько штук уже выпало или потрачено. */
   qty: number;
   /** В скольких забегах встречался. */
   runs: number;
+  /** Тратится на открытие карт — такой предмет искажает прибыль напрямую. */
+  isCost: boolean;
 }
 
 /**
- * Чего не хватает для точной оценки — по влиянию, а не по алфавиту.
+ * Чего не хватает для точной оценки — по влиянию на цифру.
  *
- * Пробивка цены стоит одного клика в Торговом доме, поэтому важно не то,
- * сколько предметов без цены, а какие из них реально портят цифру.
- * Порядок — по количеству выпавшего: 234 Пламенных песка важнее одного
- * случайного предмета, который больше никогда не встретится.
+ * Порядок не по количеству штук: 305 Пламенных песков по 0,0001 стоят
+ * три сотых ФЕ, а неоценённый маяк тратится на каждую карту и искажает
+ * прибыль напрямую. Поэтому сначала расходники, затем то, что встречается
+ * в большем числе забегов, и только потом количество.
  */
 export function missingPrices(runs: Run[], priceOf: PriceLookup): MissingPrice[] {
-  const totals = new Map<ConfigBaseId, { qty: number; runs: Set<number> }>();
+  const totals = new Map<
+    ConfigBaseId,
+    { qty: number; runs: Set<number>; isCost: boolean }
+  >();
+
+  const note = (delta: ItemDelta, index: number, isCost: boolean): void => {
+    if (priceOf(delta.configBaseId) !== null) return;
+    const entry = totals.get(delta.configBaseId) ?? {
+      qty: 0,
+      runs: new Set<number>(),
+      isCost: false,
+    };
+    entry.qty += delta.qty;
+    entry.runs.add(index);
+    entry.isCost ||= isCost;
+    totals.set(delta.configBaseId, entry);
+  };
 
   for (const [index, run] of runs.entries()) {
-    for (const delta of [...run.drops, ...run.costs] as ItemDelta[]) {
-      if (priceOf(delta.configBaseId) !== null) continue;
-      const entry = totals.get(delta.configBaseId) ?? { qty: 0, runs: new Set<number>() };
-      entry.qty += delta.qty;
-      entry.runs.add(index);
-      totals.set(delta.configBaseId, entry);
-    }
+    for (const drop of run.drops) note(drop, index, false);
+    for (const cost of run.costs) note(cost, index, true);
   }
 
   return [...totals.entries()]
-    .map(([configBaseId, e]) => ({ configBaseId, qty: e.qty, runs: e.runs.size }))
-    .sort((a, b) => b.qty - a.qty);
+    .map(([configBaseId, e]) => ({
+      configBaseId,
+      qty: e.qty,
+      runs: e.runs.size,
+      isCost: e.isCost,
+    }))
+    .sort((a, b) => {
+      if (a.isCost !== b.isCost) return a.isCost ? -1 : 1;
+      if (a.runs !== b.runs) return b.runs - a.runs;
+      return b.qty - a.qty;
+    });
 }
 
 /**

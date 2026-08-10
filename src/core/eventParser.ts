@@ -163,7 +163,7 @@ export class EventParser {
       // `+filters+1+refer [112410]` — какой предмет пробиваем.
       // Поиск по категории (а не по конкретному предмету) поля refer не содержит,
       // и привязать такие цены к предмету нельзя — пропускаем.
-      const refer = Number(fields.get('refer'));
+      const refer = Number(findValue(fields, 'refer'));
       if (Number.isFinite(refer) && refer > 0) this.priceRequests.set(msg.synId, refer);
       return null;
     }
@@ -173,20 +173,42 @@ export class EventParser {
     this.priceRequests.delete(msg.synId);
     if (referred === undefined) return null;
 
-    const unitPrices: number[] = [];
-    for (const [key, value] of fields.entries()) {
-      if (!key.startsWith('unitPrices')) continue;
-      const n = Number(value);
-      if (Number.isFinite(n) && n > 0) unitPrices.push(n);
-    }
-    if (unitPrices.length === 0) return null;
+    // Групп может быть несколько — по одной на валюту. Нужна та, что в ФЕ:
+    // дешёвые материалы параллельно продаются за Пламенный песок, и цены
+    // разных валют смешивать нельзя.
+    const groups = fields.get('prices');
+    if (!(groups instanceof Map)) return null;
 
-    // Поле currency присутствует не всегда: для дешёвых материалов
-    // (например, Пламенного песка по 0,0001) игра его не пишет.
-    // Отсутствие означает валюту по умолчанию, то есть ФЕ. Раньше такие
-    // ответы отбрасывались целиком, и цена у предмета не появлялась никогда.
-    const rawCurrency = fields.get('currency');
-    const currency = rawCurrency === undefined ? FE_ID : Number(rawCurrency);
+    let unitPrices: number[] = [];
+    let currency = FE_ID;
+
+    for (const group of groups.values()) {
+      if (!(group instanceof Map)) continue;
+      const raw = group.get('currency');
+      // Отсутствие валюты означает валюту по умолчанию, то есть ФЕ.
+      const groupCurrency = typeof raw === 'string' ? Number(raw) : FE_ID;
+      const list = group.get('unitPrices');
+      if (!(list instanceof Map)) continue;
+
+      const prices = [...list.values()]
+        .filter((v): v is string => typeof v === 'string')
+        .map(Number)
+        .filter((n) => Number.isFinite(n) && n > 0);
+      if (prices.length === 0) continue;
+
+      if (groupCurrency === FE_ID) {
+        unitPrices = prices;
+        currency = FE_ID;
+        break;
+      }
+      // Не ФЕ — запоминаем на случай, если группы в ФЕ вовсе нет.
+      if (unitPrices.length === 0) {
+        unitPrices = prices;
+        currency = groupCurrency;
+      }
+    }
+
+    if (unitPrices.length === 0) return null;
 
     const ev: PriceObservationEvent = {
       kind: 'priceObservation',
@@ -201,36 +223,76 @@ export class EventParser {
   }
 }
 
+/** Узел дерева тела сокет-дампа: либо вложенные ключи, либо значение. */
+export type BodyNode = Map<string, BodyNode | string>;
+
 /**
- * Разбор отступного тела сокет-дампа.
+ * Разбор отступного тела сокет-дампа в дерево.
  *
- *   +prices+1+currency [100300]
- *   |      | +unitPrices+1 [1.0]
- *   |      | |          +2 [1.0]
+ *   +prices+1+unitPrices+1 [0.0001]
+ *   |      | |          +2 [0.0001]
+ *   |      | +currency [100300]
+ *   |      +2+currency [100200]
  *
- * Ключи с числовыми хвостами (`unitPrices+1`) разворачиваются в отдельные записи,
- * поэтому возвращаем плоскую мапу «последний осмысленный ключ» → значение.
+ * Вложенность здесь позиционная: символы `|` — направляющие, а глубина
+ * ключа определяется колонкой, в которой стоит его `+`. Строка 4 относится
+ * к группе 1, строка 5 открывает группу 2.
+ *
+ * Раньше тело сплющивалось в плоскую таблицу. На ответах с несколькими
+ * ценовыми группами это давало неверный результат: цены всех валют
+ * сваливались в один список, а валютой считалась последняя встреченная.
+ * Дешёвые материалы продаются и за ФЕ, и за Пламенный песок, поэтому
+ * их цена в ФЕ терялась целиком.
  */
-export function parseBody(lines: string[]): Map<string, string> {
-  const out = new Map<string, string>();
-  let counter = 0;
+export function parseBody(lines: string[]): BodyNode {
+  const root: BodyNode = new Map();
+  let path: Array<{ col: number; key: string }> = [];
+
   for (const raw of lines) {
-    for (const chunk of raw.split('+')) {
-      const m = BODY_FIELD_RE.exec(chunk);
-      if (!m) continue;
-      const key = m[1]!.replace(/[|\s]/g, '');
-      const value = m[2]!;
-      if (key === '' || /^\d+$/.test(key)) {
-        // Чистый индекс (`+2 [1.0]`) — продолжение предыдущего списка цен.
-        out.set(`unitPrices#${counter++}`, value);
-        continue;
-      }
-      if (key.startsWith('unitPrices')) {
-        out.set(`unitPrices#${counter++}`, value);
-        continue;
-      }
-      out.set(key, value);
+    const tokens: Array<{ col: number; key: string }> = [];
+    const re = /\+([^+\s[\]|]+)/g;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(raw))) tokens.push({ col: m.index, key: m[1]! });
+    if (tokens.length === 0) continue;
+
+    for (const token of tokens) {
+      // Ключ заменяет всё, что было в его колонке и правее.
+      path = path.filter((p) => p.col < token.col);
+      path.push(token);
+    }
+
+    const value = /\[([^\]]*)\]\s*$/.exec(raw);
+    if (value) setPath(root, path.map((p) => p.key), value[1]!);
+  }
+
+  return root;
+}
+
+function setPath(root: BodyNode, keys: string[], value: string): void {
+  let node = root;
+  for (const key of keys.slice(0, -1)) {
+    const next = node.get(key);
+    if (next instanceof Map) {
+      node = next;
+    } else {
+      const created: BodyNode = new Map();
+      node.set(key, created);
+      node = created;
     }
   }
-  return out;
+  const last = keys[keys.length - 1];
+  if (last !== undefined) node.set(last, value);
+}
+
+/** Первое значение с таким ключом на любой глубине. */
+export function findValue(node: BodyNode, key: string): string | undefined {
+  const direct = node.get(key);
+  if (typeof direct === 'string') return direct;
+  for (const child of node.values()) {
+    if (child instanceof Map) {
+      const found = findValue(child, key);
+      if (found !== undefined) return found;
+    }
+  }
+  return undefined;
 }
