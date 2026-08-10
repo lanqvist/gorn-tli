@@ -223,6 +223,15 @@ body {
   margin-top: 2px;
 }
 
+/* Плитка, которая реагирует на подбор прямо сейчас. */
+.tile-live {
+  border-color: rgb(255 157 60 / 35%);
+}
+
+.tile-live .tile-value {
+  color: var(--accent);
+}
+
 .note {
   margin: 10px 0 0;
   font-size: 13px;

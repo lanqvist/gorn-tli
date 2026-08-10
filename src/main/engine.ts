@@ -55,7 +55,15 @@ export interface Snapshot {
     costFe: number;
     realizedFe: number;
     realizationRatio: number | null;
+    /** Бумажная оценка того, что выставлено на продажу. Сравнима с realizedFe. */
+    listedPaperFe: number;
   };
+  /**
+   * Темп за всё время в картах, включая текущий забег.
+   * В отличие от медианы двигается сразу при подборе — иначе экран
+   * выглядит замершим ровно в тот момент, когда что-то происходит.
+   */
+  liveRate: number;
   diagnostics: {
     unknownProtos: Array<[string, number]>;
     pricedItems: number;
@@ -114,14 +122,42 @@ export class Engine extends EventEmitter {
       return;
     }
 
+    // Сначала поднимаем сохранённое: логи ротируются и удаляются игрой,
+    // поэтому база — единственный источник истории старше пары часов.
+    const stored = this.storage.loadRuns();
+    const storedTrade = this.storage.loadTrade();
+    for (const record of this.storage.loadPrices()) {
+      this.prices.set(record.configBaseId, record.fe, record.observedAt);
+    }
+
     const scan = await retroScan(this.logDir);
-    this.history = scan.runs;
     this.seasonId = [...scan.seasonIds][0] ?? null;
+
+    // Разбор логов точнее сохранённого (мог улучшиться парсер), поэтому
+    // при совпадении забега берём свежий разбор.
+    const byKey = new Map<string, Run>();
+    for (const run of stored) byKey.set(`${run.startedAt}:${run.areaId}`, run);
+    for (const run of scan.runs) byKey.set(`${run.startedAt}:${run.areaId}`, run);
+    this.history = [...byKey.values()].sort((a, b) => a.startedAt - b.startedAt);
+
     for (const record of scan.prices.all()) {
       this.prices.set(record.configBaseId, record.fe, record.observedAt);
     }
-    for (const l of scan.trade.listings) this.trade.listings.push(l);
-    for (const r of scan.trade.receipts) this.trade.receipts.push(r);
+
+    const seenListing = new Set<string>();
+    for (const l of [...storedTrade.listings, ...scan.trade.listings]) {
+      const key = `${l.ts}:${l.configBaseId}:${l.qty}`;
+      if (seenListing.has(key)) continue;
+      seenListing.add(key);
+      this.trade.listings.push(l);
+    }
+    const seenReceipt = new Set<string>();
+    for (const r of [...storedTrade.receipts, ...scan.trade.receipts]) {
+      const key = `${r.ts}:${r.fe}`;
+      if (seenReceipt.has(key)) continue;
+      seenReceipt.add(key);
+      this.trade.receipts.push(r);
+    }
     for (const [proto, n] of scan.unknownProtos) {
       this.diagnostics.unknownProtos.set(proto, n);
     }
@@ -131,8 +167,23 @@ export class Engine extends EventEmitter {
     this.storage.saveTrade(scan.trade.listings, scan.trade.receipts);
 
     this.startTailing();
+    this.startHeartbeat();
     this.emit('snapshot', this.buildSnapshot());
   }
+
+  /**
+   * Пока идёт забег, время в карте растёт само по себе, без новых строк
+   * в логе. Без периодической отправки темп «в час» замирал бы между
+   * подборами, хотя знаменатель всё это время увеличивается.
+   */
+  private startHeartbeat(): void {
+    this.heartbeat = setInterval(() => {
+      const open = this.segmenter.all.find((r) => r.endedAt === null);
+      if (open && !open.isHub) this.emit('snapshot', this.buildSnapshot());
+    }, 2000);
+  }
+
+  private heartbeat: NodeJS.Timeout | null = null;
 
   private startTailing(): void {
     if (!this.logDir) return;
@@ -306,12 +357,22 @@ export class Engine extends EventEmitter {
 
     const realized = this.trade.summarize(this.priceOf);
 
+    // Текущий забег обязан попадать в итоги: иначе подобранное «сейчас»
+    // не видно нигде до выхода из карты, и экран кажется замершим.
+    const openFarming = open && !open.isHub ? open : null;
+    const openElapsed = openFarming ? Math.max(0, Date.now() - openFarming.startedAt) : 0;
+    const counted = openFarming ? [...farming, openFarming] : farming;
+
     let unpricedDrops = 0;
-    for (const r of farming) {
+    for (const r of counted) {
       for (const d of r.drops) if (this.priceOf(d.configBaseId) === null) unpricedDrops++;
     }
 
-    const status: Snapshot['status'] = open && !open.isHub ? 'running' : 'idle';
+    const inMapMs = farming.reduce((a, r) => a + (r.durationMs ?? 0), 0) + openElapsed;
+    const valueFe = counted.reduce((a, r) => a + runValue(r, this.priceOf), 0);
+    const costFe = counted.reduce((a, r) => a + runCost(r, this.priceOf), 0);
+
+    const status: Snapshot['status'] = openFarming ? 'running' : 'idle';
 
     return {
       status,
@@ -324,18 +385,20 @@ export class Engine extends EventEmitter {
         .map((r) => this.toView(r)),
       rate: summarize(netRates),
       feRate: summarize(feRates),
+      liveRate: perHour(valueFe - costFe, inMapMs),
       totals: {
-        runs: farming.length,
-        inMapMs: farming.reduce((a, r) => a + (r.durationMs ?? 0), 0),
-        feGained: farming.reduce(
+        runs: counted.length,
+        inMapMs,
+        feGained: counted.reduce(
           (a, r) =>
             a + r.drops.filter((d) => d.configBaseId === FE_ID).reduce((s, d) => s + d.qty, 0),
           0,
         ),
-        valueFe: farming.reduce((a, r) => a + runValue(r, this.priceOf), 0),
-        costFe: farming.reduce((a, r) => a + runCost(r, this.priceOf), 0),
+        valueFe,
+        costFe,
         realizedFe: realized.realizedFe,
         realizationRatio: realized.ratio,
+        listedPaperFe: realized.paperFe,
       },
       diagnostics: {
         unknownProtos: [...this.diagnostics.unknownProtos.entries()],
@@ -347,11 +410,16 @@ export class Engine extends EventEmitter {
 
   private hintFor(status: Snapshot['status']): string | null {
     if (status === 'running') return null;
-    if (this.diagnostics.linesMatched === 0) {
+
+    // Про нечитаемый лог говорим только если из него действительно ничего
+    // не удалось достать. Раньше подсказка опиралась на счётчик живого
+    // дочитывания и врала «лог не читается» при полной истории на экране.
+    if (this.history.length === 0 && this.diagnostics.linesMatched === 0) {
       return 'Лог не читается. В игре: Настройки → Другое → Включить лог, затем перезайти персонажем.';
     }
-    if (this.lastActivityAt > 0 && Date.now() - this.lastActivityAt > 120_000) {
-      return 'Игра давно ничего не пишет в лог. Возможно, она закрыта.';
+    if (this.lastActivityAt === 0) return 'Игра не запущена.';
+    if (Date.now() - this.lastActivityAt > 120_000) {
+      return 'Игра давно ничего не пишет в лог — похоже, закрыта.';
     }
     return 'Ждём вход в карту.';
   }
@@ -362,6 +430,8 @@ export class Engine extends EventEmitter {
   }
 
   stop(): void {
+    if (this.heartbeat) clearInterval(this.heartbeat);
+    this.heartbeat = null;
     this.tailer?.stop();
     this.persistFinished();
     this.storage.close();

@@ -8,6 +8,8 @@ import type { PriceRecord } from '../core/priceStore.js';
 import type { Listing, Receipt } from '../core/trade.js';
 import type { ConfigBaseId, Run } from '../core/types.js';
 
+export type { Listing, Receipt };
+
 /**
  * Хранилище разобранной истории.
  *
@@ -201,6 +203,121 @@ export class Storage {
       this.db.exec('ROLLBACK');
       throw err;
     }
+  }
+
+  /**
+   * Забеги из базы вместе с составом дропа и расхода.
+   *
+   * Без этого сохранённая история никому не нужна: логи ротируются, старые
+   * файлы игра удаляет, и на экране остаётся только то, что уцелело в файлах.
+   */
+  loadRuns(): Run[] {
+    const rows = this.db
+      .prepare(
+        `SELECT id, area_id, asset, level_type, started_at, ended_at, duration_ms, is_hub
+         FROM run ORDER BY started_at`,
+      )
+      .all() as Array<{
+      id: number;
+      area_id: number;
+      asset: string | null;
+      level_type: number | null;
+      started_at: number;
+      ended_at: number | null;
+      duration_ms: number | null;
+      is_hub: number;
+    }>;
+
+    const dropStmt = this.db.prepare(
+      'SELECT config_base_id, qty, proto, ts FROM drop_item WHERE run_id = ?',
+    );
+    const costStmt = this.db.prepare(
+      'SELECT config_base_id, qty, ts FROM cost_item WHERE run_id = ?',
+    );
+
+    return rows.map((row) => ({
+      areaId: row.area_id,
+      asset: row.asset,
+      levelType: row.level_type,
+      startedAt: row.started_at,
+      endedAt: row.ended_at,
+      durationMs: row.duration_ms,
+      isHub: row.is_hub === 1,
+      drops: (
+        dropStmt.all(row.id) as Array<{
+          config_base_id: number;
+          qty: number;
+          proto: string;
+          ts: number;
+        }>
+      ).map((d) => ({
+        ts: d.ts,
+        configBaseId: d.config_base_id,
+        qty: d.qty,
+        proto: d.proto,
+        kind: 'loot' as const,
+        pageId: 0,
+        slotId: 0,
+      })),
+      costs: (
+        costStmt.all(row.id) as Array<{ config_base_id: number; qty: number; ts: number }>
+      ).map((c) => ({
+        ts: c.ts,
+        configBaseId: c.config_base_id,
+        qty: c.qty,
+        proto: 'Spv3Open',
+        kind: 'mapCost' as const,
+        pageId: 0,
+        slotId: 0,
+      })),
+    }));
+  }
+
+  loadTrade(): { listings: Listing[]; receipts: Receipt[] } {
+    const listings = (
+      this.db.prepare('SELECT ts, config_base_id, qty FROM listing').all() as Array<{
+        ts: number;
+        config_base_id: number;
+        qty: number;
+      }>
+    ).map((r) => ({ ts: r.ts, configBaseId: r.config_base_id, qty: r.qty }));
+
+    const receipts = (
+      this.db.prepare('SELECT ts, fe FROM receipt').all() as Array<{ ts: number; fe: number }>
+    ).map((r) => ({ ts: r.ts, fe: r.fe }));
+
+    return { listings, receipts };
+  }
+
+  /** Сохранённые цены — чтобы не терять их вместе с логами. */
+  loadPrices(): PriceRecord[] {
+    const rows = this.db
+      .prepare(
+        `SELECT config_base_id, season_id, fe, median, min_price, sample_size, observed_at
+         FROM price p
+         WHERE observed_at = (
+           SELECT MAX(observed_at) FROM price WHERE config_base_id = p.config_base_id
+         )`,
+      )
+      .all() as Array<{
+      config_base_id: number;
+      season_id: number | null;
+      fe: number;
+      median: number;
+      min_price: number;
+      sample_size: number;
+      observed_at: number;
+    }>;
+
+    return rows.map((r) => ({
+      configBaseId: r.config_base_id,
+      fe: r.fe,
+      median: r.median,
+      min: r.min_price,
+      sampleSize: r.sample_size,
+      observedAt: r.observed_at,
+      seasonId: r.season_id,
+    }));
   }
 
   /** Последняя известная цена предмета. */

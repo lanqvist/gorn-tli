@@ -48,8 +48,12 @@ export class IconCache {
   /** Регистрирует обработчик схемы. Вызывать после app.whenReady. */
   install(): void {
     protocol.handle(SCHEME, async (request) => {
-      const id = Number(new URL(request.url).hostname);
-      if (!Number.isFinite(id)) return new Response(null, { status: 400 });
+      // Идентификатор берём из пути, а не из хоста. Схема зарегистрирована
+      // как standard, и Chromium разбирает числовой хост как IPv4-адрес:
+      // gorn-icon://100300 превращается в gorn-icon://0.1.135.204 и запрос
+      // до нас доходит уже неузнаваемым.
+      const id = Number(new URL(request.url).pathname.replace(/^\/|\.webp$/g, ''));
+      if (!Number.isFinite(id) || id <= 0) return new Response(null, { status: 400 });
 
       const data = await this.get(id);
       if (!data) return new Response(null, { status: 404 });
@@ -138,7 +142,12 @@ export class IconCache {
   }
 }
 
-/** Адрес иконки для интерфейса. */
+/**
+ * Адрес иконки для интерфейса.
+ *
+ * Хост фиксированный, идентификатор — в пути: числовой хост Chromium
+ * трактует как IPv4-адрес.
+ */
 export function iconUrl(id: ConfigBaseId): string {
-  return `${SCHEME}://${id}`;
+  return `${SCHEME}://item/${id}.webp`;
 }

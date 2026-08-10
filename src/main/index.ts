@@ -1,5 +1,5 @@
 import { app, BrowserWindow, globalShortcut, ipcMain, shell } from 'electron';
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -56,6 +56,17 @@ function createWindow(): void {
   });
 
   window.once('ready-to-show', () => window?.show());
+
+  // В режиме диагностики поднимаем сообщения из renderer наверх: иначе
+  // нарушения политики безопасности видны только в devtools.
+  if (isDev || process.argv.some((a) => a.startsWith('--capture='))) {
+    window.webContents.on('console-message', (...args: unknown[]) => {
+      const detail = args.find((a) => typeof a === 'object' && a !== null && 'message' in a) as
+        | { level?: unknown; message?: unknown }
+        | undefined;
+      console.log('[renderer]', detail ? `${detail.level}: ${detail.message}` : args.slice(1));
+    });
+  }
 
   // Внешние ссылки открываем в браузере, а не внутри приложения.
   window.webContents.setWindowOpenHandler(({ url }) => {
@@ -119,10 +130,57 @@ app.whenReady().then(async () => {
     if (n > 0) console.log(`[иконки] загружено ${n}`);
   });
 
+  await maybeCapture();
+
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
 });
+
+/**
+ * Диагностический снимок окна: `--capture=<файл>`.
+ *
+ * Нужен, чтобы можно было посмотреть на реально запущенное приложение —
+ * проверка вёрстки в браузере не ловит проблемы, которые возникают только
+ * с настоящими данными и настоящим мостом в main.
+ */
+async function maybeCapture(): Promise<void> {
+  const arg = process.argv.find((a) => a.startsWith('--capture='));
+  if (!arg || !window) return;
+
+  const file = arg.slice('--capture='.length);
+  const delay = Number(process.env['CAPTURE_DELAY_MS'] ?? 6000);
+  await new Promise((resolve) => setTimeout(resolve, delay));
+
+  try {
+    const probe = await window.webContents.executeJavaScript(`(async () => {
+      const out = { imgs: 0, placeholders: 0, srcs: [], fetch: null, imgLoad: null };
+      out.imgs = document.querySelectorAll('.drops img').length;
+      out.placeholders = document.querySelectorAll('.drops .no-icon').length;
+      out.srcs = [...document.querySelectorAll('.drops img')].slice(0, 3).map(i => i.src);
+      try {
+        const r = await fetch('gorn-icon://item/100300.webp');
+        out.fetch = r.status + ' ' + r.headers.get('content-type') + ' ' + (await r.blob()).size + 'b';
+      } catch (e) { out.fetch = 'ОШИБКА: ' + e.message; }
+      out.imgLoad = await new Promise(res => {
+        const i = new Image();
+        i.onload = () => res('загрузилась ' + i.naturalWidth + 'px');
+        i.onerror = () => res('НЕ загрузилась');
+        i.src = 'gorn-icon://item/100300.webp';
+        setTimeout(() => res('таймаут'), 3000);
+      });
+      return out;
+    })()`);
+    console.log('[проверка иконок]', JSON.stringify(probe));
+
+    const image = await window.webContents.capturePage();
+    writeFileSync(file, image.toPNG());
+    console.log(`[снимок] ${file}`);
+  } catch (err) {
+    console.error('[снимок] не удался:', (err as Error).message);
+  }
+  app.quit();
+}
 
 /**
  * Горячие клавиши.

@@ -178,8 +178,9 @@ function Hero({ snapshot }: { snapshot: Snapshot }) {
       </div>
 
       <div className="hero-tiles">
+        {/* «Сейчас» двигается при каждом подборе, медиана — намеренно нет. */}
+        <Tile label="Сейчас, в час" value={<Fe value={snapshot.liveRate} />} live />
         <Tile label="Чистый ФЕ в час" value={<Fe value={feRate.median} />} />
-        <Tile label="Забегов" value={num(totals.runs)} />
         <Tile label="В картах" value={duration(totals.inMapMs)} />
         <Tile label="Вложено" value={<Fe value={totals.costFe} />} />
       </div>
@@ -198,9 +199,17 @@ function ItemIcon({ src }: { src: string | null }) {
   return <img src={src} alt="" loading="lazy" onError={() => setBroken(true)} />;
 }
 
-function Tile({ label, value }: { label: string; value: React.ReactNode }) {
+function Tile({
+  label,
+  value,
+  live = false,
+}: {
+  label: string;
+  value: React.ReactNode;
+  live?: boolean;
+}) {
   return (
-    <div className="tile">
+    <div className={`tile ${live ? 'tile-live' : ''}`}>
       <div className="tile-label">{label}</div>
       <div className="tile-value">{value}</div>
     </div>
@@ -223,7 +232,7 @@ function CurrentRun({ snapshot, now }: { snapshot: Snapshot; now: number }) {
         </section>
       );
     }
-    return <FinishedRun run={previous} hint={snapshot.hint} />;
+    return <FinishedRun run={previous} />;
   }
 
   const elapsed = now - run.startedAt;
@@ -262,7 +271,7 @@ function CurrentRun({ snapshot, now }: { snapshot: Snapshot; now: number }) {
 }
 
 /** Последний завершённый забег: держим его на экране, пока не начнётся новый. */
-function FinishedRun({ run, hint }: { run: RunView; hint: string | null }) {
+function FinishedRun({ run }: { run: RunView }) {
   return (
     <section className="card current">
       <div className="current-head">
@@ -278,7 +287,6 @@ function FinishedRun({ run, hint }: { run: RunView; hint: string | null }) {
       </div>
 
       <DropList drops={run.drops} />
-      {hint && <p className="muted small">{hint}</p>}
     </section>
   );
 }
@@ -309,18 +317,21 @@ function DropList({ drops }: { drops: RunView['drops'] }) {
 
 /** Блок биржи. Реализованная выручка против бумажной оценки. */
 function Sidebar({ snapshot }: { snapshot: Snapshot }) {
-  const { realizedFe, realizationRatio, valueFe } = snapshot.totals;
+  const { realizedFe, realizationRatio, listedPaperFe } = snapshot.totals;
 
   return (
     <aside className="card side">
       <h2>Торговый дом</h2>
+      {/* Обе строки про одно и то же — про выставленный товар. Ставить сюда
+          оценку всей добычи нельзя: это несравнимая величина, а рядом
+          она читается как отношение. */}
+      <div className="side-row">
+        <span>Выставлено на сумму</span>
+        <Fe value={listedPaperFe} />
+      </div>
       <div className="side-row">
         <span>Реально пришло</span>
         <Fe value={realizedFe} />
-      </div>
-      <div className="side-row">
-        <span>Бумажная оценка добычи</span>
-        <Fe value={valueFe} />
       </div>
 
       {realizationRatio !== null && (

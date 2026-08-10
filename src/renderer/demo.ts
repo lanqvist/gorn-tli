@@ -119,7 +119,9 @@ export const demoSnapshot: Snapshot = {
     costFe: 690,
     realizedFe: 508,
     realizationRatio: 0.71,
+    listedPaperFe: 717,
   },
+  liveRate: 786,
   diagnostics: {
     unknownProtos: [],
     pricedItems: 58,
