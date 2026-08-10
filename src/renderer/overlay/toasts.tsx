@@ -60,10 +60,24 @@ let nextId = 1;
 
 export function useIncomeToasts(snapshot: Snapshot | null, opts: ToastOptions): Toast[] {
   const [toasts, setToasts] = useState<Toast[]>([]);
+  // Список дублируется в ref: ветке схлопывания нужно синхронно знать,
+  // жива ли ещё плашка подбора, а state к этому моменту может отставать.
+  const listRef = useRef<Toast[]>([]);
+  // Таймеры гашения по id плашки — чтобы при схлопывании продлевать жизнь,
+  // а не давать плашке умереть по таймеру от самого первого подбора.
+  const timers = useRef(new Map<number, ReturnType<typeof setTimeout>>());
   const prev = useRef<RunFingerprint | null>(null);
   const lastPickupAt = useRef(0);
   const optsRef = useRef(opts);
   optsRef.current = opts;
+
+  useEffect(() => {
+    const pending = timers.current;
+    return () => {
+      for (const timer of pending.values()) clearTimeout(timer);
+      pending.clear();
+    };
+  }, []);
 
   useEffect(() => {
     const current = snapshot?.current ?? null;
@@ -79,12 +93,28 @@ export function useIncomeToasts(snapshot: Snapshot | null, opts: ToastOptions): 
     const { popups, sound, volume } = optsRef.current;
     if (!popups && !sound) return;
 
+    const commit = (list: Toast[]): void => {
+      listRef.current = list;
+      setToasts(list);
+    };
+
+    // (Пере)взводит таймер гашения: старый таймер той же плашки снимается.
+    const scheduleExpiry = (id: number, kind: ToastKind): void => {
+      const old = timers.current.get(id);
+      if (old !== undefined) clearTimeout(old);
+      timers.current.set(
+        id,
+        setTimeout(() => {
+          timers.current.delete(id);
+          commit(listRef.current.filter((t) => t.id !== id));
+        }, TTL_MS[kind]),
+      );
+    };
+
     const push = (toast: Toast): void => {
       if (!popups) return;
-      setToasts((list) => [toast, ...list].slice(0, MAX_VISIBLE));
-      setTimeout(() => {
-        setToasts((list) => list.filter((t) => t.id !== toast.id));
-      }, TTL_MS[toast.kind]);
+      commit([toast, ...listRef.current].slice(0, MAX_VISIBLE));
+      scheduleExpiry(toast.id, toast.kind);
     };
 
     // Забег закрыт: current исчез или сменился новым стартом.
@@ -131,13 +161,18 @@ export function useIncomeToasts(snapshot: Snapshot | null, opts: ToastOptions): 
 
     if (merged) {
       // Продлеваем и наращиваем последнюю плашку подбора, а не плодим новые.
-      setToasts((list) => {
-        const idx = list.findIndex((t) => t.kind === 'pickup');
-        if (idx === -1) return list;
-        const updated = [...list];
-        updated[idx] = { ...updated[idx]!, fe: updated[idx]!.fe + gained };
-        return updated;
-      });
+      if (popups) {
+        const idx = listRef.current.findIndex((t) => t.kind === 'pickup');
+        if (idx === -1) {
+          // Плашка успела погаснуть — начинаем новую, дельту не теряем.
+          push({ id: nextId++, kind: 'pickup', fe: gained });
+        } else {
+          const updated = [...listRef.current];
+          updated[idx] = { ...updated[idx]!, fe: updated[idx]!.fe + gained };
+          commit(updated);
+          scheduleExpiry(updated[idx]!.id, 'pickup');
+        }
+      }
       if (sound) playPickup(gained, volume * 0.5);
       return;
     }
