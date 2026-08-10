@@ -160,9 +160,11 @@ export class EventParser {
     const fields = parseBody(msg.body);
 
     if (msg.direction === 'SendMessage') {
-      // `+filters+1+refer [112410]` — какой предмет пробиваем
-      const refer = fields.get('refer');
-      if (refer !== undefined) this.priceRequests.set(msg.synId, Number(refer));
+      // `+filters+1+refer [112410]` — какой предмет пробиваем.
+      // Поиск по категории (а не по конкретному предмету) поля refer не содержит,
+      // и привязать такие цены к предмету нельзя — пропускаем.
+      const refer = Number(fields.get('refer'));
+      if (Number.isFinite(refer) && refer > 0) this.priceRequests.set(msg.synId, refer);
       return null;
     }
 

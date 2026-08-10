@@ -9,6 +9,7 @@
   },
   "scripts": {
     "analyze": "tsx src/cli/analyze.ts",
+    "scan": "tsx src/cli/scan.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit"

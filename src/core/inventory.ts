@@ -63,8 +63,30 @@ export class InventoryTracker {
     });
   }
 
-  applyRemove(ev: BagRemoveEvent): void {
-    this.slots.delete(slotKey(ev.pageId, ev.slotId));
+  /**
+   * Слот очищен. Строка лога не содержит ConfigBaseId — что там лежало,
+   * знаем только мы из своего состояния.
+   *
+   * Это важно: выставление лота на биржу и полный расход компаса выглядят
+   * именно так, а не уменьшением количества. Без восстановления предмета
+   * из состояния слота выставленный товар и потраченные карты не видны вообще.
+   */
+  applyRemove(ev: BagRemoveEvent): ItemDelta | null {
+    const key = slotKey(ev.pageId, ev.slotId);
+    const prev = this.slots.get(key);
+    this.slots.delete(key);
+    if (prev === undefined || prev.qty <= 0) return null;
+
+    const proto = this.currentProto ?? 'unknown';
+    return {
+      ts: ev.ts,
+      configBaseId: prev.configBaseId,
+      qty: -prev.qty,
+      proto,
+      kind: protoKind(proto),
+      pageId: ev.pageId,
+      slotId: ev.slotId,
+    };
   }
 
   /** Возвращает дельту, если изменение действительно является приростом/расходом. */

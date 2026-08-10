@@ -82,6 +82,11 @@ const PROTO_KINDS: Record<string, ProtoKind> = {
   XchgBuy: 'trade',
   XchgReceive: 'trade',
   XchgRecall: 'trade',
+  // Торговец-NPC. Купленное — не дроп: иначе покупка компасов засчиталась бы
+  // как добыча и завысила доход. Учёт потраченного у торговца — отдельная
+  // задача, сейчас эти операции просто не влияют на цифры.
+  BuyVendorGoods: 'neutral',
+  RefreshVendorShop: 'neutral',
   // перекладывание и прочее, что нельзя считать доходом — иначе двойной счёт
   Push2: 'neutral',
   PutOn: 'neutral',

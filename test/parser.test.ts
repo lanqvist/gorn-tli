@@ -47,6 +47,17 @@ describe('разбор строк', () => {
     expect(protoKind('PickItem')).toBe('loot');
   });
 
+  it('покупка у торговца не является добычей', () => {
+    // Найдено самодиагностикой на реальной сессии: без этого купленные
+    // компасы засчитались бы в доход.
+    expect(protoKind('BuyVendorGoods')).toBe('neutral');
+    expect(protoKind('RefreshVendorShop')).toBe('neutral');
+  });
+
+  it('незнакомый протокол не считается добычей по умолчанию', () => {
+    expect(protoKind('SomethingFromNextSeason')).toBe('unknown');
+  });
+
   it('укрытие распознаётся как хаб', () => {
     expect(isHubAsset('XZ_YuJinZhiXiBiNanSuo200')).toBe(true);
     expect(isHubAsset('YL_MaNeiLaYuLin100')).toBe(false);

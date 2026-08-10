@@ -4,11 +4,13 @@ import { createInterface } from 'node:readline';
 import { EventParser } from './eventParser.js';
 import { InventoryTracker } from './inventory.js';
 import { RunSegmenter } from './runSegmenter.js';
+import { TradeLedger } from './trade.js';
 import type { ConfigBaseId, Diagnostics, PriceObservationEvent, Run } from './types.js';
 
 export interface AnalysisResult {
   runs: Run[];
   prices: PriceObservationEvent[];
+  trade: TradeLedger;
   inventory: Map<ConfigBaseId, number>;
   diagnostics: Diagnostics;
   seasonId: number | null;
@@ -37,6 +39,7 @@ export async function analyzeLogFile(path: string): Promise<AnalysisResult> {
   const parser = new EventParser();
   const inventory = new InventoryTracker(diagnostics);
   const segmenter = new RunSegmenter();
+  const trade = new TradeLedger();
   const prices: PriceObservationEvent[] = [];
 
   let seasonId: number | null = null;
@@ -76,13 +79,21 @@ export async function analyzeLogFile(path: string): Promise<AnalysisResult> {
         inventory.applyInit(ev);
         break;
 
-      case 'bagRemove':
-        inventory.applyRemove(ev);
+      case 'bagRemove': {
+        const delta = inventory.applyRemove(ev);
+        if (delta) {
+          segmenter.addDelta(delta);
+          trade.add(delta);
+        }
         break;
+      }
 
       case 'bagModify': {
         const delta = inventory.applyModify(ev);
-        if (delta) segmenter.addDelta(delta);
+        if (delta) {
+          segmenter.addDelta(delta);
+          trade.add(delta);
+        }
         break;
       }
 
@@ -112,6 +123,7 @@ export async function analyzeLogFile(path: string): Promise<AnalysisResult> {
   return {
     runs,
     prices,
+    trade,
     inventory: inventory.snapshot(),
     diagnostics,
     seasonId,

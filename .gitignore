@@ -8,3 +8,6 @@ release/
 .env
 .vite/
 coverage/
+*.db
+*.db-wal
+*.db-shm
