@@ -11,6 +11,9 @@ coverage/
 *.db
 *.db-wal
 *.db-shm
+# Вывод режима --observe: срезы, снимки окна, консоль renderer.
+debug/
+
 # Диагностические снимки окна (--capture) лежат в корне и в репозиторий не идут.
 shot*.png
 s*.png
