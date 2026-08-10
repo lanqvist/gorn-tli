@@ -47,6 +47,10 @@
           "items.json",
           "names-ru.json"
         ]
+      },
+      {
+        "from": "build/icon.ico",
+        "to": "icon.ico"
       }
     ],
     "win": {

@@ -1,12 +1,23 @@
-import { app, BrowserWindow, globalShortcut, ipcMain, shell } from 'electron';
+import {
+  app,
+  BrowserWindow,
+  dialog,
+  globalShortcut,
+  ipcMain,
+  Menu,
+  nativeImage,
+  shell,
+  Tray,
+} from 'electron';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
+import { resolveLogDirectory } from '../core/locate.js';
 import { DebugSink } from './debug.js';
 import { Engine, type Snapshot } from './engine.js';
 import { IconCache, registerIconScheme } from './icons.js';
-import { Overlay } from './overlay.js';
+import { Overlay, prefsPayload } from './overlay.js';
 import { SettingsStore, type NameLanguage, type OverlayMode } from './settings.js';
 import { ToastLayer } from './toastLayer.js';
 import { Updater, type UpdateState } from './updater.js';
@@ -21,6 +32,8 @@ if (!app.requestSingleInstanceLock()) {
 }
 app.on('second-instance', () => {
   if (window && !window.isDestroyed()) {
+    // Окно может быть спрятано в трей — показать, а не только сфокусировать.
+    window.show();
     if (window.isMinimized()) window.restore();
     window.focus();
   }
@@ -37,6 +50,10 @@ let toastLayer: ToastLayer | null = null;
 let settings: SettingsStore | null = null;
 let debugSink: DebugSink | null = null;
 let updater: Updater | null = null;
+let icons: IconCache | null = null;
+let tray: Tray | null = null;
+/** Выход по-настоящему: отличает «закрыть в трей» от завершения приложения. */
+let quitting = false;
 
 interface CatalogueItem {
   id: number;
@@ -78,6 +95,16 @@ function createWindow(): void {
 
   window.once('ready-to-show', () => window?.show());
 
+  // «Закрывать в трей»: окно прячется, трекер и оверлей живут дальше.
+  // Настройка выключена по умолчанию — неожиданно живущий фоном процесс
+  // хуже, чем лишний запуск.
+  window.on('close', (e) => {
+    if (settings?.closeToTray && tray && !quitting) {
+      e.preventDefault();
+      window?.hide();
+    }
+  });
+
   // На Windows закрытие главного окна — это выход. Без этого открытый
   // оверлей не давал сработать window-all-closed, и приложение зависало
   // фоновым процессом без единого способа вернуть дашборд.
@@ -113,10 +140,65 @@ function createWindow(): void {
   }
 }
 
+function showMainWindow(): void {
+  if (window && !window.isDestroyed()) {
+    window.show();
+    window.focus();
+  }
+}
+
+function trayIconPath(): string {
+  return app.isPackaged
+    ? join(process.resourcesPath, 'icon.ico')
+    : join(__dirname, '../../build/icon.ico');
+}
+
+/** Трей существует только при включённой настройке «закрывать в трей». */
+function syncTray(): void {
+  if (settings?.closeToTray && !tray) {
+    tray = new Tray(nativeImage.createFromPath(trayIconPath()));
+    tray.setToolTip('Горн');
+    tray.on('click', showMainWindow);
+    tray.setContextMenu(
+      Menu.buildFromTemplate([
+        { label: 'Показать', click: showMainWindow },
+        { label: 'Оверлей', click: () => overlay?.toggle() },
+        { type: 'separator' },
+        {
+          label: 'Выход',
+          click: () => {
+            quitting = true;
+            app.quit();
+          },
+        },
+      ]),
+    );
+  } else if (!settings?.closeToTray && tray) {
+    tray.destroy();
+    tray = null;
+  }
+}
+
+/**
+ * Старт движка с повтором: пока игра не найдена, start() безопасно звать
+ * снова — вручную указанная папка или автопоиск могут сработать позже.
+ */
+async function tryStartEngine(): Promise<void> {
+  if (!engine || engine.isBooted) return;
+  await engine.start(settings?.logDir);
+  if (engine.isBooted) {
+    // Иконки виденных предметов подтягиваем фоном, чтобы они уже лежали
+    // на диске к моменту, когда игрок войдёт в карту.
+    void icons?.prefetch(engine.seenItemIds()).then((n) => {
+      if (n > 0) console.log(`[иконки] загружено ${n}`);
+    });
+  }
+}
+
 app.whenReady().then(async () => {
   const items = loadItems();
 
-  const icons = new IconCache(app.getPath('userData'), items);
+  icons = new IconCache(app.getPath('userData'), items);
   icons.install();
 
   createWindow();
@@ -198,18 +280,24 @@ app.whenReady().then(async () => {
   ipcMain.on('overlay:height', (_e, height: number) => overlay?.setContentHeight(height));
   ipcMain.on(
     'overlay:setPrefs',
-    (_e, prefs: { popups?: boolean; sound?: boolean; volume?: number }) => {
+    (
+      _e,
+      prefs: {
+        popups?: boolean;
+        sound?: boolean;
+        volume?: number;
+        soundImportantOnly?: boolean;
+        jackpotFe?: number;
+        fontScale?: number;
+      },
+    ) => {
       overlay?.patchPrefs(prefs);
       // Слой всплывашек живёт своим окном: настройки долетают и туда,
       // а само окно появляется и исчезает вслед за ними.
       toastLayer?.sync();
       const current = settings?.overlay;
       if (current) {
-        toastLayer?.send('overlay:prefs', {
-          popups: current.popups,
-          sound: current.sound,
-          volume: current.volume,
-        });
+        toastLayer?.send('overlay:prefs', prefsPayload(current));
       }
     },
   );
@@ -217,24 +305,91 @@ app.whenReady().then(async () => {
   ipcMain.on('toasts:height', (_e, height: number) => toastLayer?.setContentHeight(height));
   ipcMain.on('toasts:active', (_e, active: boolean) => toastLayer?.setActive(active));
 
+  // Панель настроек главного окна.
+  ipcMain.handle('app:settings', () => ({
+    logDir: settings?.logDir ?? null,
+    resolvedLogDir: engine?.logDirectory ?? null,
+    closeToTray: settings?.closeToTray ?? false,
+    autoStart: settings?.autoStart ?? false,
+    version: app.getVersion(),
+  }));
+  ipcMain.handle('app:setCloseToTray', (_e, enabled: boolean) => {
+    settings?.setCloseToTray(enabled);
+    syncTray();
+    return enabled;
+  });
+  ipcMain.handle('app:setAutoStart', (_e, enabled: boolean) => {
+    settings?.setAutoStart(enabled);
+    // В отладочном запуске регистрировать electron.exe в автозагрузке нельзя.
+    if (app.isPackaged) app.setLoginItemSettings({ openAtLogin: enabled });
+    return enabled;
+  });
+  ipcMain.handle('app:chooseLogDir', async () => {
+    if (!window) return { status: 'cancelled' as const };
+    const res = await dialog.showOpenDialog(window, {
+      title: 'Папка с логами Torchlight: Infinite',
+      properties: ['openDirectory'],
+    });
+    const picked = res.filePaths[0];
+    if (res.canceled || !picked) return { status: 'cancelled' as const };
+    const dir = resolveLogDirectory(picked);
+    if (!dir) return { status: 'invalid' as const };
+    settings?.setLogDir(dir);
+    if (engine && !engine.isBooted) {
+      void tryStartEngine();
+      return { status: 'applied' as const, dir };
+    }
+    // Движок уже разобрал историю с другой папкой — чисто переехать можно
+    // только перезапуском. Решение о нём остаётся за игроком.
+    return { status: 'needsRestart' as const, dir };
+  });
+  ipcMain.handle('app:resetLogDir', () => {
+    settings?.setLogDir(null);
+    if (engine && !engine.isBooted) {
+      void tryStartEngine();
+      return { status: 'applied' as const };
+    }
+    return { status: 'needsRestart' as const };
+  });
+  ipcMain.on('app:relaunch', () => {
+    quitting = true;
+    app.relaunch();
+    app.quit();
+  });
+  ipcMain.handle('update:check', () => updater?.check());
+
   registerShortcuts();
+  syncTray();
+  // Синхронизируем автозагрузку с настройкой: пользователь мог удалить
+  // запись руками, а установка — переехать в другую папку.
+  if (app.isPackaged) {
+    app.setLoginItemSettings({ openAtLogin: settings.autoStart });
+  }
 
   if (settings.overlay.enabled) overlay.open();
   // Слой всплывашек независим от оверлея-панели: доход у центра экрана
   // показывается и тем, кто панель не держит.
   toastLayer.sync();
 
-  await engine.start();
+  await tryStartEngine();
 
-  // Иконки виденных предметов подтягиваем фоном, чтобы они уже лежали
-  // на диске к моменту, когда игрок войдёт в карту.
-  void icons.prefetch(engine.seenItemIds()).then((n) => {
-    if (n > 0) console.log(`[иконки] загружено ${n}`);
-  });
+  // Игра могла быть не найдена (не установлена, нестандартный путь) —
+  // повторяем поиск, пока не получится: игрок мог установить её позже
+  // или указать папку вручную в настройках.
+  const locateRetry = setInterval(() => {
+    if (engine?.isBooted) {
+      clearInterval(locateRetry);
+      return;
+    }
+    void tryStartEngine();
+  }, 45_000);
 
   // Проверку обновлений откладываем: разбор логов при старте важнее,
-  // и незачем соревноваться с ним за диск и сеть.
+  // и незачем соревноваться с ним за диск и сеть. Дальше — раз в 4 часа:
+  // трекер живёт сутками и не должен узнавать о релизе только после
+  // перезапуска.
   setTimeout(() => void updater?.check(), 8000);
+  setInterval(() => void updater?.check(), 4 * 3_600_000);
 
   await maybeCapture();
 
@@ -333,6 +488,9 @@ app.on('window-all-closed', () => {
 });
 
 app.on('before-quit', () => {
+  // Выход из меню трея, автообновление, завершение сеанса Windows —
+  // всё это настоящий выход, а не «закрыть в трей».
+  quitting = true;
   debugSink?.stop();
   debugSink = null;
   engine?.stop();

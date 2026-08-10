@@ -51,6 +51,30 @@ export function findLogDirectory(): string | null {
   return null;
 }
 
+/**
+ * Папка, указанная игроком вручную. Принимается и сама Logs, и корень
+ * установки игры — искать точную подпапку среди пяти уровней вложенности
+ * никто не обязан.
+ */
+export function resolveLogDirectory(picked: string): string | null {
+  const candidates = [picked, join(picked, LOG_SUBPATH)];
+  // Сначала папка, в которой логи реально лежат.
+  for (const dir of candidates) {
+    if (!existsSync(dir)) continue;
+    try {
+      if (listLogFiles(dir).length > 0) return dir;
+    } catch {
+      continue;
+    }
+  }
+  // Логов может не быть вовсе (игра ещё не запускалась) — тогда принимаем
+  // папку с правильным именем: самих логов дождётся живое дочитывание.
+  for (const dir of candidates) {
+    if (existsSync(dir) && dir.endsWith('Logs')) return dir;
+  }
+  return null;
+}
+
 export interface LogFile {
   path: string;
   /** Время последней записи — по нему упорядочиваем сессии. */

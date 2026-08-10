@@ -225,6 +225,21 @@ export function playJackpot(volume: number): void {
   }
 }
 
+/**
+ * Пробный удар для ползунка громкости: средний подбор, мимо троттлинга —
+ * игрок крутит ползунок и должен слышать результат сразу.
+ */
+export function playTest(volume: number): void {
+  if (volume <= 0) return;
+  try {
+    const audio = context();
+    const now = audio.currentTime;
+    metalHit(now, 320 * jitter(), 0.22, 0.4, 0.45, volume);
+  } catch {
+    /* см. playPickup */
+  }
+}
+
 /** Карта закрыта: два глухих удара вниз — работа сделана. Минус — один тусклый. */
 export function playRunEnd(netFe: number, volume: number): void {
   if (volume <= 0) return;

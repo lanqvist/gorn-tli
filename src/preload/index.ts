@@ -24,6 +24,7 @@ contextBridge.exposeInMainWorld('gorn', {
 
   update: {
     get: () => ipcRenderer.invoke('update:get'),
+    check: () => ipcRenderer.invoke('update:check'),
     download: () => ipcRenderer.invoke('update:download'),
     install: () => ipcRenderer.send('update:install'),
     onState: (callback: (state: unknown) => void) => {
@@ -31,6 +32,16 @@ contextBridge.exposeInMainWorld('gorn', {
       ipcRenderer.on('update:state', handler);
       return () => ipcRenderer.removeListener('update:state', handler);
     },
+  },
+
+  /** Панель настроек: системные вещи за пределами оверлея. */
+  settings: {
+    get: () => ipcRenderer.invoke('app:settings'),
+    setCloseToTray: (enabled: boolean) => ipcRenderer.invoke('app:setCloseToTray', enabled),
+    setAutoStart: (enabled: boolean) => ipcRenderer.invoke('app:setAutoStart', enabled),
+    chooseLogDir: () => ipcRenderer.invoke('app:chooseLogDir'),
+    resetLogDir: () => ipcRenderer.invoke('app:resetLogDir'),
+    relaunch: () => ipcRenderer.send('app:relaunch'),
   },
 
   /** Язык названий предметов: русские, английские или оба. */

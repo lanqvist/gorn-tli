@@ -27,6 +27,9 @@ export function OverlayApp() {
     popups: true,
     sound: true,
     volume: 0.5,
+    soundImportantOnly: false,
+    jackpotFe: 50,
+    fontScale: 1,
   });
   const root = useRef<HTMLDivElement>(null);
 
@@ -88,7 +91,14 @@ export function OverlayApp() {
     void window.gorn.overlay.getState().then((s) => {
       setMode(s.mode);
       setLocked(s.locked);
-      setPrefs({ popups: s.popups ?? true, sound: s.sound ?? true, volume: s.volume ?? 0.5 });
+      setPrefs({
+        popups: s.popups ?? true,
+        sound: s.sound ?? true,
+        volume: s.volume ?? 0.5,
+        soundImportantOnly: s.soundImportantOnly ?? false,
+        jackpotFe: s.jackpotFe ?? 50,
+        fontScale: s.fontScale ?? 1,
+      });
     });
     const offSnapshot = window.gorn.onSnapshot(setSnapshot);
     const offMode = window.gorn.overlay.onMode((m) => setMode(m));
@@ -117,7 +127,13 @@ export function OverlayApp() {
   const delta = pace !== null && median > 0 ? Math.round(((pace - median) / median) * 100) : null;
 
   return (
-    <div ref={root} className={`ov ov-${mode} ${locked ? 'ov-locked' : 'ov-free'}`}>
+    // Масштаб — через zoom: он растягивает и кегль, и отступы разом,
+    // а окну main-процесс даёт пропорциональную ширину.
+    <div
+      ref={root}
+      className={`ov ov-${mode} ${locked ? 'ov-locked' : 'ov-free'}`}
+      style={{ zoom: prefs.fontScale }}
+    >
       {/* Полоска для перетаскивания видна только в разблокированном режиме:
           в заблокированном клики всё равно уходят в игру. */}
       {!locked && (

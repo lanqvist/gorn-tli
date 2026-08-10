@@ -20,6 +20,9 @@ export function ToastLayerApp() {
     popups: true,
     sound: true,
     volume: 0.5,
+    soundImportantOnly: false,
+    jackpotFe: 50,
+    fontScale: 1,
   });
   const root = useRef<HTMLDivElement>(null);
 
@@ -76,7 +79,14 @@ export function ToastLayerApp() {
 
     void window.gorn.getSnapshot().then((s) => s && setSnapshot(s));
     void window.gorn.overlay.getState().then((s) => {
-      setPrefs({ popups: s.popups ?? true, sound: s.sound ?? true, volume: s.volume ?? 0.5 });
+      setPrefs({
+        popups: s.popups ?? true,
+        sound: s.sound ?? true,
+        volume: s.volume ?? 0.5,
+        soundImportantOnly: s.soundImportantOnly ?? false,
+        jackpotFe: s.jackpotFe ?? 50,
+        fontScale: s.fontScale ?? 1,
+      });
     });
     const offSnapshot = window.gorn.onSnapshot(setSnapshot);
     const offPrefs = window.gorn.overlay.onPrefs(setPrefs);

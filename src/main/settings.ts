@@ -24,6 +24,15 @@ export interface Settings {
    * в приоритете. Отключается для полностью офлайновой работы.
    */
   communityPrices: boolean;
+  /**
+   * Папка логов, указанная вручную. null — автопоиск по Steam-библиотекам.
+   * Ручной путь нужен не-Steam установкам и нестандартным дискам.
+   */
+  logDir: string | null;
+  /** Закрытие окна сворачивает в трей: трекер живёт фоном часами. */
+  closeToTray: boolean;
+  /** Запуск вместе с Windows: трекер полезен, только если уже запущен. */
+  autoStart: boolean;
   overlay: {
     enabled: boolean;
     mode: OverlayMode;
@@ -38,12 +47,19 @@ export interface Settings {
     sound: boolean;
     /** Громкость звука, 0–1. */
     volume: number;
+    /** Озвучивать только золотые находки и итог карты. */
+    soundImportantOnly: boolean;
+    /** Порог «золотой» находки, в ФЕ. */
+    jackpotFe: number;
   };
 }
 
 const DEFAULTS: Settings = {
   itemNames: 'ru',
   communityPrices: true,
+  logDir: null,
+  closeToTray: false,
+  autoStart: false,
   overlay: {
     enabled: false,
     mode: 'compact',
@@ -54,6 +70,8 @@ const DEFAULTS: Settings = {
     popups: true,
     sound: true,
     volume: 0.5,
+    soundImportantOnly: false,
+    jackpotFe: 50,
   },
 };
 
@@ -85,6 +103,9 @@ export class SettingsStore {
       return {
         itemNames: raw.settings.itemNames ?? DEFAULTS.itemNames,
         communityPrices: raw.settings.communityPrices ?? DEFAULTS.communityPrices,
+        logDir: raw.settings.logDir ?? DEFAULTS.logDir,
+        closeToTray: raw.settings.closeToTray ?? DEFAULTS.closeToTray,
+        autoStart: raw.settings.autoStart ?? DEFAULTS.autoStart,
         overlay: { ...DEFAULTS.overlay, ...raw.settings.overlay },
       };
     } catch {
@@ -112,6 +133,33 @@ export class SettingsStore {
 
   setCommunityPrices(enabled: boolean): void {
     this.data.communityPrices = enabled;
+    this.save();
+  }
+
+  get logDir(): string | null {
+    return this.data.logDir;
+  }
+
+  setLogDir(dir: string | null): void {
+    this.data.logDir = dir;
+    this.save();
+  }
+
+  get closeToTray(): boolean {
+    return this.data.closeToTray;
+  }
+
+  setCloseToTray(enabled: boolean): void {
+    this.data.closeToTray = enabled;
+    this.save();
+  }
+
+  get autoStart(): boolean {
+    return this.data.autoStart;
+  }
+
+  setAutoStart(enabled: boolean): void {
+    this.data.autoStart = enabled;
     this.save();
   }
 

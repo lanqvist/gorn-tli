@@ -13,6 +13,9 @@ declare global {
     popups: boolean;
     sound: boolean;
     volume: number;
+    soundImportantOnly: boolean;
+    jackpotFe: number;
+    fontScale: number;
   }
 
   interface GornOverlayApi {
@@ -25,6 +28,8 @@ declare global {
       popups: boolean;
       sound: boolean;
       volume: number;
+      soundImportantOnly: boolean;
+      jackpotFe: number;
     }>;
     toggle: () => Promise<boolean>;
     close: () => void;
@@ -57,10 +62,34 @@ declare global {
     overlay: GornOverlayApi;
     update: {
       get: () => Promise<UpdateState | null>;
+      check: () => Promise<void>;
       download: () => Promise<void>;
       install: () => void;
       onState: (cb: (state: UpdateState) => void) => () => void;
     };
+    settings: {
+      get: () => Promise<GornAppSettings>;
+      setCloseToTray: (enabled: boolean) => Promise<boolean>;
+      setAutoStart: (enabled: boolean) => Promise<boolean>;
+      chooseLogDir: () => Promise<GornLogDirResult>;
+      resetLogDir: () => Promise<GornLogDirResult>;
+      relaunch: () => void;
+    };
+  }
+
+  interface GornAppSettings {
+    /** Папка логов, указанная вручную; null — автопоиск. */
+    logDir: string | null;
+    /** Папка, с которой движок реально работает; null — игра не найдена. */
+    resolvedLogDir: string | null;
+    closeToTray: boolean;
+    autoStart: boolean;
+    version: string;
+  }
+
+  interface GornLogDirResult {
+    status: 'applied' | 'needsRestart' | 'invalid' | 'cancelled';
+    dir?: string;
   }
 
   interface Window {

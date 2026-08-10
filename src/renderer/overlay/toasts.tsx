@@ -34,7 +34,7 @@ export interface Toast {
   durationMs?: number;
 }
 
-/** Порог «золотой» находки, в ФЕ. */
+/** Порог «золотой» находки по умолчанию, в ФЕ. Настраивается игроком. */
 export const JACKPOT_FE = 50;
 /** Окно схлопывания подборов подряд. */
 const MERGE_WINDOW_MS = 900;
@@ -48,6 +48,10 @@ export interface ToastOptions {
   popups: boolean;
   sound: boolean;
   volume: number;
+  /** Озвучивать только золотые находки и итог карты — без «тук» на подбор. */
+  soundImportantOnly: boolean;
+  /** Порог «золотой» находки, в ФЕ. */
+  jackpotFe: number;
 }
 
 interface RunFingerprint {
@@ -90,7 +94,7 @@ export function useIncomeToasts(snapshot: Snapshot | null, opts: ToastOptions): 
         }
       : null;
 
-    const { popups, sound, volume } = optsRef.current;
+    const { popups, sound, volume, soundImportantOnly, jackpotFe } = optsRef.current;
     if (!popups && !sound) return;
 
     const commit = (list: Toast[]): void => {
@@ -144,7 +148,7 @@ export function useIncomeToasts(snapshot: Snapshot | null, opts: ToastOptions): 
       const gainedQty = d.qty - (before.qtyByItem.get(d.configBaseId) ?? 0);
       if (gainedQty <= 0 || d.unitFe === null) continue;
       const value = gainedQty * d.unitFe;
-      if (value >= JACKPOT_FE && (jackpot === null || value > jackpot.fe)) {
+      if (value >= jackpotFe && (jackpot === null || value > jackpot.fe)) {
         jackpot = { name: d.name, icon: d.icon, fe: value };
       }
     }
@@ -161,7 +165,8 @@ export function useIncomeToasts(snapshot: Snapshot | null, opts: ToastOptions): 
 
     // Темп и громкость ударов сглаживает сам sound.ts (троттлинг
     // с накоплением) — дельта уходит туда как есть, без ослабления.
-    if (sound) playPickup(gained, volume);
+    // В режиме «только важное» обычные подборы молчат.
+    if (sound && !soundImportantOnly) playPickup(gained, volume);
     if (!popups) return;
 
     if (merged) {

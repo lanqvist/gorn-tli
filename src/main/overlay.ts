@@ -2,7 +2,7 @@ import { BrowserWindow, screen } from 'electron';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-import type { OverlayMode, SettingsStore } from './settings.js';
+import type { OverlayMode, Settings, SettingsStore } from './settings.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -20,6 +20,28 @@ const WIDTHS: Record<OverlayMode, number> = {
 /** Стартовая высота до первого замера — окно не должно мигать большим. */
 const INITIAL_HEIGHT = 64;
 const MAX_HEIGHT = 520;
+
+/**
+ * Срез настроек для окон оверлея и плашек: только то, что влияет
+ * на отрисовку и звук, без позиции и служебных полей.
+ */
+export function prefsPayload(prefs: Settings['overlay']): {
+  popups: boolean;
+  sound: boolean;
+  volume: number;
+  soundImportantOnly: boolean;
+  jackpotFe: number;
+  fontScale: number;
+} {
+  return {
+    popups: prefs.popups,
+    sound: prefs.sound,
+    volume: prefs.volume,
+    soundImportantOnly: prefs.soundImportantOnly,
+    jackpotFe: prefs.jackpotFe,
+    fontScale: prefs.fontScale,
+  };
+}
 
 /**
  * Оверлей поверх игры.
@@ -59,7 +81,10 @@ export class Overlay {
     }
 
     const prefs = this.settings.overlay;
-    const size = { width: WIDTHS[prefs.mode], height: INITIAL_HEIGHT };
+    const size = {
+      width: Math.round(WIDTHS[prefs.mode] * prefs.fontScale),
+      height: INITIAL_HEIGHT,
+    };
     const position = this.restorePosition(size);
 
     this.window = new BrowserWindow({
@@ -149,7 +174,8 @@ export class Overlay {
     // Ширину задаём сразу, высоту пришлёт интерфейс после перерисовки.
     const bounds = this.window?.getBounds();
     if (bounds) {
-      this.window?.setBounds(this.keepOnScreen({ ...bounds, width: WIDTHS[mode] }));
+      const width = Math.round(WIDTHS[mode] * this.settings.overlay.fontScale);
+      this.window?.setBounds(this.keepOnScreen({ ...bounds, width }));
     }
     this.send('overlay:mode', mode);
   }
@@ -200,18 +226,42 @@ export class Overlay {
     this.window?.setOpacity(clamped);
   }
 
-  /** Настройки всплывашек и звука. Оверлей узнаёт об изменении сразу. */
-  patchPrefs(patch: { popups?: boolean; sound?: boolean; volume?: number }): void {
+  /** Настройки всплывашек, звука и масштаба. Оверлей узнаёт об изменении сразу. */
+  patchPrefs(patch: {
+    popups?: boolean;
+    sound?: boolean;
+    volume?: number;
+    soundImportantOnly?: boolean;
+    jackpotFe?: number;
+    fontScale?: number;
+  }): void {
     const clean = { ...patch };
     if (clean.volume !== undefined) {
       clean.volume = Math.min(1, Math.max(0, clean.volume));
     }
+    if (clean.jackpotFe !== undefined) {
+      clean.jackpotFe = Math.max(1, clean.jackpotFe);
+    }
+    if (clean.fontScale !== undefined) {
+      clean.fontScale = Math.min(1.6, Math.max(0.8, clean.fontScale));
+    }
     const prefs = this.settings.patchOverlay(clean);
-    this.send('overlay:prefs', {
-      popups: prefs.popups,
-      sound: prefs.sound,
-      volume: prefs.volume,
-    });
+    if (clean.fontScale !== undefined) this.applyFontScale();
+    this.send('overlay:prefs', prefsPayload(prefs));
+  }
+
+  /**
+   * Масштаб рисуется через zoom в renderer, поэтому окну нужна
+   * пропорциональная ширина — иначе контент вылезет за прозрачный край.
+   */
+  private applyFontScale(): void {
+    const prefs = this.settings.overlay;
+    const bounds = this.window?.getBounds();
+    if (bounds) {
+      this.window?.setBounds(
+        this.keepOnScreen({ ...bounds, width: Math.round(WIDTHS[prefs.mode] * prefs.fontScale) }),
+      );
+    }
   }
 
   send(channel: string, payload: unknown): void {

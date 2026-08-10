@@ -197,13 +197,33 @@ export class Engine extends EventEmitter {
     return info.nameRu;
   }
 
-  /** Полный старт: разбор накопленных логов, затем слежение за текущим. */
-  async start(): Promise<void> {
-    this.logDir = findLogDirectory();
+  /** Движок уже разобрал логи и следит за текущим. */
+  private booted = false;
+
+  get isBooted(): boolean {
+    return this.booted;
+  }
+
+  /** Папка логов, с которой движок работает. null — игра не найдена. */
+  get logDirectory(): string | null {
+    return this.logDir;
+  }
+
+  /**
+   * Полный старт: разбор накопленных логов, затем слежение за текущим.
+   *
+   * Пока игра не найдена, метод можно звать повторно (автоповтор поиска
+   * или папка, указанная вручную) — до первого успешного старта он
+   * ничего не инициализирует.
+   */
+  async start(logDirOverride?: string | null): Promise<void> {
+    if (this.booted) return;
+    this.logDir = logDirOverride ?? findLogDirectory();
     if (!this.logDir) {
       this.emit('snapshot', this.snapshot('searching', 'Не нашёл установленную игру'));
       return;
     }
+    this.booted = true;
 
     // Сначала поднимаем сохранённое: логи ротируются и удаляются игрой,
     // поэтому база — единственный источник истории старше пары часов.
