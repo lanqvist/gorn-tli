@@ -1,3 +1,4 @@
+import type { SlotState } from './inventory.js';
 import { listLogFiles } from './locate.js';
 import { analyzeLogFile } from './pipeline.js';
 import { PriceStore } from './priceStore.js';
@@ -33,7 +34,7 @@ export interface RetroScanResult {
    * Передаётся живому дочитыванию, иначе расход на первую же карту
    * после запуска трекера уходит на установку базы и теряется.
    */
-  slots: Array<[string, { configBaseId: number; qty: number }]>;
+  slots: Array<[string, SlotState]>;
 }
 
 export interface RetroScanProgress {

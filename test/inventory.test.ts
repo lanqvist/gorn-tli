@@ -99,17 +99,39 @@ describe('Num — накопительный размер стака, а не п
     expect(inv.applyModify(modify(parser, 102, 0, 100300, 10_000))?.qty).toBe(1);
   });
 
-  it('RemoveBagItem очищает слот, следующее значение снова становится базой', () => {
+  it('предмет, упавший в освободившийся слот, засчитывается целиком', () => {
+    // Подлинный случай из лога: Bronze Wick убран из page103/slot2 в 12:22,
+    // Gold Wick упал туда же в 12:38. Раньше слот забывался при удалении,
+    // и новая находка выглядела как «слот вижу впервые» — фитили и маяки,
+    // падавшие на освободившееся место, не засчитывались вообще.
     const parser = new EventParser();
     const inv = new InventoryTracker(diag());
+
     inv.beginTransaction('PickItem');
+    inv.applyModify(modify(parser, 103, 2, 10320, 3)); // база: 3 бронзовых фитиля
+    inv.applyModify(modify(parser, 103, 2, 10320, 2));
 
-    inv.applyModify(modify(parser, 100, 1, 100200, 10));
-    const remove = parser.parse(L('BagMgr@:RemoveBagItem PageId = 100 SlotId = 1'));
-    expect(remove?.kind).toBe('bagRemove');
-    inv.applyRemove(remove as never);
+    inv.beginTransaction('Spv3Open');
+    inv.applyRemove(parser.parse(L('BagMgr@:RemoveBagItem PageId = 103 SlotId = 2')) as never);
 
-    expect(inv.applyModify(modify(parser, 100, 1, 100200, 7))).toBeNull();
+    inv.beginTransaction('PickItems');
+    const found = inv.applyModify(modify(parser, 103, 2, 10322, 1)); // упал золотой
+
+    expect(found).not.toBeNull();
+    expect(found!.configBaseId).toBe(10322);
+    expect(found!.qty).toBe(1);
+    expect(found!.kind).toBe('loot');
+  });
+
+  it('слот, которого не видели, по-прежнему только задаёт базу', () => {
+    // Разница принципиальная: «слот пуст» и «слот неизвестен» — не одно
+    // и то же. Во втором случае молчать обязательно, иначе полный стак
+    // засчитается как находка.
+    const parser = new EventParser();
+    const inv = new InventoryTracker(diag());
+    inv.beginTransaction('PickItems');
+
+    expect(inv.applyModify(modify(parser, 103, 9, 10322, 5))).toBeNull();
   });
 });
 

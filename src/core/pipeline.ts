@@ -2,7 +2,7 @@ import { createReadStream } from 'node:fs';
 import { createInterface } from 'node:readline';
 
 import { EventParser } from './eventParser.js';
-import { InventoryTracker } from './inventory.js';
+import { InventoryTracker, type SlotState } from './inventory.js';
 import { RunSegmenter } from './runSegmenter.js';
 import { TradeLedger } from './trade.js';
 import type { ConfigBaseId, Diagnostics, PriceObservationEvent, Run } from './types.js';
@@ -13,7 +13,7 @@ export interface AnalysisResult {
   trade: TradeLedger;
   inventory: Map<ConfigBaseId, number>;
   /** Состояние слотов на конец файла — база для живого дочитывания. */
-  slots: Array<[string, { configBaseId: ConfigBaseId; qty: number }]>;
+  slots: Array<[string, SlotState]>;
   diagnostics: Diagnostics;
   seasonId: number | null;
   firstTs: number | null;

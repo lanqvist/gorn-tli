@@ -8,8 +8,10 @@ import type {
   ItemDelta,
 } from './types.js';
 
-interface SlotState {
-  configBaseId: ConfigBaseId;
+/** Состояние слота сумки. */
+export interface SlotState {
+  /** null — слот известен и пуст. Это не то же самое, что слот, которого мы не видели. */
+  configBaseId: ConfigBaseId | null;
   qty: number;
 }
 
@@ -74,8 +76,11 @@ export class InventoryTracker {
   applyRemove(ev: BagRemoveEvent): ItemDelta | null {
     const key = slotKey(ev.pageId, ev.slotId);
     const prev = this.slots.get(key);
-    this.slots.delete(key);
-    if (prev === undefined || prev.qty <= 0) return null;
+    // Слот не забываем, а помечаем пустым: иначе следующий предмет, упавший
+    // в него, выглядит как «слот вижу впервые» и не засчитывается в добычу.
+    // Так терялись фитили и маяки, падавшие на освободившееся место.
+    this.slots.set(key, { configBaseId: null, qty: 0 });
+    if (prev === undefined || prev.configBaseId === null || prev.qty <= 0) return null;
 
     const proto = this.currentProto ?? 'unknown';
     return {
@@ -99,14 +104,21 @@ export class InventoryTracker {
     // Иначе полный стак из 6611 ФЕ был бы засчитан как разовая находка.
     if (prev === undefined) return null;
 
-    // Случай 2: в слоте лежал другой предмет. Разница между разными
-    // предметами смысла не имеет — просто перебазируемся.
-    if (prev.configBaseId !== ev.configBaseId) {
+    // Случай 2: слот был пуст, и в него что-то положили. Здесь сомнений нет:
+    // получено ровно столько, сколько появилось.
+    const qty =
+      prev.configBaseId === null
+        ? ev.num
+        : prev.configBaseId === ev.configBaseId
+          ? ev.num - prev.qty
+          : null;
+
+    // Случай 3: в слоте лежал другой предмет, и он сменился без удаления.
+    // Разница между разными предметами смысла не имеет — перебазируемся.
+    if (qty === null) {
       this.diag.slotRebases++;
       return null;
     }
-
-    const qty = ev.num - prev.qty;
     if (qty === 0) return null;
 
     const proto = this.currentProto ?? 'unknown';
@@ -130,11 +142,11 @@ export class InventoryTracker {
    * карту теряется — приложение видит списание маяка, но не знает,
    * сколько их было до этого, и промолчать обязано.
    */
-  exportSlots(): Array<[string, { configBaseId: ConfigBaseId; qty: number }]> {
+  exportSlots(): Array<[string, SlotState]> {
     return [...this.slots.entries()].map(([key, slot]) => [key, { ...slot }]);
   }
 
-  importSlots(entries: Array<[string, { configBaseId: ConfigBaseId; qty: number }]>): void {
+  importSlots(entries: Array<[string, SlotState]>): void {
     for (const [key, slot] of entries) this.slots.set(key, { ...slot });
   }
 
@@ -142,6 +154,7 @@ export class InventoryTracker {
   snapshot(): Map<ConfigBaseId, number> {
     const out = new Map<ConfigBaseId, number>();
     for (const slot of this.slots.values()) {
+      if (slot.configBaseId === null) continue;
       out.set(slot.configBaseId, (out.get(slot.configBaseId) ?? 0) + slot.qty);
     }
     return out;
