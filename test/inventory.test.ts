@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+﻿import { describe, expect, it } from 'vitest';
 
 import { EventParser } from '../src/core/eventParser.js';
 import { InventoryTracker } from '../src/core/inventory.js';
@@ -45,7 +45,7 @@ function init(
 }
 
 describe('Num — накопительный размер стака, а не прирост', () => {
-  it('реальная последовательность ФЭ из лога даёт +44, а не сумму значений', () => {
+  it('реальная последовательность ФЕ из лога даёт +44, а не сумму значений', () => {
     // Подлинные данные из UE_game.log за 10 августа, слот page102/slot0.
     const parser = new EventParser();
     const d = diag();
@@ -70,7 +70,7 @@ describe('Num — накопительный размер стака, а не п
     const inv = new InventoryTracker(diag());
     inv.beginTransaction('PickItem');
 
-    // Без этой защиты полный стак из 6611 ФЭ засчитался бы как разовая находка.
+    // Без этой защиты полный стак из 6611 ФЕ засчитался бы как разовая находка.
     expect(inv.applyModify(modify(parser, 102, 0, 100300, 6611))).toBeNull();
     expect(inv.applyModify(modify(parser, 102, 0, 100300, 6620))?.qty).toBe(9);
   });

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Честная статистика — главное отличие Горна от остальных трекеров жанра.
  *
  * Все известные трекеры (TITrack, Fenix, Exile Diary, Exilence, PoeStash,
@@ -54,7 +54,7 @@ export function median(values: number[]): number {
 }
 
 /**
- * Сводка по набору значений (например, ФЭ/час по каждому забегу).
+ * Сводка по набору значений (например, ФЕ/час по каждому забегу).
  */
 export function summarize(values: number[]): RateSummary {
   const n = values.length;

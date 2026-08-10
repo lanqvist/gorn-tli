@@ -1,4 +1,4 @@
-import { isHubAsset } from './patterns.js';
+﻿import { isHubAsset } from './patterns.js';
 import type { EnterLevelEvent, ItemDelta, Run } from './types.js';
 
 /**
@@ -11,7 +11,7 @@ import type { EnterLevelEvent, ItemDelta, Run } from './types.js';
  * Проверено на реальном логе, чередование выглядит так:
  *   10:02:40 зона 110  (хаб) → 10:03:16 зона 5351 → 10:04:03 зона 110
  *   → 10:04:10 зона 5348 → 10:05:34 зона 110
- * Все начисления ФЭ легли внутрь 5348, границы сошлись.
+ * Все начисления ФЕ легли внутрь 5348, границы сошлись.
  */
 export class RunSegmenter {
   private runs: Run[] = [];

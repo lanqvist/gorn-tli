@@ -30,8 +30,8 @@ export function formatDuration(ms: number): string {
   const h = Math.floor(total / 3600);
   const m = Math.floor((total % 3600) / 60);
   const s = total % 60;
-  if (h > 0) return `${h}${NBSP}ч ${m}${NBSP}м`;
-  if (m > 0) return `${m}${NBSP}м ${s}${NBSP}с`;
+  if (h > 0) return m > 0 ? `${h}${NBSP}ч ${m}${NBSP}м` : `${h}${NBSP}ч`;
+  if (m > 0) return s > 0 ? `${m}${NBSP}м ${s}${NBSP}с` : `${m}${NBSP}м`;
   return `${s}${NBSP}с`;
 }
 

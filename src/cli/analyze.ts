@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Разбор существующего UE_game.log из командной строки.
  *
  * Это проверочный инструмент этапа 1: он доказывает, что данные извлекаются
@@ -16,6 +16,7 @@ import {
   formatDuration,
   formatNumber,
 } from '../core/format.js';
+import { pluralize, RUN } from '../core/plural.js';
 import { perHour, summarize } from '../core/stats.js';
 import { FE_ID, type ConfigBaseId, type Run } from '../core/types.js';
 
@@ -79,18 +80,20 @@ async function main(): Promise<void> {
   console.log(`  всего зон        ${result.runs.length}`);
   console.log(`  из них фарм      ${farming.length}`);
   console.log(`  времени в картах ${formatDuration(inMapMs)}`);
-  console.log(`  получено ФЭ      ${formatNumber(totalFe)}`);
+  console.log(`  получено ФЕ      ${formatNumber(totalFe)}`);
 
   if (farming.length > 0) {
     const rates = farming
       .filter((r) => (r.durationMs ?? 0) > 5000)
       .map((r) => perHour(feGained(r), r.durationMs ?? 0));
     const s = summarize(rates);
-    console.log('\n═══ ФЭ В ЧАС ═══');
-    console.log(`  медиана          ${formatNumber(s.median)} ФЭ/час`);
-    console.log(`  среднее          ${formatNumber(s.mean)} ФЭ/час`);
+    console.log('\n═══ ФЕ В ЧАС ═══');
+    console.log(`  медиана          ${formatNumber(s.median)} ФЕ/час`);
+    console.log(`  среднее          ${formatNumber(s.mean)} ФЕ/час`);
     console.log(`  разброс P25–P75  ${formatNumber(s.p25)} — ${formatNumber(s.p75)}`);
-    console.log(`  выборка          ${s.sampleSize} забегов (${confidenceLabel(s.confidence)})`);
+    console.log(
+      `  выборка          ${pluralize(s.sampleSize, RUN)} (${confidenceLabel(s.confidence)})`,
+    );
     if (s.topShare > 0.3) {
       console.log(
         `  ⚠ один забег дал ${Math.round(s.topShare * 100)}% всего дохода — цифра держится на нём`,
@@ -104,7 +107,7 @@ async function main(): Promise<void> {
       console.log(
         `  ${formatDateTime(r.startedAt)}  ${name} ` +
           `${formatDuration(r.durationMs ?? 0).padStart(9)}  ` +
-          `${formatNumber(fe).padStart(6)} ФЭ  предметов: ${r.drops.length}`,
+          `${formatNumber(fe).padStart(6)} ФЕ  предметов: ${r.drops.length}`,
       );
     }
   }
@@ -134,7 +137,7 @@ async function main(): Promise<void> {
       console.log(
         `  ${(info?.name ?? `id ${p.configBaseId}`).padEnd(30)} ` +
           `лотов: ${String(p.unitPrices.length).padStart(3)}  ` +
-          `референс (P10): ${formatNumber(p10, 2)} ФЭ`,
+          `референс (P10): ${formatNumber(p10, 2)} ФЕ`,
       );
     }
   }

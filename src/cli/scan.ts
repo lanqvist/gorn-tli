@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Ретро-скан: разбирает все накопленные логи и показывает историю,
  * которая уже лежит на диске.
  *
@@ -15,6 +15,7 @@ import {
   formatNumber,
 } from '../core/format.js';
 import { findLogDirectory } from '../core/locate.js';
+import { pluralize, RUN } from '../core/plural.js';
 import { retroScan, runCost, runValue } from '../core/retroScan.js';
 import { perHour, summarize } from '../core/stats.js';
 import { FE_ID, type ConfigBaseId } from '../core/types.js';
@@ -72,7 +73,7 @@ async function main(): Promise<void> {
   for (const p of result.prices.all().sort((a, b) => b.fe - a.fe).slice(0, 12)) {
     const name = items.get(p.configBaseId)?.name ?? `id ${p.configBaseId}`;
     console.log(
-      `  ${name.padEnd(34)} ${formatNumber(p.fe, 2).padStart(9)} ФЭ  ` +
+      `  ${name.padEnd(34)} ${formatNumber(p.fe, 2).padStart(9)} ФЕ  ` +
         `(медиана ${formatNumber(p.median, 2)}, лотов ${p.sampleSize})`,
     );
   }
@@ -92,20 +93,20 @@ async function main(): Promise<void> {
     const valueStats = summarize(valueRates);
 
     console.log('\n═══ ЭФФЕКТИВНОСТЬ ═══');
-    console.log('  Чистый ФЭ (только сама валюта)');
+    console.log('  Чистый ФЕ (только сама валюта)');
     console.log(
-      `    медиана ${formatNumber(feStats.median)} ФЭ/час · ` +
+      `    медиана ${formatNumber(feStats.median)} ФЕ/час · ` +
         `среднее ${formatNumber(feStats.mean)} · ` +
         `P25–P75 ${formatNumber(feStats.p25)}–${formatNumber(feStats.p75)}`,
     );
     console.log('  Вся добыча по бумажной оценке, за вычетом вложений');
     console.log(
-      `    медиана ${formatNumber(valueStats.median)} ФЭ/час · ` +
+      `    медиана ${formatNumber(valueStats.median)} ФЕ/час · ` +
         `среднее ${formatNumber(valueStats.mean)} · ` +
         `P25–P75 ${formatNumber(valueStats.p25)}–${formatNumber(valueStats.p75)}`,
     );
     console.log(
-      `  выборка ${feStats.sampleSize} забегов (${confidenceLabel(feStats.confidence)})`,
+      `  выборка ${pluralize(feStats.sampleSize, RUN)} (${confidenceLabel(feStats.confidence)})`,
     );
     if (valueStats.topShare > 0.3) {
       console.log(
@@ -118,8 +119,8 @@ async function main(): Promise<void> {
   console.log('\n═══ БИРЖА ═══');
   console.log(`  выставлено лотов  ${realized.listings}`);
   console.log(`  получено выплат   ${realized.receipts}`);
-  console.log(`  реально пришло    ${formatNumber(realized.realizedFe)} ФЭ`);
-  console.log(`  бумажная оценка   ${formatNumber(realized.paperFe)} ФЭ`);
+  console.log(`  реально пришло    ${formatNumber(realized.realizedFe)} ФЕ`);
+  console.log(`  бумажная оценка   ${formatNumber(realized.paperFe)} ФЕ`);
   if (realized.ratio !== null) {
     console.log(`  коэффициент реализации ${(realized.ratio * 100).toFixed(0)}%`);
     console.log(
@@ -147,6 +148,9 @@ async function main(): Promise<void> {
   } else {
     for (const [proto, n] of result.unknownProtos) console.log(`  ${proto} × ${n}`);
   }
+  for (const f of result.failed) {
+    console.log(`  ⚠ не прочитан ${basename(f.path)}: ${f.reason}`);
+  }
 
   // Логи ротируются и удаляются игрой, поэтому разобранное сохраняем к себе.
   const storage = new Storage(resolve('data/gorn.db'));
@@ -162,7 +166,7 @@ async function main(): Promise<void> {
   console.log(`  записей о дропе   ${counts.drops}`);
   console.log(`  предметов с ценой ${counts.prices}`);
   console.log(`  лотов / выплат    ${counts.listings} / ${counts.receipts}`);
-  console.log(`  выручка за всё время ${formatNumber(storage.realizedFe())} ФЭ`);
+  console.log(`  выручка за всё время ${formatNumber(storage.realizedFe())} ФЕ`);
   storage.close();
 }
 

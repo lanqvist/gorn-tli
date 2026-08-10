@@ -1,4 +1,4 @@
-import { mkdirSync } from 'node:fs';
+﻿import { mkdirSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname } from 'node:path';
 
@@ -223,7 +223,7 @@ export class Storage {
     };
   }
 
-  /** Реально полученные ФЭ за всю сохранённую историю. */
+  /** Реально полученные ФЕ за всю сохранённую историю. */
   realizedFe(): number {
     const row = this.db.prepare('SELECT COALESCE(SUM(fe), 0) AS n FROM receipt').get() as {
       n: number;

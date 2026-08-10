@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+﻿import { describe, expect, it } from 'vitest';
 
 import { EventParser } from '../src/core/eventParser.js';
 import { InventoryTracker } from '../src/core/inventory.js';
@@ -56,7 +56,7 @@ describe('очистка слота восстанавливает, что в н
 });
 
 describe('реализованная выручка', () => {
-  it('поступления ФЭ по XchgReceive складываются', () => {
+  it('поступления ФЕ по XchgReceive складываются', () => {
     const ledger = new TradeLedger();
     // Подлинная последовательность из лога: 6655 → 6673 → 6698 → 6719.
     for (const qty of [18, 25, 21]) {
@@ -96,7 +96,7 @@ describe('реализованная выручка', () => {
       slotId: 0,
     });
 
-    // Выставлено 10 штук по бумажной цене 10 ФЭ = 100, пришло 80.
+    // Выставлено 10 штук по бумажной цене 10 ФЕ = 100, пришло 80.
     const s = ledger.summarize((id) => (id === 10042 ? 10 : null));
     expect(s.paperFe).toBe(100);
     expect(s.realizedFe).toBe(80);
@@ -128,7 +128,7 @@ describe('референсная цена', () => {
     expect(referencePrice(prices)).toBeGreaterThan(1);
   });
 
-  it('ФЭ стоит сам себя', () => {
+  it('ФЕ стоит сам себя', () => {
     expect(new PriceStore().priceOf(FE_ID)).toBe(1);
   });
 

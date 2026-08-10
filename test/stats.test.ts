@@ -1,11 +1,11 @@
-import { describe, expect, it } from 'vitest';
+﻿import { describe, expect, it } from 'vitest';
 
 import { formatDelta, formatDuration, formatNumber } from '../src/core/format.js';
 import { confidenceOf, median, percentile, perHour, summarize } from '../src/core/stats.js';
 
 describe('честная статистика', () => {
   it('медиана устойчива к одной дорогой находке, среднее — нет', () => {
-    // Типичный забег даёт около 900 ФЭ/час, один принёс редкую вещь.
+    // Типичный забег даёт около 900 ФЕ/час, один принёс редкую вещь.
     const rates = [880, 900, 910, 920, 940, 12_000];
 
     const s = summarize(rates);
@@ -47,8 +47,8 @@ describe('честная статистика', () => {
     expect(s.confidence).toBe('insufficient');
   });
 
-  it('ФЭ в час считается из реального забега', () => {
-    // Забег 10 августа: 44 ФЭ за 83,8 секунды.
+  it('ФЕ в час считается из реального забега', () => {
+    // Забег 10 августа: 44 ФЕ за 83,8 секунды.
     expect(Math.round(perHour(44, 83_773))).toBe(1891);
   });
 
@@ -71,6 +71,12 @@ describe('русское форматирование', () => {
     expect(formatDuration(50_000)).toBe('50 с');
     expect(formatDuration(167_000)).toBe('2 м 47 с');
     expect(formatDuration(5_940_000)).toBe('1 ч 39 м');
+  });
+
+  it('нулевые остатки не печатаются', () => {
+    // «41 м 0 с» выглядит как недоделка. Проверено на экране дашборда.
+    expect(formatDuration(2_460_000)).toBe(`41${' '}м`);
+    expect(formatDuration(7_200_000)).toBe(`2${' '}ч`);
   });
 
   it('дельта к медиане показывается со знаком и процентом', () => {

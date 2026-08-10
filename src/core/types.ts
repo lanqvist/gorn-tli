@@ -1,4 +1,4 @@
-/** Идентификатор предмета в игре. Совпадает с ConfigBaseId в логе и с id в Rt-data.json. */
+﻿/** Идентификатор предмета в игре. Совпадает с ConfigBaseId в логе и с id в Rt-data.json. */
 export type ConfigBaseId = number;
 
 /** Flame Elementium — основная торговая валюта. Проверено на логах: PageId 102, SlotId 0. */
@@ -9,7 +9,7 @@ export const FLAME_SAND_ID: ConfigBaseId = 100200;
 
 /**
  * Связанные (непередаваемые) варианты предметов имеют id = базовый + 1000
- * и всегда стоят 0 ФЭ, потому что их нельзя продать.
+ * и всегда стоят 0 ФЕ, потому что их нельзя продать.
  */
 export const BOUND_ID_OFFSET = 1000;
 

@@ -1,4 +1,4 @@
-import { protoKind } from './patterns.js';
+﻿import { protoKind } from './patterns.js';
 import type {
   BagInitEvent,
   BagModifyEvent,
@@ -24,7 +24,7 @@ const slotKey = (pageId: number, slotId: number) => `${pageId}:${slotId}`;
  *
  *     6611 (InitBagData) → 6616 → 6649 → 6650 → 6653 → 6655
  *
- * Реальный доход тут +44 ФЭ, а сумма Num дала бы 33 223.
+ * Реальный доход тут +44 ФЕ, а сумма Num дала бы 33 223.
  *
  * Поэтому доход = текущее значение минус предыдущее по ключу (PageId, SlotId),
  * с корректной обработкой четырёх краевых случаев:
@@ -96,7 +96,7 @@ export class InventoryTracker {
     this.slots.set(key, { configBaseId: ev.configBaseId, qty: ev.num });
 
     // Случай 1: слот раньше не видели. Это установка базы, а не доход.
-    // Иначе полный стак из 6611 ФЭ был бы засчитан как разовая находка.
+    // Иначе полный стак из 6611 ФЕ был бы засчитан как разовая находка.
     if (prev === undefined) return null;
 
     // Случай 2: в слоте лежал другой предмет. Разница между разными

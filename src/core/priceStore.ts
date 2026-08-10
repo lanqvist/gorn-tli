@@ -1,4 +1,4 @@
-import { percentile } from './stats.js';
+﻿import { percentile } from './stats.js';
 import { BOUND_ID_OFFSET, FE_ID, type ConfigBaseId, type PriceObservationEvent } from './types.js';
 
 /**
@@ -13,7 +13,7 @@ import { BOUND_ID_OFFSET, FE_ID, type ConfigBaseId, type PriceObservationEvent }
 
 export interface PriceRecord {
   configBaseId: ConfigBaseId;
-  /** Референсная цена в ФЭ. */
+  /** Референсная цена в ФЕ. */
   fe: number;
   median: number;
   min: number;
@@ -40,7 +40,7 @@ export class PriceStore {
 
   /** Принимает наблюдение из лога. Более свежее вытесняет более старое. */
   observe(ev: PriceObservationEvent): PriceRecord | null {
-    // Лоты за другую валюту к оценке в ФЭ не приводятся.
+    // Лоты за другую валюту к оценке в ФЕ не приводятся.
     if (ev.currency !== FE_ID) return null;
 
     const sorted = [...ev.unitPrices].filter((p) => p > 0).sort((a, b) => a - b);
@@ -78,9 +78,9 @@ export class PriceStore {
   }
 
   /**
-   * Цена предмета в ФЭ.
+   * Цена предмета в ФЕ.
    *
-   * ФЭ стоит сам себя. Связанные варианты (id базового + 1000) стоят ноль:
+   * ФЕ стоит сам себя. Связанные варианты (id базового + 1000) стоят ноль:
    * их нельзя продать, и засчитывать их в доход — значит завышать цифры.
    */
   priceOf(configBaseId: ConfigBaseId): number | null {

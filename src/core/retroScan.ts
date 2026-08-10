@@ -26,6 +26,8 @@ export interface RetroScanResult {
   elapsedMs: number;
   /** Незнакомые протоколы по всем файлам — для самодиагностики. */
   unknownProtos: Map<string, number>;
+  /** Файлы, которые не удалось прочитать (обычно ротация во время скана). */
+  failed: Array<{ path: string; reason: string }>;
 }
 
 export interface RetroScanProgress {
@@ -51,10 +53,20 @@ export async function retroScan(
   // Цены складываем в один store: они общие для сезона.
   const prices = new PriceStore(null);
 
+  const failed: Array<{ path: string; reason: string }> = [];
+
   for (const [index, file] of files.entries()) {
     onProgress?.({ file: file.path, index, total: files.length });
 
-    const result = await analyzeLogFile(file.path);
+    // Игра может ротировать или переписать файл прямо во время чтения.
+    // Один недочитанный файл не должен ронять разбор остальных.
+    let result: Awaited<ReturnType<typeof analyzeLogFile>>;
+    try {
+      result = await analyzeLogFile(file.path);
+    } catch (err) {
+      failed.push({ path: file.path, reason: (err as Error).message });
+      continue;
+    }
 
     runs.push(...result.runs);
     linesScanned += result.diagnostics.linesTotal;
@@ -95,6 +107,7 @@ export async function retroScan(
     seasonIds,
     elapsedMs: Date.now() - started,
     unknownProtos,
+    failed,
   };
 }
 
