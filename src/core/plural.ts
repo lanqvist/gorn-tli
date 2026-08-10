@@ -26,6 +26,11 @@ export function plural(count: number, forms: PluralForms): string {
 }
 
 export const RUN = { one: 'забег', few: 'забега', many: 'забегов' } as const;
+/**
+ * Предложный падеж: «в 1 забеге», «в 2 забегах», «в 5 забегах».
+ * Родительные формы после предлога «в» дают «в 5 забегов» — заметная калька.
+ */
+export const RUN_IN = { one: 'забеге', few: 'забегах', many: 'забегах' } as const;
 export const ITEM = { one: 'предмет', few: 'предмета', many: 'предметов' } as const;
 export const FIND = { one: 'находка', few: 'находки', many: 'находок' } as const;
 export const LOT = { one: 'лот', few: 'лота', many: 'лотов' } as const;

@@ -1,6 +1,14 @@
 import { EventEmitter } from 'node:events';
 import { join } from 'node:path';
 
+import {
+  activeDuration,
+  groupByStrategy,
+  missingPrices,
+  rollingNorm,
+  runNet,
+  type StrategyStats,
+} from '../core/analysis.js';
 import { EventParser } from '../core/eventParser.js';
 import { InventoryTracker } from '../core/inventory.js';
 import { findLogDirectory, listLogFiles } from '../core/locate.js';
@@ -64,11 +72,30 @@ export interface Snapshot {
    * выглядит замершим ровно в тот момент, когда что-то происходит.
    */
   liveRate: number;
+  /** Норма для сравнений — медиана последних забегов, а не рекорд. */
+  norm: number;
+  strategies: StrategyView[];
+  /** Предметы без цены, по влиянию на оценку. */
+  missing: MissingPriceView[];
   diagnostics: {
     unknownProtos: Array<[string, number]>;
     pricedItems: number;
     unpricedDrops: number;
   };
+}
+
+export interface StrategyView extends Omit<StrategyStats, 'costItems'> {
+  /** Человекочитаемое имя: из чего открывалась карта. */
+  title: string;
+  costItems: Array<{ configBaseId: ConfigBaseId; name: string; icon: string | null }>;
+}
+
+export interface MissingPriceView {
+  configBaseId: ConfigBaseId;
+  name: string;
+  icon: string | null;
+  qty: number;
+  runs: number;
 }
 
 interface ItemInfo {
@@ -290,6 +317,14 @@ export class Engine extends EventEmitter {
     return [...ids];
   }
 
+  /** Имя стратегии — перечисление того, чем открывалась карта. */
+  private strategyTitle(stats: StrategyStats): string {
+    if (stats.costItems.length === 0) return 'Без вложений';
+    return stats.costItems
+      .map((id) => this.items.get(id)?.name ?? `id ${id}`)
+      .join(' + ');
+  }
+
   private priceOf = (id: ConfigBaseId): number | null => this.prices.priceOf(id);
 
   private toView(run: Run): RunView {
@@ -346,13 +381,12 @@ export class Engine extends EventEmitter {
     const allRuns = [...this.history, ...live.filter((r) => r.endedAt !== null)];
     const farming = allRuns.filter((r) => !r.isHub && (r.durationMs ?? 0) > 5000);
 
-    const netRates = farming.map((r) => {
-      const value = runValue(r, this.priceOf) - runCost(r, this.priceOf);
-      return perHour(value, r.durationMs ?? 0);
-    });
+    // Время считаем активное, а не по часам: простой внутри карты
+    // раздувает знаменатель и тихо занижает любую цифру «в час».
+    const netRates = farming.map((r) => perHour(runNet(r, this.priceOf), activeDuration(r)));
     const feRates = farming.map((r) => {
       const fe = r.drops.filter((d) => d.configBaseId === FE_ID).reduce((a, d) => a + d.qty, 0);
-      return perHour(fe, r.durationMs ?? 0);
+      return perHour(fe, activeDuration(r));
     });
 
     const realized = this.trade.summarize(this.priceOf);
@@ -360,7 +394,7 @@ export class Engine extends EventEmitter {
     // Текущий забег обязан попадать в итоги: иначе подобранное «сейчас»
     // не видно нигде до выхода из карты, и экран кажется замершим.
     const openFarming = open && !open.isHub ? open : null;
-    const openElapsed = openFarming ? Math.max(0, Date.now() - openFarming.startedAt) : 0;
+    const openElapsed = openFarming ? activeDuration(openFarming, undefined, Date.now()) : 0;
     const counted = openFarming ? [...farming, openFarming] : farming;
 
     let unpricedDrops = 0;
@@ -368,7 +402,7 @@ export class Engine extends EventEmitter {
       for (const d of r.drops) if (this.priceOf(d.configBaseId) === null) unpricedDrops++;
     }
 
-    const inMapMs = farming.reduce((a, r) => a + (r.durationMs ?? 0), 0) + openElapsed;
+    const inMapMs = farming.reduce((a, r) => a + activeDuration(r), 0) + openElapsed;
     const valueFe = counted.reduce((a, r) => a + runValue(r, this.priceOf), 0);
     const costFe = counted.reduce((a, r) => a + runCost(r, this.priceOf), 0);
 
@@ -386,6 +420,26 @@ export class Engine extends EventEmitter {
       rate: summarize(netRates),
       feRate: summarize(feRates),
       liveRate: perHour(valueFe - costFe, inMapMs),
+      norm: rollingNorm(netRates),
+      strategies: groupByStrategy(farming, this.priceOf)
+        .filter((s) => s.runs >= 2)
+        .slice(0, 6)
+        .map((s) => ({
+          ...s,
+          title: this.strategyTitle(s),
+          costItems: s.costItems.map((id) => ({
+            configBaseId: id,
+            name: this.items.get(id)?.name ?? `id ${id}`,
+            icon: this.items.get(id)?.icon ? iconUrl(id) : null,
+          })),
+        })),
+      missing: missingPrices(counted, this.priceOf)
+        .slice(0, 8)
+        .map((m) => ({
+          ...m,
+          name: this.items.get(m.configBaseId)?.name ?? `id ${m.configBaseId}`,
+          icon: this.items.get(m.configBaseId)?.icon ? iconUrl(m.configBaseId) : null,
+        })),
       totals: {
         runs: counted.length,
         inMapMs,

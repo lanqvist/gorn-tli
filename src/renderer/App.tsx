@@ -2,7 +2,7 @@
 
 import type { RunView, Snapshot } from '../main/engine.js';
 import { Fe, FeIcon } from './components/Fe.js';
-import { FIND, pluralize, RUN } from '../core/plural.js';
+import { pluralize, RUN, RUN_IN } from '../core/plural.js';
 
 const NBSP = ' ';
 
@@ -85,7 +85,9 @@ export function App() {
         <CurrentRun snapshot={snapshot} now={now} />
         <Sidebar snapshot={snapshot} />
       </div>
-      <RecentRuns runs={snapshot.recent} median={snapshot.rate.median} />
+      <Strategies snapshot={snapshot} />
+      <RecentRuns runs={snapshot.recent} median={snapshot.norm} />
+      <MissingPrices snapshot={snapshot} />
       <Diagnostics snapshot={snapshot} />
     </div>
   );
@@ -402,11 +404,102 @@ function RecentRuns({ runs, median }: { runs: RunView[]; median: number }) {
 }
 
 /**
+ * Сравнение стратегий.
+ *
+ * Стратегия определяется автоматически — по тому, чем открывалась карта.
+ * Вложения известны поштучно из лога, поэтому размечать забеги руками
+ * не нужно. Рядом с каждой цифрой стоит размер выборки: две стратегии
+ * по три забега сравнивать бессмысленно, и это должно быть видно.
+ */
+function Strategies({ snapshot }: { snapshot: Snapshot }) {
+  const { strategies } = snapshot;
+  if (strategies.length < 2) return null;
+
+  const best = Math.max(...strategies.map((s) => s.rate.median));
+
+  return (
+    <section className="card">
+      <h2>Стратегии</h2>
+      <div className="strategies">
+        {strategies.map((s) => (
+          <div key={s.key} className={`strategy ${s.rate.median === best ? 'best' : ''}`}>
+            <div className="strategy-head">
+              <div className="strategy-icons">
+                {s.costItems.length === 0 ? (
+                  <span className="muted small">без вложений</span>
+                ) : (
+                  s.costItems.map((c) => <ItemIcon key={c.configBaseId} src={c.icon} />)
+                )}
+              </div>
+              <span className="strategy-title">{s.title}</span>
+            </div>
+
+            <div className="strategy-rate">
+              <Fe value={s.rate.median} />
+              <span className="muted small">в час</span>
+            </div>
+
+            <div className="strategy-meta">
+              <span>{pluralize(s.runs, RUN)}</span>
+              <span className="muted">
+                разброс {num(s.rate.p25)}–{num(s.rate.p75)}
+              </span>
+            </div>
+
+            <div className="strategy-money">
+              <span>
+                вложено <Fe value={s.costPerRun} /> · чистыми <Fe value={s.netPerRun} />
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+      <p className="muted small">
+        Стратегия определяется автоматически по тому, чем открыта карта. Сравнивайте только
+        при сопоставимом числе забегов.
+      </p>
+    </section>
+  );
+}
+
+/**
+ * Что пробить следующим.
+ *
+ * Цена берётся из твоих собственных пробивок в Торговом доме, и каждая
+ * стоит одного клика. Поэтому важно не количество предметов без цены,
+ * а какие из них реально портят оценку.
+ */
+function MissingPrices({ snapshot }: { snapshot: Snapshot }) {
+  const { missing } = snapshot;
+  if (missing.length === 0) return null;
+
+  return (
+    <section className="card">
+      <h2>Пробить цену</h2>
+      <p className="muted small">
+        Эти предметы падают, но стоимость неизвестна — на них оценка добычи занижена.
+        Порядок по влиянию: сверху то, чего выпало больше всего.
+      </p>
+      <ul className="missing">
+        {missing.map((m) => (
+          <li key={m.configBaseId}>
+            <ItemIcon src={m.icon} />
+            <span className="drop-name">{m.name}</span>
+            <span className="drop-qty">{num(m.qty)} шт</span>
+            <span className="muted small">в {pluralize(m.runs, RUN_IN)}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+/**
  * Самодиагностика. Формат лога меняется каждый сезон, и трекер должен
  * говорить, что ослеп, а не показывать нули как ни в чём не бывало.
  */
 function Diagnostics({ snapshot }: { snapshot: Snapshot }) {
-  const { unknownProtos, pricedItems, unpricedDrops } = snapshot.diagnostics;
+  const { unknownProtos, pricedItems } = snapshot.diagnostics;
 
   return (
     <section className="card diag">
@@ -417,15 +510,6 @@ function Diagnostics({ snapshot }: { snapshot: Snapshot }) {
         <span className="ok">✓</span>
         <span>Предметов с известной ценой: {num(pricedItems)}</span>
       </div>
-      {unpricedDrops > 0 && (
-        <div className="diag-row">
-          <span className="warn">!</span>
-          <span>
-            {pluralize(unpricedDrops, FIND)} без цены — оценка добычи занижена. Пробей их
-            в Торговом доме, цена подхватится сама.
-          </span>
-        </div>
-      )}
       {unknownProtos.length > 0 && (
         <div className="diag-row">
           <span className="warn">!</span>

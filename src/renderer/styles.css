@@ -437,6 +437,108 @@ body {
   justify-content: flex-end;
 }
 
+/* ── стратегии ──────────────────────────────────────────────────── */
+
+.strategies {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.strategy {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 13px 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.strategy.best {
+  border-color: rgb(95 208 138 / 45%);
+}
+
+.strategy-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 22px;
+}
+
+.strategy-icons {
+  display: flex;
+  gap: 2px;
+  flex: none;
+}
+
+.strategy-icons img,
+.strategy-icons .no-icon {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
+
+.strategy-title {
+  font-size: 12.5px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.strategy-rate {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  font-size: 24px;
+  font-weight: 640;
+}
+
+.strategy-meta,
+.strategy-money {
+  display: flex;
+  gap: 12px;
+  font-size: 12.5px;
+  flex-wrap: wrap;
+}
+
+.strategy-money {
+  color: var(--muted);
+}
+
+/* ── что пробить ────────────────────────────────────────────────── */
+
+.missing {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.missing li {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 5px 6px;
+  border-radius: 7px;
+}
+
+.missing li:nth-child(odd) {
+  background: rgb(255 255 255 / 2.5%);
+}
+
+.missing img,
+.missing .no-icon {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+}
+
 /* ── самодиагностика ────────────────────────────────────────────── */
 
 .diag-row {

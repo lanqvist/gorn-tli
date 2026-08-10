@@ -176,6 +176,15 @@ async function maybeCapture(): Promise<void> {
     const image = await window.webContents.capturePage();
     writeFileSync(file, image.toPNG());
     console.log(`[снимок] ${file}`);
+
+    // Второй снимок — нижняя часть страницы: capturePage снимает только
+    // видимую область, а интересное часто ниже сгиба.
+    await window.webContents.executeJavaScript(
+      'window.scrollTo(0, document.body.scrollHeight)',
+    );
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    const bottom = await window.webContents.capturePage();
+    writeFileSync(file.replace(/\.png$/, '-low.png'), bottom.toPNG());
   } catch (err) {
     console.error('[снимок] не удался:', (err as Error).message);
   }
