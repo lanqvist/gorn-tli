@@ -1,4 +1,4 @@
-﻿import { FE_ID, type ConfigBaseId, type ItemDelta } from './types.js';
+import { FE_ID, type ConfigBaseId, type ItemDelta } from './types.js';
 
 /**
  * Учёт операций с биржей.

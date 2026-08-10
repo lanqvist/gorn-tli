@@ -11,7 +11,7 @@ const common = {
   platform: 'node',
   target: 'node24',
   sourcemap: true,
-  external: ['electron'],
+  external: ['electron', 'electron-updater'],
   logLevel: 'warning',
 };
 

@@ -1,4 +1,4 @@
-﻿import { protoKind } from './patterns.js';
+import { protoKind } from './patterns.js';
 import type {
   BagInitEvent,
   BagModifyEvent,

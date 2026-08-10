@@ -1,4 +1,4 @@
-﻿import { isHubAsset } from './patterns.js';
+import { isHubAsset } from './patterns.js';
 import type { EnterLevelEvent, ItemDelta, Run } from './types.js';
 
 /**

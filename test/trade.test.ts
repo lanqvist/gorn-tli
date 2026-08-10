@@ -1,4 +1,4 @@
-﻿import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import { EventParser } from '../src/core/eventParser.js';
 import { InventoryTracker } from '../src/core/inventory.js';

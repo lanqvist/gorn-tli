@@ -1,4 +1,4 @@
-﻿import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import { formatDelta, formatDuration, formatNumber } from '../src/core/format.js';
 import { confidenceOf, median, percentile, perHour, summarize } from '../src/core/stats.js';

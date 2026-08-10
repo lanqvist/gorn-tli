@@ -1,4 +1,4 @@
-﻿import feIcon from '../assets/fe.webp';
+import feIcon from '../assets/fe.webp';
 
 /**
  * Число в ФЕ вместе с иконкой валюты.

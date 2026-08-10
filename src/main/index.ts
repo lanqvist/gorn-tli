@@ -8,6 +8,7 @@ import { Engine, type Snapshot } from './engine.js';
 import { IconCache, registerIconScheme } from './icons.js';
 import { Overlay } from './overlay.js';
 import { SettingsStore, type NameLanguage, type OverlayMode } from './settings.js';
+import { Updater, type UpdateState } from './updater.js';
 
 // Схему нужно объявить до готовности приложения.
 registerIconScheme();
@@ -21,6 +22,7 @@ let latest: Snapshot | null = null;
 let overlay: Overlay | null = null;
 let settings: SettingsStore | null = null;
 let debugSink: DebugSink | null = null;
+let updater: Updater | null = null;
 
 interface CatalogueItem {
   id: number;
@@ -122,6 +124,15 @@ app.whenReady().then(async () => {
 
   ipcMain.handle('snapshot:get', () => latest);
 
+  updater = new Updater();
+  updater.on('state', (state: UpdateState) => {
+    if (window && !window.isDestroyed()) window.webContents.send('update:state', state);
+  });
+
+  ipcMain.handle('update:get', () => updater?.current ?? null);
+  ipcMain.handle('update:download', () => updater?.download());
+  ipcMain.on('update:install', () => updater?.install());
+
   ipcMain.handle('settings:itemNames', () => settings?.itemNames ?? 'ru');
   ipcMain.handle('settings:setItemNames', (_e, language: NameLanguage) => {
     settings?.setItemNames(language);
@@ -152,6 +163,10 @@ app.whenReady().then(async () => {
   void icons.prefetch(engine.seenItemIds()).then((n) => {
     if (n > 0) console.log(`[иконки] загружено ${n}`);
   });
+
+  // Проверку обновлений откладываем: разбор логов при старте важнее,
+  // и незачем соревноваться с ним за диск и сеть.
+  setTimeout(() => void updater?.check(), 8000);
 
   await maybeCapture();
 

@@ -1,4 +1,4 @@
-﻿import { percentile } from './stats.js';
+import { percentile } from './stats.js';
 import { BOUND_ID_OFFSET, FE_ID, type ConfigBaseId, type PriceObservationEvent } from './types.js';
 
 /**

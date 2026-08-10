@@ -15,7 +15,9 @@ const common = {
   target: 'node24',
   sourcemap: true,
   // Electron предоставляется рантаймом, встроенные модули Node тоже.
-  external: ['electron'],
+  // electron-updater остаётся внешним: это пакет CommonJS с динамическими
+  // зависимостями, его кладёт в сборку electron-builder как обычную зависимость.
+  external: ['electron', 'electron-updater'],
   logLevel: 'info',
 };
 

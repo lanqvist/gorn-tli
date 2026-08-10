@@ -15,6 +15,17 @@ contextBridge.exposeInMainWorld('gorn', {
     return () => ipcRenderer.removeListener('snapshot', handler);
   },
 
+  update: {
+    get: () => ipcRenderer.invoke('update:get'),
+    download: () => ipcRenderer.invoke('update:download'),
+    install: () => ipcRenderer.send('update:install'),
+    onState: (callback: (state: unknown) => void) => {
+      const handler = (_e: unknown, state: unknown) => callback(state);
+      ipcRenderer.on('update:state', handler);
+      return () => ipcRenderer.removeListener('update:state', handler);
+    },
+  },
+
   /** Язык названий предметов: русские, английские или оба. */
   getItemNames: () => ipcRenderer.invoke('settings:itemNames'),
   setItemNames: (language: string) => ipcRenderer.invoke('settings:setItemNames', language),

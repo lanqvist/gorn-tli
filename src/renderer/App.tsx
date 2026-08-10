@@ -1,6 +1,7 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import type { RunView, Snapshot } from '../main/engine.js';
+import type { UpdateState } from '../main/updater.js';
 import { Fe, FeIcon } from './components/Fe.js';
 import { pluralize, RUN, RUN_IN } from '../core/plural.js';
 
@@ -79,6 +80,7 @@ export function App() {
 
   return (
     <div className="app">
+      <UpdateBanner />
       <Header snapshot={snapshot} />
       <Hero snapshot={snapshot} />
       <div className="columns">
@@ -89,6 +91,69 @@ export function App() {
       <RecentRuns runs={snapshot.recent} median={snapshot.norm} />
       <MissingPrices snapshot={snapshot} />
       <Diagnostics snapshot={snapshot} />
+    </div>
+  );
+}
+
+/**
+ * Полоса обновления.
+ *
+ * Показывается только когда есть что сообщить. Загрузка начинается
+ * по кнопке, а не сама: трафик игрока — его дело. Установка тоже по кнопке,
+ * потому что перезапуск посреди фарма недопустим.
+ */
+function UpdateBanner() {
+  const [state, setState] = useState<UpdateState | null>(null);
+
+  useEffect(() => {
+    if (!window.gorn) return;
+    void window.gorn.update.get().then(setState);
+    return window.gorn.update.onState(setState);
+  }, []);
+
+  if (!state || state.status === 'idle' || state.status === 'checking') return null;
+
+  // Неудачная проверка обновлений — не событие для игрока: приложение
+  // работает и без неё. Одна приглушённая строка, без подробностей.
+  if (state.status === 'error') {
+    return (
+      <div className="update update-quiet">Обновления не проверились: {state.error}</div>
+    );
+  }
+
+  if (state.status === 'downloading') {
+    return (
+      <div className="update">
+        <span>Загружаю версию {state.version}…</span>
+        <div className="update-bar">
+          <i style={{ width: `${Math.round(state.progress * 100)}%` }} />
+        </div>
+        <span className="muted">{Math.round(state.progress * 100)}%</span>
+      </div>
+    );
+  }
+
+  if (state.status === 'ready') {
+    return (
+      <div className="update">
+        <span>Версия {state.version} готова к установке.</span>
+        <button onClick={() => window.gorn.update.install()}>Перезапустить</button>
+        <span className="muted small">Или просто закройте приложение — обновится само.</span>
+      </div>
+    );
+  }
+
+  // available
+  return (
+    <div className="update">
+      <span>Вышла версия {state.version}.</span>
+      {state.supported ? (
+        <button onClick={() => void window.gorn.update.download()}>Загрузить</button>
+      ) : (
+        <span className="muted small">
+          Портативная версия не обновляется сама — скачайте новую с GitHub.
+        </span>
+      )}
     </div>
   );
 }
@@ -395,7 +460,18 @@ function Sidebar({ snapshot }: { snapshot: Snapshot }) {
         <Fe value={realizedFe} />
       </div>
 
-      {realizationRatio !== null && (
+      {/* Больше 100% бывает законно: выплаты приходят за лоты, выставленные
+          до того, как трекер начал наблюдать. Это не ошибка, но выглядит
+          как она, поэтому объясняем прямо. */}
+      {realizationRatio !== null && realizationRatio > 1.2 && (
+        <p className="muted small">
+          Пришло больше, чем оценено выставленное: часть выплат — за лоты,
+          выставленные до начала наблюдения. Коэффициент станет осмысленным
+          после нескольких полных сделок.
+        </p>
+      )}
+
+      {realizationRatio !== null && realizationRatio <= 1.2 && (
         <>
           <div className="ratio">
             <div className="ratio-bar">

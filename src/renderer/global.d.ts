@@ -1,5 +1,6 @@
 import type { Snapshot } from '../main/engine.js';
 import type { OverlayMode } from '../main/settings.js';
+import type { UpdateState } from '../main/updater.js';
 
 /**
  * Единственное объявление моста в renderer. Раньше оно дублировалось
@@ -34,6 +35,12 @@ declare global {
     getItemNames: () => Promise<NameLanguage>;
     setItemNames: (language: NameLanguage) => Promise<NameLanguage>;
     overlay: GornOverlayApi;
+    update: {
+      get: () => Promise<UpdateState | null>;
+      download: () => Promise<void>;
+      install: () => void;
+      onState: (cb: (state: UpdateState) => void) => () => void;
+    };
   }
 
   interface Window {
