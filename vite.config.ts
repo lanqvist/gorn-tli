@@ -17,6 +17,13 @@ export default defineConfig({
     outDir: resolve(import.meta.dirname, 'dist/renderer'),
     emptyOutDir: true,
     target: 'chrome130',
+    rollupOptions: {
+      // Два окна — две страницы: дашборд и оверлей.
+      input: {
+        index: resolve(import.meta.dirname, 'src/renderer/index.html'),
+        overlay: resolve(import.meta.dirname, 'src/renderer/overlay.html'),
+      },
+    },
   },
   server: {
     port: 5273,

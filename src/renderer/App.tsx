@@ -4,15 +4,6 @@ import type { RunView, Snapshot } from '../main/engine.js';
 import { Fe, FeIcon } from './components/Fe.js';
 import { FIND, pluralize, RUN } from '../core/plural.js';
 
-declare global {
-  interface Window {
-    gorn: {
-      getSnapshot: () => Promise<Snapshot | null>;
-      onSnapshot: (cb: (s: Snapshot) => void) => () => void;
-    };
-  }
-}
-
 const NBSP = ' ';
 
 const num = (v: number, digits = 0) =>
@@ -118,8 +109,32 @@ function Header({ snapshot }: { snapshot: Snapshot }) {
             : 'Игра не найдена'}
         {snapshot.hint && <span className="hint">{snapshot.hint}</span>}
       </div>
-      {snapshot.seasonId && <div className="season">Сезон {snapshot.seasonId}</div>}
+      <div className="header-right">
+        <OverlayButton />
+        {snapshot.seasonId && <span className="season">Сезон {snapshot.seasonId}</span>}
+      </div>
     </header>
+  );
+}
+
+function OverlayButton() {
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (!window.gorn) return;
+    void window.gorn.overlay.getState().then((s) => setOpen(s.enabled));
+  }, []);
+
+  if (!window.gorn) return null;
+
+  return (
+    <button
+      className={`overlay-toggle ${open ? 'on' : ''}`}
+      onClick={() => void window.gorn.overlay.toggle().then(setOpen)}
+      title="Ctrl+Alt+G — показать или убрать оверлей поверх игры"
+    >
+      {open ? 'Оверлей включён' : 'Оверлей'}
+    </button>
   );
 }
 

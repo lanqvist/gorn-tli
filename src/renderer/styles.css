@@ -106,10 +106,38 @@ body {
   opacity: 0.75;
 }
 
-.season {
+.header-right {
   margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.season {
   color: var(--muted);
   font-size: 13px;
+}
+
+.overlay-toggle {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font: inherit;
+  font-size: 12.5px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.overlay-toggle:hover {
+  color: var(--text);
+  border-color: var(--muted);
+}
+
+.overlay-toggle.on {
+  color: var(--accent);
+  border-color: rgb(255 157 60 / 45%);
+  background: rgb(255 157 60 / 10%);
 }
 
 /* ── главный блок ───────────────────────────────────────────────── */
