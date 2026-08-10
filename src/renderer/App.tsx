@@ -1317,6 +1317,7 @@ function Strategies({ snapshot }: { snapshot: Snapshot }) {
   return (
     <section className="card">
       <h2>Стратегии</h2>
+      <StrategyBars strategies={strategies} best={best} />
       <div className="strategies">
         {strategies.map((s) => {
           return (
@@ -1365,6 +1366,59 @@ function Strategies({ snapshot }: { snapshot: Snapshot }) {
           : 'Стратегия определяется автоматически по тому, чем открыта карта. Сравнивайте только при сопоставимом числе забегов.'}
       </p>
     </section>
+  );
+}
+
+/**
+ * Сравнение стратегий одним взглядом: полосы медиан с усами P25–P75.
+ * Честность про размер выборки закодирована в геометрию: «данных мало» —
+ * тонкая полупрозрачная полоса, ей веришь ровно настолько, насколько видно.
+ */
+function StrategyBars({
+  strategies,
+  best,
+}: {
+  strategies: Snapshot['strategies'];
+  best: number | null;
+}) {
+  const max = Math.max(...strategies.map((s) => Math.max(s.rate.p75, s.rate.median)));
+  if (max <= 0) return null;
+  const pct = (v: number) => `${Math.max(0, Math.min(100, (v / max) * 100))}%`;
+
+  return (
+    <div className="stratbars">
+      {strategies.map((s) => {
+        const weak = s.rate.confidence === 'insufficient';
+        return (
+          <div className="stratbar-row" key={s.key}>
+            <span className="stratbar-title" title={s.title}>
+              {s.title}
+            </span>
+            <div className="stratbar-track">
+              <i
+                className={`stratbar-bar ${weak ? 'stratbar-weak' : ''} ${
+                  best !== null && s.rate.median === best ? 'stratbar-best' : ''
+                }`}
+                style={{ width: pct(s.rate.median) }}
+              />
+              {s.rate.p75 > s.rate.p25 && (
+                <i
+                  className="stratbar-band"
+                  style={{
+                    left: pct(s.rate.p25),
+                    width: `${Math.max(
+                      1,
+                      ((s.rate.p75 - s.rate.p25) / max) * 100,
+                    )}%`,
+                  }}
+                />
+              )}
+            </div>
+            <span className="stratbar-value num">{num(s.rate.median)}</span>
+          </div>
+        );
+      })}
+    </div>
   );
 }
 

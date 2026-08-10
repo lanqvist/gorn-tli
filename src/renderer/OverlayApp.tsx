@@ -154,6 +154,14 @@ export function OverlayApp() {
   const pace = run && elapsed >= WARMUP_MS ? (run.netFe / elapsed) * 3_600_000 : null;
   const delta = pace !== null && median > 0 ? Math.round(((pace - median) / median) * 100) : null;
 
+  // «Тень» прошлого забега: сколько он имел к этой же секунде. Оценка
+  // грубая — по его среднему темпу, дроп на деле сыплется рывками, —
+  // поэтому подана с тильдой и как справка, а не как метрика.
+  const ghost =
+    run && previous && previous.durationMs != null && previous.durationMs > 0
+      ? previous.netFe * Math.min(1, elapsed / previous.durationMs)
+      : null;
+
   return (
     // Масштаб — через zoom: он растягивает и кегль, и отступы разом,
     // а окну main-процесс даёт пропорциональную ширину.
@@ -228,6 +236,14 @@ export function OverlayApp() {
           <div className="ov-run">
             <span className="ov-map">{shown.name}</span>
             <span className="ov-net">
+              {ghost !== null && (
+                <em
+                  className="ov-ghost"
+                  title="Прошлый забег к этой же секунде — грубо, по его среднему темпу"
+                >
+                  тень ~{num(ghost)}
+                </em>
+              )}
               <Fe value={shown.netFe} />
               {delta !== null && (
                 <em className={delta >= 0 ? 'up' : 'down'}>

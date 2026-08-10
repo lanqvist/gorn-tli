@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 
 import type { Snapshot } from '../../main/engine.js';
-import { Fe } from '../components/Fe.js';
-import { playJackpot, playPickup, playRunEnd } from './sound.js';
+import { Fe, FeIcon } from '../components/Fe.js';
+import { playCoinRain, playJackpot, playPickup, playRunEnd } from './sound.js';
 
 /**
  * Всплывающий доход в оверлее.
@@ -36,12 +36,20 @@ export interface Toast {
   topDrops?: Array<{ name: string; icon: string | null; fe: number }>;
   /** Отклонение темпа закрытой карты от медианы, в процентах. */
   deltaPct?: number | null;
+  /** Стрик: не первый джекпот за короткое время — сессия «жаркая». */
+  hot?: boolean;
+  /** Лучший темп сессии — карта-рекорд, с монетным дождём. */
+  record?: boolean;
 }
 
 /** Порог «золотой» находки по умолчанию, в ФЕ. Настраивается игроком. */
 export const JACKPOT_FE = 50;
 /** Окно схлопывания подборов подряд. */
 const MERGE_WINDOW_MS = 900;
+/** Два джекпота внутри этого окна — «жаркий» стрик с искрами. */
+const HOT_STREAK_MS = 90_000;
+/** Монетный дождь на рекорд — не чаще раза в час, иначе приестся. */
+const RECORD_COOLDOWN_MS = 3_600_000;
 /** Сколько всплывашка живёт на экране. Итог карты читают — ему дольше. */
 const TTL_MS: Record<ToastKind, number> = { pickup: 2400, jackpot: 4200, runEnd: 5200 };
 /** Больше трёх плашек — уже стена текста поверх игры. */
@@ -76,6 +84,8 @@ export function useIncomeToasts(snapshot: Snapshot | null, opts: ToastOptions): 
   const timers = useRef(new Map<number, ReturnType<typeof setTimeout>>());
   const prev = useRef<RunFingerprint | null>(null);
   const lastPickupAt = useRef(0);
+  const lastJackpotAt = useRef(0);
+  const lastRecordAt = useRef(0);
   const optsRef = useRef(opts);
   optsRef.current = opts;
 
@@ -132,11 +142,25 @@ export function useIncomeToasts(snapshot: Snapshot | null, opts: ToastOptions): 
       const finished = snapshot?.recent.find((r) => r.startedAt === before.startedAt);
       if (finished) {
         const median = snapshot?.rate.median ?? 0;
+
+        // Рекорд сессии: темп выше всех остальных недавних забегов.
+        // Кулдаун держит его событием, а не ежечасным фоном.
+        const others = (snapshot?.recent ?? []).filter(
+          (r) => r.startedAt !== finished.startedAt,
+        );
+        const bestOther = others.reduce((a, r) => Math.max(a, r.perHour), 0);
+        const record =
+          others.length >= 4 &&
+          finished.perHour > bestOther &&
+          Date.now() - lastRecordAt.current > RECORD_COOLDOWN_MS;
+        if (record) lastRecordAt.current = Date.now();
+
         push({
           id: nextId++,
           kind: 'runEnd',
           fe: finished.netFe,
           durationMs: finished.durationMs ?? 0,
+          record,
           topDrops: [...finished.drops]
             .filter((d) => d.totalFe !== null && d.totalFe > 0)
             .sort((a, b) => b.totalFe! - a.totalFe!)
@@ -145,7 +169,10 @@ export function useIncomeToasts(snapshot: Snapshot | null, opts: ToastOptions): 
           deltaPct:
             median > 0 ? Math.round(((finished.perHour - median) / median) * 100) : null,
         });
-        if (sound) playRunEnd(finished.netFe, volume);
+        if (sound) {
+          if (record) playCoinRain(volume);
+          else playRunEnd(finished.netFe, volume);
+        }
       }
     }
 
@@ -172,8 +199,18 @@ export function useIncomeToasts(snapshot: Snapshot | null, opts: ToastOptions): 
     }
 
     if (jackpot) {
-      push({ id: nextId++, kind: 'jackpot', fe: jackpot.fe, name: jackpot.name, icon: jackpot.icon });
-      if (sound) playJackpot(volume);
+      // Стрик: второй джекпот подряд получает искры и звон закалки.
+      const hot = Date.now() - lastJackpotAt.current < HOT_STREAK_MS;
+      lastJackpotAt.current = Date.now();
+      push({
+        id: nextId++,
+        kind: 'jackpot',
+        fe: jackpot.fe,
+        name: jackpot.name,
+        icon: jackpot.icon,
+        hot,
+      });
+      if (sound) playJackpot(volume, hot);
       return;
     }
 
@@ -218,7 +255,30 @@ export function ToastList({ toasts }: { toasts: Toast[] }) {
   return (
     <div className="ov-toasts">
       {toasts.map((t) => (
-        <div key={t.id} className={`ov-toast ov-toast-${t.kind}`}>
+        <div
+          key={t.id}
+          className={`ov-toast ov-toast-${t.kind} ${t.hot ? 'ov-toast-hot' : ''} ${
+            t.record ? 'ov-toast-record' : ''
+          }`}
+        >
+          {/* Искры стрика: чистый CSS, по спану на искру. */}
+          {t.hot && (
+            <span className="ov-sparks" aria-hidden="true">
+              {Array.from({ length: 6 }, (_, i) => (
+                <i key={i} />
+              ))}
+            </span>
+          )}
+          {/* Монетный дождь рекорда: те же иконки ФЕ, что и в числах. */}
+          {t.record && (
+            <span className="ov-coins" aria-hidden="true">
+              {Array.from({ length: 7 }, (_, i) => (
+                <i key={i}>
+                  <FeIcon />
+                </i>
+              ))}
+            </span>
+          )}
           {t.kind === 'jackpot' && (
             <>
               {t.icon && <img className="ov-toast-icon" src={t.icon} alt="" draggable={false} />}
@@ -229,7 +289,9 @@ export function ToastList({ toasts }: { toasts: Toast[] }) {
           {t.kind === 'runEnd' && (
             <div className="ov-runend">
               <div className="ov-runend-head">
-                <span className="ov-toast-label">карта закрыта</span>
+                <span className={`ov-toast-label ${t.record ? 'ov-record-label' : ''}`}>
+                  {t.record ? 'рекорд сессии!' : 'карта закрыта'}
+                </span>
                 <Fe value={t.fe} signed className="ov-toast-fe" />
                 {t.durationMs !== undefined && (
                   <span className="ov-toast-time">{clock(t.durationMs)}</span>

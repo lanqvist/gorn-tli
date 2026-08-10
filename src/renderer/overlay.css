@@ -194,6 +194,12 @@ body {
   font-weight: 500;
 }
 
+/* Гонка с собственной тенью: прошлый забег к этой же секунде. */
+.ov-ghost {
+  color: #7d8497;
+  font-variant-numeric: tabular-nums;
+}
+
 .up {
   color: #5fd08a;
 }

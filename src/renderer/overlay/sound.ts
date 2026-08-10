@@ -207,9 +207,10 @@ function flushPickup(): void {
 
 /**
  * Крупная находка: удар молота по наковальне с гулом и треском углей.
- * Один основной удар — торжественно, но не мультяшно.
+ * Один основной удар — торжественно, но не мультяшно. Стрик (второй
+ * джекпот подряд) добавляет высокий «звон закалки».
  */
-export function playJackpot(volume: number): void {
+export function playJackpot(volume: number, hot = false): void {
   if (volume <= 0) return;
   try {
     const audio = context();
@@ -219,7 +220,31 @@ export function playJackpot(volume: number): void {
     metalHit(now, f0, 1.1, 0.55, 0.5, volume);
     // Октавой выше — «звон» наковальни, тише и короче.
     metalHit(now + 0.012, f0 * 2.02, 0.5, 0.22, 0.7, volume);
+    if (hot) {
+      metalHit(now + 0.05, f0 * 3.97, 0.8, 0.12, 0.95, volume);
+    }
     emberCrackle(now, 0.9, volume);
+  } catch {
+    /* см. playPickup */
+  }
+}
+
+/**
+ * Рекорд сессии: «высыпали кошель» — быстрая горсть лёгких монет
+ * с финальным ударом. Звучит не чаще раза в час, поэтому может себе
+ * позволить быть заметным.
+ */
+export function playCoinRain(volume: number): void {
+  if (volume <= 0) return;
+  try {
+    const audio = context();
+    const now = audio.currentTime;
+    for (let i = 0; i < 6; i++) {
+      const at = now + i * 0.07 * jitter(0.2);
+      metalHit(at, 520 * jitter(0.08) * (1 - i * 0.04), 0.12, 0.2, 0.75, volume);
+    }
+    // Кошель опустел — точка: удар средней тяжести.
+    metalHit(now + 0.5, 210 * jitter(0.02), 0.6, 0.4, 0.4, volume);
   } catch {
     /* см. playPickup */
   }

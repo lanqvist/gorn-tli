@@ -718,6 +718,68 @@ button {
 
 /* ── стратегии ──────────────────────────────────────────────────── */
 
+.stratbars {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-bottom: 16px;
+}
+
+.stratbar-row {
+  display: grid;
+  grid-template-columns: minmax(140px, 240px) 1fr 64px;
+  align-items: center;
+  gap: 12px;
+  font-size: 12.5px;
+}
+
+.stratbar-title {
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stratbar-track {
+  position: relative;
+  height: 12px;
+}
+
+.stratbar-bar {
+  position: absolute;
+  left: 0;
+  top: 1px;
+  bottom: 1px;
+  background: var(--accent-dim);
+  border-radius: 0 4px 4px 0;
+}
+
+.stratbar-best {
+  background: var(--accent);
+}
+
+/* «Данных мало» — закодировано в геометрию, а не только в бейдж. */
+.stratbar-weak {
+  top: 3px;
+  bottom: 3px;
+  opacity: 0.45;
+}
+
+/* Усы P25–P75: обычный разброс стратегии. */
+.stratbar-band {
+  position: absolute;
+  top: 50%;
+  height: 2px;
+  margin-top: -1px;
+  background: rgb(255 255 255 / 35%);
+  border-radius: 999px;
+}
+
+.stratbar-value {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
 .strategies {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));

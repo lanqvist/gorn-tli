@@ -40,6 +40,7 @@ body {
 }
 
 .ov-toast {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 9px;
@@ -95,22 +96,25 @@ body {
   background: linear-gradient(100deg, rgb(60 38 8 / 88%), rgb(46 24 6 / 82%));
   border: 1px solid rgb(255 190 60 / 55%);
   box-shadow: 0 0 26px rgb(255 150 40 / 30%);
-  position: relative;
-  overflow: hidden;
 }
 
+/* Блик — бегущей позицией фона, а не transform: карточке нельзя резать
+   overflow, иначе искры стрика не вылетят за её край. */
 .ov-toast-jackpot::after {
   content: '';
   position: absolute;
   inset: 0;
+  border-radius: inherit;
   background: linear-gradient(115deg, transparent 30%, rgb(255 255 255 / 25%) 50%, transparent 70%);
-  transform: translateX(-100%);
+  background-size: 250% 100%;
+  background-repeat: no-repeat;
+  background-position: -150% 0;
   animation: tl-shine 1.3s ease-out 2;
 }
 
 @keyframes tl-shine {
   to {
-    transform: translateX(100%);
+    background-position: 150% 0;
   }
 }
 
@@ -180,6 +184,108 @@ body {
   height: 30px;
   object-fit: contain;
   filter: drop-shadow(0 1px 3px rgb(0 0 0 / 80%));
+}
+
+/* ── стрик-искры ─────────────────────────────────────────────────
+   Второй джекпот подряд: от удара молота летят искры. Шесть спанов,
+   каждому — своё направление и задержка. */
+
+.ov-sparks {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.ov-sparks i {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #ffcf7d;
+  box-shadow: 0 0 6px rgb(255 170 60 / 80%);
+  opacity: 0;
+  animation: tl-spark 700ms ease-out forwards;
+}
+
+.ov-sparks i:nth-child(1) { --dx: -70px; --dy: -34px; animation-delay: 0ms; }
+.ov-sparks i:nth-child(2) { --dx: 64px; --dy: -42px; animation-delay: 40ms; }
+.ov-sparks i:nth-child(3) { --dx: -44px; --dy: 30px; animation-delay: 90ms; }
+.ov-sparks i:nth-child(4) { --dx: 78px; --dy: 22px; animation-delay: 60ms; }
+.ov-sparks i:nth-child(5) { --dx: -18px; --dy: -52px; animation-delay: 120ms; }
+.ov-sparks i:nth-child(6) { --dx: 30px; --dy: 48px; animation-delay: 20ms; }
+
+@keyframes tl-spark {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--dx), var(--dy)) scale(0.4);
+  }
+}
+
+/* ── монетный дождь рекорда ──────────────────────────────────────
+   Каскад иконок ФЕ над карточкой итога. Не чаще раза в час. */
+
+.ov-toast-record {
+  border-color: rgb(255 190 60 / 55%);
+}
+
+.ov-record-label {
+  color: #ffd694;
+  font-weight: 700;
+}
+
+.ov-coins {
+  position: absolute;
+  inset: -36px 0 auto;
+  height: 36px;
+  pointer-events: none;
+}
+
+.ov-coins i {
+  position: absolute;
+  top: 0;
+  opacity: 0;
+  animation: tl-coin 900ms ease-in forwards;
+}
+
+.ov-coins .fe-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.ov-coins i:nth-child(1) { left: 12%; animation-delay: 0ms; }
+.ov-coins i:nth-child(2) { left: 26%; animation-delay: 140ms; }
+.ov-coins i:nth-child(3) { left: 41%; animation-delay: 60ms; }
+.ov-coins i:nth-child(4) { left: 55%; animation-delay: 220ms; }
+.ov-coins i:nth-child(5) { left: 68%; animation-delay: 100ms; }
+.ov-coins i:nth-child(6) { left: 81%; animation-delay: 180ms; }
+.ov-coins i:nth-child(7) { left: 91%; animation-delay: 40ms; }
+
+@keyframes tl-coin {
+  0% {
+    opacity: 0;
+    transform: translateY(-8px) rotate(-14deg);
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(52px) rotate(16deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ov-sparks i,
+  .ov-coins i {
+    animation: none;
+    opacity: 0;
+  }
 }
 
 .ov-toast-name {
