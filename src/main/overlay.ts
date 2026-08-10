@@ -32,6 +32,7 @@ export function prefsPayload(prefs: Settings['overlay']): {
   soundImportantOnly: boolean;
   jackpotFe: number;
   fontScale: number;
+  goalFe: number;
 } {
   return {
     popups: prefs.popups,
@@ -40,6 +41,7 @@ export function prefsPayload(prefs: Settings['overlay']): {
     soundImportantOnly: prefs.soundImportantOnly,
     jackpotFe: prefs.jackpotFe,
     fontScale: prefs.fontScale,
+    goalFe: prefs.goalFe,
   };
 }
 
@@ -241,13 +243,18 @@ export class Overlay {
     soundImportantOnly?: boolean;
     jackpotFe?: number;
     fontScale?: number;
+    goalFe?: number;
   }): void {
     const clean = { ...patch };
     if (clean.volume !== undefined) {
       clean.volume = Math.min(1, Math.max(0, clean.volume));
     }
+    if (clean.goalFe !== undefined) {
+      clean.goalFe = Math.max(0, Math.round(clean.goalFe));
+    }
     if (clean.jackpotFe !== undefined) {
-      clean.jackpotFe = Math.max(1, clean.jackpotFe);
+      // 0 — «авто»: порог берётся из снапшота (P95 цен сезона).
+      clean.jackpotFe = Math.max(0, clean.jackpotFe);
     }
     if (clean.fontScale !== undefined) {
       clean.fontScale = Math.min(1.6, Math.max(0.8, clean.fontScale));

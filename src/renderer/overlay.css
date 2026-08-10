@@ -40,6 +40,21 @@ body {
   border-color: rgb(255 157 60 / 55%);
 }
 
+/* Автоуклонение: курсор над закреплённой панелью — панель уходит с дороги. */
+.ov {
+  transition: opacity 180ms ease;
+}
+
+.ov-dodge {
+  opacity: 0.15;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ov {
+    transition: none;
+  }
+}
+
 .ov-grip {
   -webkit-app-region: drag;
   display: flex;
@@ -117,6 +132,36 @@ body {
 .ov-idle {
   font-size: 11px;
   color: #7d8497;
+}
+
+/* Цель сессии: тонкая полоса прогресса, читается периферийным зрением. */
+.ov-goal {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ov-goal-bar {
+  flex: 1;
+  height: 4px;
+  background: rgb(255 255 255 / 10%);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.ov-goal-bar i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #b96f26, #ff9d3c);
+  border-radius: 999px;
+  transition: width 400ms ease;
+}
+
+.ov-goal-text {
+  font-size: 10.5px;
+  color: #9aa1b4;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .ov-run {

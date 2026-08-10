@@ -15,6 +15,15 @@ const clock = (ms: number) => {
   return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
 };
 
+/** Оценка «ещё столько-то» для цели сессии — грубая, поэтому округлённая. */
+const roughEta = (ms: number) => {
+  const m = Math.max(1, Math.round(ms / 60_000));
+  if (m < 60) return `${m}${NBSP}м`;
+  const h = Math.floor(m / 60);
+  const rest = m % 60;
+  return rest > 0 ? `${h}${NBSP}ч ${rest}${NBSP}м` : `${h}${NBSP}ч`;
+};
+
 /** Порог, до которого темп забега не показывается: знаменатель слишком мал. */
 const WARMUP_MS = 60_000;
 
@@ -30,8 +39,26 @@ export function OverlayApp() {
     soundImportantOnly: false,
     jackpotFe: 50,
     fontScale: 1,
+    goalFe: 0,
   });
+  // Автоуклонение: закреплённый оверлей получает mousemove даже с
+  // пропуском кликов (forward: true) — при наведении панель гаснет
+  // и не мешает целиться, а через полсекунды возвращается.
+  const [dodge, setDodge] = useState(false);
+  const dodgeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const root = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    return () => {
+      if (dodgeTimer.current) clearTimeout(dodgeTimer.current);
+    };
+  }, []);
+
+  const onDodgeMove = () => {
+    setDodge(true);
+    if (dodgeTimer.current) clearTimeout(dodgeTimer.current);
+    dodgeTimer.current = setTimeout(() => setDodge(false), 500);
+  };
 
   // Окно подгоняется под содержимое: лишняя прозрачная площадь дорого
   // обходится композитору, а высота меняется по ходу забега — строк дропа
@@ -98,6 +125,7 @@ export function OverlayApp() {
         soundImportantOnly: s.soundImportantOnly ?? false,
         jackpotFe: s.jackpotFe ?? 50,
         fontScale: s.fontScale ?? 1,
+        goalFe: s.goalFe ?? 0,
       });
     });
     const offSnapshot = window.gorn.onSnapshot(setSnapshot);
@@ -131,8 +159,11 @@ export function OverlayApp() {
     // а окну main-процесс даёт пропорциональную ширину.
     <div
       ref={root}
-      className={`ov ov-${mode} ${locked ? 'ov-locked' : 'ov-free'}`}
+      className={`ov ov-${mode} ${locked ? 'ov-locked' : 'ov-free'} ${
+        locked && dodge ? 'ov-dodge' : ''
+      }`}
       style={{ zoom: prefs.fontScale }}
+      onMouseMove={locked ? onDodgeMove : undefined}
     >
       {/* Полоска для перетаскивания видна только в разблокированном режиме:
           в заблокированном клики всё равно уходят в игру. */}
@@ -186,6 +217,12 @@ export function OverlayApp() {
         )}
       </div>
 
+      {/* Цель сессии: тонкий прогресс с ETA по накопительному темпу.
+          Работает и в минимальном режиме — ради него и затевалась. */}
+      {prefs.goalFe > 0 && snapshot && (
+        <GoalProgress goalFe={prefs.goalFe} snapshot={snapshot} />
+      )}
+
       {mode !== 'minimal' && shown && (
         <>
           <div className="ov-run">
@@ -229,6 +266,27 @@ export function OverlayApp() {
           <span className="ov-conf">{confidence(snapshot)}</span>
         </div>
       )}
+    </div>
+  );
+}
+
+function GoalProgress({ goalFe, snapshot }: { goalFe: number; snapshot: Snapshot }) {
+  const net = snapshot.totals.valueFe - snapshot.totals.costFe;
+  const share = Math.max(0, Math.min(1, net / goalFe));
+  const remaining = goalFe - net;
+  const etaMs =
+    remaining > 0 && snapshot.liveRate > 0 ? (remaining / snapshot.liveRate) * 3_600_000 : null;
+
+  return (
+    <div className="ov-goal">
+      <div className="ov-goal-bar">
+        <i style={{ width: `${share * 100}%` }} />
+      </div>
+      <span className={`ov-goal-text ${remaining <= 0 ? 'up' : ''}`}>
+        {remaining <= 0
+          ? 'цель взята ✓'
+          : `${num(net)} / ${num(goalFe)}${etaMs !== null ? ` · ещё ~${roughEta(etaMs)}` : ''}`}
+      </span>
     </div>
   );
 }

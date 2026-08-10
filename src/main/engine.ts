@@ -16,7 +16,7 @@ import { isBoundName, PriceStore } from '../core/priceStore.js';
 import { retroScan } from '../core/retroScan.js';
 import { runCost, runValue } from '../core/retroScan.js';
 import { RunSegmenter } from '../core/runSegmenter.js';
-import { perHour, summarize, type RateSummary } from '../core/stats.js';
+import { percentile, perHour, summarize, type RateSummary } from '../core/stats.js';
 import { TradeLedger, mergeByKey } from '../core/trade.js';
 import { FE_ID, type ConfigBaseId, type Diagnostics, type Run } from '../core/types.js';
 import { Storage } from '../storage/db.js';
@@ -84,6 +84,12 @@ export interface Snapshot {
   liveRate: number;
   /** Норма для сравнений — медиана последних забегов, а не рекорд. */
   norm: number;
+  /**
+   * Порог «дорогой находки» для режима «авто»: P95 всех известных цен
+   * сезона. В начале сезона 50 ФЕ — событие, в конце — фон; этот порог
+   * дрейфует вместе с экономикой.
+   */
+  jackpotAutoFe: number;
   strategies: StrategyView[];
   /** Предметы без цены, по влиянию на оценку. */
   missing: MissingPriceView[];
@@ -645,6 +651,7 @@ export class Engine extends EventEmitter {
       feRate: summarize(feRates),
       liveRate: perHour(valueFe - costFe, inMapMs),
       norm: rollingNorm(netRates),
+      jackpotAutoFe: this.jackpotAutoFe(),
       strategies: groupByStrategy(farming, this.priceOf)
         .filter((s) => s.runs >= 2)
         .slice(0, 6)
@@ -688,6 +695,28 @@ export class Engine extends EventEmitter {
         communityStale: this.community.stale,
       },
     };
+  }
+
+  private jackpotAutoCache: { key: string; value: number } | null = null;
+
+  /**
+   * P95 известных цен: свои пробивки плюс база сообщества. Кэш по размерам
+   * обоих источников — снапшот собирается часто, сортировать двухтысячный
+   * список каждые 300 мс незачем.
+   */
+  private jackpotAutoFe(): number {
+    const key = `${this.prices.size}:${this.communityEnabled ? this.community.size : 0}`;
+    if (this.jackpotAutoCache?.key === key) return this.jackpotAutoCache.value;
+
+    const values = this.prices.all().map((r) => r.fe);
+    if (this.communityEnabled) {
+      for (const p of this.community.all()) values.push(p.fe);
+    }
+    values.sort((a, b) => a - b);
+    const value =
+      values.length === 0 ? 50 : Math.max(10, Math.round(percentile(values, 0.95)));
+    this.jackpotAutoCache = { key, value };
+    return value;
   }
 
   private hintFor(status: Snapshot['status']): string | null {

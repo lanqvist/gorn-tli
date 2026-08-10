@@ -16,6 +16,7 @@ declare global {
     soundImportantOnly: boolean;
     jackpotFe: number;
     fontScale: number;
+    goalFe: number;
   }
 
   interface GornOverlayApi {
@@ -30,6 +31,7 @@ declare global {
       volume: number;
       soundImportantOnly: boolean;
       jackpotFe: number;
+      goalFe: number;
     }>;
     toggle: () => Promise<boolean>;
     close: () => void;

@@ -121,6 +121,60 @@ body {
   border: 1px solid rgb(95 208 138 / 30%);
 }
 
+/* Итог карты — карточка: момент закрытия карты игрок готов читать. */
+.ov-runend {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+}
+
+.ov-runend-head {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+}
+
+.ov-runend-delta {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.ov-runend-delta.up {
+  color: #5fd08a;
+}
+
+.ov-runend-delta.down {
+  color: #e0705f;
+}
+
+.ov-runend-drops {
+  display: flex;
+  gap: 14px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #cfd4df;
+}
+
+.ov-runend-drop {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.ov-runend-drop img {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+}
+
+.ov-runend-name {
+  max-width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .ov-toast-icon {
   width: 30px;
   height: 30px;

@@ -60,6 +60,8 @@ export const demoSnapshot: Snapshot = {
       drop(261010, 'Неизвестный предмет', 1, null),
     ],
   },
+  // Забегов достаточно много, чтобы жили спарклайн (от 5) и гистограмма
+  // (от 8); числа — правдоподобное распределение с одним выбросом.
   recent: [
     {
       areaId: 5348,
@@ -71,7 +73,10 @@ export const demoSnapshot: Snapshot = {
       costFe: 34,
       netFe: 17,
       perHour: 729,
-      drops: [],
+      drops: [
+        drop(200028, 'Precious Ember', 1, 6.4),
+        drop(5028, 'Netherrealm resonance', 1, 3.1),
+      ],
     },
     {
       areaId: 5351,
@@ -95,8 +100,22 @@ export const demoSnapshot: Snapshot = {
       costFe: 30,
       netFe: 91,
       perHour: 3_412,
-      drops: [],
+      drops: [drop(10022, 'Soldier Compass', 1, 34)],
     },
+    ...[612, 388, 947, 254, 1_104, 486, 771, 903, 162, 655, 1_418, 530].map(
+      (perHour, i) => ({
+        areaId: 5348 + (i % 3),
+        name: ['MaNeiLaYuLin', 'YiWangMiDian', 'XiDiChongGu'][i % 3]!,
+        startedAt: now - 1_500_000 - i * 420_000,
+        durationMs: 60_000 + (i % 4) * 25_000,
+        feGained: Math.round(perHour / 40),
+        valueFe: Math.round(perHour / 28),
+        costFe: 34,
+        netFe: Math.round(perHour / 36),
+        perHour,
+        drops: [],
+      }),
+    ),
   ],
   rate: {
     median: 702,
@@ -128,6 +147,7 @@ export const demoSnapshot: Snapshot = {
   },
   liveRate: 786,
   norm: 702,
+  jackpotAutoFe: 42,
   strategies: [
     {
       key: '10022+400000',

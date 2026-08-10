@@ -32,14 +32,18 @@ export interface Toast {
   icon?: string | null;
   /** Длительность забега — только у итога карты. */
   durationMs?: number;
+  /** Топ находок закрытой карты — только у итога. */
+  topDrops?: Array<{ name: string; icon: string | null; fe: number }>;
+  /** Отклонение темпа закрытой карты от медианы, в процентах. */
+  deltaPct?: number | null;
 }
 
 /** Порог «золотой» находки по умолчанию, в ФЕ. Настраивается игроком. */
 export const JACKPOT_FE = 50;
 /** Окно схлопывания подборов подряд. */
 const MERGE_WINDOW_MS = 900;
-/** Сколько всплывашка живёт на экране. */
-const TTL_MS: Record<ToastKind, number> = { pickup: 2400, jackpot: 4200, runEnd: 4200 };
+/** Сколько всплывашка живёт на экране. Итог карты читают — ему дольше. */
+const TTL_MS: Record<ToastKind, number> = { pickup: 2400, jackpot: 4200, runEnd: 5200 };
 /** Больше трёх плашек — уже стена текста поверх игры. */
 const MAX_VISIBLE = 3;
 
@@ -122,14 +126,24 @@ export function useIncomeToasts(snapshot: Snapshot | null, opts: ToastOptions): 
     };
 
     // Забег закрыт: current исчез или сменился новым стартом.
+    // Момент закрытия карты — естественная пауза, игрок готов читать,
+    // поэтому итог — карточка с топ-находками, а не одна строка.
     if (before && (!current || current.startedAt !== before.startedAt)) {
       const finished = snapshot?.recent.find((r) => r.startedAt === before.startedAt);
       if (finished) {
+        const median = snapshot?.rate.median ?? 0;
         push({
           id: nextId++,
           kind: 'runEnd',
           fe: finished.netFe,
           durationMs: finished.durationMs ?? 0,
+          topDrops: [...finished.drops]
+            .filter((d) => d.totalFe !== null && d.totalFe > 0)
+            .sort((a, b) => b.totalFe! - a.totalFe!)
+            .slice(0, 3)
+            .map((d) => ({ name: d.name, icon: d.icon, fe: d.totalFe! })),
+          deltaPct:
+            median > 0 ? Math.round(((finished.perHour - median) / median) * 100) : null,
         });
         if (sound) playRunEnd(finished.netFe, volume);
       }
@@ -141,6 +155,10 @@ export function useIncomeToasts(snapshot: Snapshot | null, opts: ToastOptions): 
     // Отрицательная дельта — пересчёт цен или расход, не подбор.
     if (gained <= 0.005) return;
 
+    // Порог «золота»: явный из настроек либо «авто» — P95 цен сезона,
+    // чтобы золотая плашка оставалась событием и в зрелой экономике.
+    const goldFe = jackpotFe > 0 ? jackpotFe : (snapshot?.jackpotAutoFe ?? JACKPOT_FE);
+
     // Дорогая находка определяется по конкретному предмету, а не по сумме
     // дельты: пачка мелочи на 60 ФЕ — обычный подбор, а не джекпот.
     let jackpot: { name: string; icon: string | null; fe: number } | null = null;
@@ -148,7 +166,7 @@ export function useIncomeToasts(snapshot: Snapshot | null, opts: ToastOptions): 
       const gainedQty = d.qty - (before.qtyByItem.get(d.configBaseId) ?? 0);
       if (gainedQty <= 0 || d.unitFe === null) continue;
       const value = gainedQty * d.unitFe;
-      if (value >= jackpotFe && (jackpot === null || value > jackpot.fe)) {
+      if (value >= goldFe && (jackpot === null || value > jackpot.fe)) {
         jackpot = { name: d.name, icon: d.icon, fe: value };
       }
     }
@@ -207,10 +225,34 @@ export function ToastList({ toasts }: { toasts: Toast[] }) {
               <span className="ov-toast-name">{t.name}</span>
             </>
           )}
-          {t.kind === 'runEnd' && <span className="ov-toast-label">карта закрыта</span>}
-          <Fe value={t.fe} signed className="ov-toast-fe" />
-          {t.kind === 'runEnd' && t.durationMs !== undefined && (
-            <span className="ov-toast-time">{clock(t.durationMs)}</span>
+          {t.kind !== 'runEnd' && <Fe value={t.fe} signed className="ov-toast-fe" />}
+          {t.kind === 'runEnd' && (
+            <div className="ov-runend">
+              <div className="ov-runend-head">
+                <span className="ov-toast-label">карта закрыта</span>
+                <Fe value={t.fe} signed className="ov-toast-fe" />
+                {t.durationMs !== undefined && (
+                  <span className="ov-toast-time">{clock(t.durationMs)}</span>
+                )}
+                {t.deltaPct != null && t.deltaPct !== 0 && (
+                  <span className={`ov-runend-delta ${t.deltaPct > 0 ? 'up' : 'down'}`}>
+                    {t.deltaPct > 0 ? '+' : '−'}
+                    {Math.abs(t.deltaPct)}% к норме
+                  </span>
+                )}
+              </div>
+              {t.topDrops && t.topDrops.length > 0 && (
+                <div className="ov-runend-drops">
+                  {t.topDrops.map((d, i) => (
+                    <span key={i} className="ov-runend-drop">
+                      {d.icon && <img src={d.icon} alt="" draggable={false} />}
+                      <span className="ov-runend-name">{d.name}</span>
+                      <Fe value={d.fe} />
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
         </div>
       ))}

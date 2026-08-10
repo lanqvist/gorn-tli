@@ -53,6 +53,8 @@ export interface Settings {
     jackpotFe: number;
     /** Первое включение оверлея уже было — больше не открывать открепленным. */
     introShown: boolean;
+    /** Цель сессии в ФЕ: оверлей показывает прогресс. 0 — выключено. */
+    goalFe: number;
   };
 }
 
@@ -75,6 +77,7 @@ const DEFAULTS: Settings = {
     soundImportantOnly: false,
     jackpotFe: 50,
     introShown: false,
+    goalFe: 0,
   },
 };
 

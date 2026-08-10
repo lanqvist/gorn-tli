@@ -151,12 +151,13 @@ export function App() {
       <Header snapshot={snapshot} now={now} onOpenSettings={() => setSettingsOpen(true)} />
       {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} />}
       <Hero snapshot={snapshot} />
+      <SessionRecords snapshot={snapshot} />
       <div className="columns">
         <CurrentRun snapshot={snapshot} now={now} />
         <Sidebar snapshot={snapshot} />
       </div>
       <Strategies snapshot={snapshot} />
-      <RecentRuns runs={snapshot.recent} median={snapshot.norm} />
+      <RecentRuns snapshot={snapshot} />
       <MissingPrices snapshot={snapshot} />
       <Diagnostics snapshot={snapshot} now={now} />
     </div>
@@ -368,6 +369,182 @@ function OverlayButton() {
 }
 
 /**
+ * Рекорды по последним забегам: дешёвая радость без гринд-давления.
+ * Всё считается из среза на клиенте — движку эта полоска не стоит ничего.
+ */
+function SessionRecords({ snapshot }: { snapshot: Snapshot }) {
+  const runs = snapshot.recent;
+  if (runs.length < 5) return null;
+
+  const best = runs.reduce((a, r) => (r.perHour > a.perHour ? r : a));
+
+  // Стрик: сколько свежих забегов подряд держатся выше нормы.
+  let streak = 0;
+  if (snapshot.norm > 0) {
+    for (const r of runs) {
+      if (r.perHour >= snapshot.norm) streak++;
+      else break;
+    }
+  }
+
+  let find: { name: string; fe: number } | null = null;
+  for (const r of runs) {
+    for (const d of r.drops) {
+      if (d.unitFe !== null && (find === null || d.unitFe > find.fe)) {
+        find = { name: d.name, fe: d.unitFe };
+      }
+    }
+  }
+
+  return (
+    <div className="records">
+      <span className="records-item">
+        <span className="records-label">лучший забег</span>
+        {num(best.perHour)} ФЕ/час · {best.name}
+      </span>
+      {find && (
+        <span className="records-item">
+          <span className="records-label">дорогая находка</span>
+          {find.name} · <Fe value={find.fe} />
+        </span>
+      )}
+      {streak >= 2 && (
+        <span className="records-item records-streak">
+          <span className="records-label">стрик выше нормы</span>
+          {pluralize(streak, RUN)} подряд
+        </span>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Спарклайн темпа: последние забеги в хронологии. Полоса — P25–P75
+ * («обычный разброс»), пунктир — медиана, точка — самый свежий забег.
+ * Один взгляд отвечает на «расту я или проседаю» лучше таблицы.
+ */
+function RateSparkline({ snapshot }: { snapshot: Snapshot }) {
+  const runs = [...snapshot.recent].reverse();
+  if (runs.length < 5) return null;
+
+  const values = runs.map((r) => r.perHour);
+  const { p25, p75, median } = snapshot.rate;
+  const w = 300;
+  const h = 54;
+  const pad = 5;
+  const max = Math.max(...values, p75);
+  const min = Math.min(...values, p25, 0);
+  const span = max - min || 1;
+  const x = (i: number) => pad + (i / (values.length - 1)) * (w - pad * 2);
+  const y = (v: number) => h - pad - ((v - min) / span) * (h - pad * 2);
+  const points = values.map((v, i) => `${x(i)},${y(v)}`).join(' ');
+  const last = values.length - 1;
+
+  return (
+    <div className="spark">
+      <svg
+        viewBox={`0 0 ${w} ${h}`}
+        width={w}
+        height={h}
+        role="img"
+        aria-label={`Темп последних ${values.length} забегов, ФЕ в час`}
+      >
+        {/* Обычный разброс: половина забегов внутри этой полосы. */}
+        <rect
+          x={pad}
+          y={y(p75)}
+          width={w - pad * 2}
+          height={Math.max(2, y(p25) - y(p75))}
+          className="spark-band"
+        />
+        <line x1={pad} x2={w - pad} y1={y(median)} y2={y(median)} className="spark-median" />
+        <polyline points={points} className="spark-line" />
+        <circle cx={x(last)} cy={y(values[last]!)} r={3} className="spark-dot" />
+        {/* Невидимые увеличенные цели наведения: подсказка на каждую точку. */}
+        {values.map((v, i) => (
+          <circle key={i} cx={x(i)} cy={y(v)} r={7} fill="transparent">
+            <title>{`${time(runs[i]!.startedAt)} · ${runs[i]!.name}: ${num(v)} ФЕ/час`}</title>
+          </circle>
+        ))}
+      </svg>
+      <span className="spark-caption muted small">
+        темп последних {pluralize(values.length, RUN)}
+      </span>
+    </div>
+  );
+}
+
+/**
+ * Мини-распределение темпа по забегам: текст «разброс шире медианы»
+ * становится картинкой. Пунктир — медиана; корзина с самым удачным
+ * забегом горит акцентом, когда на нём держится заметная доля дохода.
+ */
+function RateHistogram({ snapshot }: { snapshot: Snapshot }) {
+  const rates = snapshot.recent.map((r) => r.perHour);
+  if (rates.length < 8) return null;
+
+  const BIN_COUNT = 12;
+  const max = Math.max(...rates);
+  const min = Math.min(...rates, 0);
+  const span = max - min || 1;
+  const bins = new Array<number>(BIN_COUNT).fill(0);
+  for (const v of rates) {
+    const idx = Math.min(BIN_COUNT - 1, Math.floor(((v - min) / span) * BIN_COUNT));
+    bins[idx] = (bins[idx] ?? 0) + 1;
+  }
+  const top = Math.max(...bins);
+  const bestBin = Math.min(BIN_COUNT - 1, Math.floor(((max - min) / span) * BIN_COUNT));
+  const highlightBest = snapshot.rate.topShare > 0.3;
+  const medianX = ((snapshot.rate.median - min) / span) * 100;
+
+  const w = 160;
+  const h = 40;
+  const gap = 2;
+  const barW = (w - gap * (BIN_COUNT - 1)) / BIN_COUNT;
+
+  return (
+    <svg
+      viewBox={`0 0 ${w} ${h}`}
+      width={w}
+      height={h}
+      className="hist"
+      role="img"
+      aria-label="Распределение темпа по забегам"
+    >
+      {bins.map((count, i) => {
+        const barH = count === 0 ? 0 : Math.max(3, (count / top) * (h - 4));
+        const lo = min + (span * i) / BIN_COUNT;
+        const hi = min + (span * (i + 1)) / BIN_COUNT;
+        return (
+          <rect
+            key={i}
+            x={i * (barW + gap)}
+            y={h - barH}
+            width={barW}
+            height={barH}
+            rx={1.5}
+            className={
+              highlightBest && i === bestBin && count > 0 ? 'hist-bar hist-bar-top' : 'hist-bar'
+            }
+          >
+            <title>{`${num(lo)}–${num(hi)} ФЕ/час: ${pluralize(count, RUN)}`}</title>
+          </rect>
+        );
+      })}
+      <line
+        x1={`${medianX}%`}
+        x2={`${medianX}%`}
+        y1={0}
+        y2={h}
+        className="hist-median"
+      >
+        <title>{`медиана ${num(snapshot.rate.median)} ФЕ/час`}</title>
+      </line>
+    </svg>
+  );
+}
+
+/**
  * Панель настроек — единственное место, где собраны все ручки.
  *
  * До неё настройки были размазаны: язык в шапке, цены сообщества
@@ -384,6 +561,7 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
     jackpotFe: 50,
     fontScale: 1,
     opacity: 0.9,
+    goalFe: 0,
   });
   const [sys, setSys] = useState<GornAppSettings | null>(null);
   const [community, setCommunity] = useState(true);
@@ -407,6 +585,7 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
         jackpotFe: s.jackpotFe ?? 50,
         fontScale: s.fontScale ?? 1,
         opacity: s.opacity ?? 0.9,
+        goalFe: s.goalFe ?? 0,
       });
     });
     refreshSys();
@@ -522,10 +701,11 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
               value={String(prefs.jackpotFe)}
               onChange={(e) => patch({ jackpotFe: Number(e.target.value) })}
             >
+              <option value="0">авто — дорогое для сезона</option>
               <option value="10">от 10 ФЕ — почти на всё</option>
               <option value="50">от 50 ФЕ</option>
               <option value="200">от 200 ФЕ — только дорогое</option>
-              {![10, 50, 200].includes(prefs.jackpotFe) && (
+              {![0, 10, 50, 200].includes(prefs.jackpotFe) && (
                 <option value={String(prefs.jackpotFe)}>от {prefs.jackpotFe} ФЕ</option>
               )}
             </select>
@@ -553,6 +733,19 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
               step={10}
               value={Math.round(prefs.fontScale * 100)}
               onChange={(e) => patch({ fontScale: Number(e.target.value) / 100 })}
+            />
+          </label>
+          <label className="set-row">
+            <span title="Оверлей покажет полосу прогресса и оценку, сколько ещё фармить при текущем темпе. 0 — выключено.">
+              Цель сессии, ФЕ
+            </span>
+            <input
+              type="number"
+              min={0}
+              step={100}
+              className="set-num"
+              value={prefs.goalFe}
+              onChange={(e) => patch({ goalFe: Math.max(0, Number(e.target.value) || 0) })}
             />
           </label>
           <p className="muted small">
@@ -715,6 +908,7 @@ function Hero({ snapshot }: { snapshot: Snapshot }) {
             на нём, медиана нет.
           </p>
         )}
+        <RateSparkline snapshot={snapshot} />
       </div>
 
       <div className="hero-tiles">
@@ -1050,12 +1244,17 @@ function Sidebar({ snapshot }: { snapshot: Snapshot }) {
   );
 }
 
-function RecentRuns({ runs, median }: { runs: RunView[]; median: number }) {
+function RecentRuns({ snapshot }: { snapshot: Snapshot }) {
+  const runs = snapshot.recent;
+  const median = snapshot.norm;
   if (runs.length === 0) return null;
 
   return (
     <section className="card">
-      <h2>Забеги</h2>
+      <div className="runs-head">
+        <h2>Забеги</h2>
+        <RateHistogram snapshot={snapshot} />
+      </div>
       <table className="runs">
         <thead>
           <tr>

@@ -23,6 +23,7 @@ export function ToastLayerApp() {
     soundImportantOnly: false,
     jackpotFe: 50,
     fontScale: 1,
+    goalFe: 0,
   });
   const root = useRef<HTMLDivElement>(null);
 
@@ -86,6 +87,7 @@ export function ToastLayerApp() {
         soundImportantOnly: s.soundImportantOnly ?? false,
         jackpotFe: s.jackpotFe ?? 50,
         fontScale: s.fontScale ?? 1,
+        goalFe: s.goalFe ?? 0,
       });
     });
     const offSnapshot = window.gorn.onSnapshot(setSnapshot);

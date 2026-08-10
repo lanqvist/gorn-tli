@@ -407,6 +407,98 @@ button {
   max-width: 62ch;
 }
 
+/* ── рекорды сессии ─────────────────────────────────────────────── */
+
+.records {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 28px;
+  padding: 0 8px;
+  font-size: 12.5px;
+}
+
+.records-item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 7px;
+}
+
+.records-label {
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.records-streak {
+  color: var(--up);
+}
+
+.set-num {
+  width: 90px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: var(--text);
+  font: inherit;
+  font-size: 12.5px;
+  padding: 4px 8px;
+  text-align: right;
+}
+
+/* ── графики ────────────────────────────────────────────────────── */
+
+.spark {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.spark-band {
+  fill: rgb(255 157 60 / 9%);
+}
+
+.spark-median {
+  stroke: rgb(255 157 60 / 45%);
+  stroke-width: 1;
+  stroke-dasharray: 3 4;
+}
+
+.spark-line {
+  fill: none;
+  stroke: var(--accent-dim);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.spark-dot {
+  fill: var(--accent);
+}
+
+.runs-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.hist-bar {
+  fill: rgb(134 141 160 / 38%);
+}
+
+.hist-bar-top {
+  fill: rgb(255 157 60 / 55%);
+  stroke: none;
+}
+
+.hist-median {
+  stroke: rgb(255 157 60 / 60%);
+  stroke-width: 1;
+  stroke-dasharray: 3 4;
+}
+
 .note.warn {
   color: var(--accent);
 }

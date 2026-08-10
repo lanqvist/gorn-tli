@@ -289,6 +289,7 @@ app.whenReady().then(async () => {
         soundImportantOnly?: boolean;
         jackpotFe?: number;
         fontScale?: number;
+        goalFe?: number;
       },
     ) => {
       overlay?.patchPrefs(prefs);
