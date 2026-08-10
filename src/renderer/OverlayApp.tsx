@@ -23,6 +23,11 @@ export function OverlayApp() {
   const [mode, setMode] = useState<Mode>('compact');
   const [locked, setLocked] = useState(true);
   const [now, setNow] = useState(Date.now());
+  const [prefs, setPrefs] = useState<GornOverlayPrefs>({
+    popups: true,
+    sound: true,
+    volume: 0.5,
+  });
   const root = useRef<HTMLDivElement>(null);
 
   // Окно подгоняется под содержимое: лишняя прозрачная площадь дорого
@@ -40,11 +45,41 @@ export function OverlayApp() {
 
   useEffect(() => {
     // В браузере main-процесса нет — показываем демо, чтобы вёрстку оверлея
-    // можно было проверять без запуска игры.
+    // можно было проверять без запуска игры. Подборы имитируются таймером:
+    // без изменяющегося среза всплывашки и звук иначе не проверить.
     if (!window.gorn) {
       if (import.meta.env.DEV) {
-        void import('./demo.js').then((m) => setSnapshot(m.demoSnapshot));
+        let timer: ReturnType<typeof setInterval> | undefined;
+        void import('./demo.js').then((m) => {
+          let current = m.demoSnapshot;
+          setSnapshot(current);
+          timer = setInterval(() => {
+            const gained = Math.random() < 0.15 ? 55 + Math.random() * 40 : Math.random() * 6;
+            const cur = current.current;
+            if (!cur) return;
+            current = {
+              ...current,
+              current: {
+                ...cur,
+                netFe: cur.netFe + gained,
+                valueFe: cur.valueFe + gained,
+                drops: cur.drops.map((d, i) =>
+                  i === (gained > 50 ? 0 : 3)
+                    ? {
+                        ...d,
+                        qty: d.qty + 1,
+                        totalFe: (d.totalFe ?? 0) + gained,
+                        unitFe: gained,
+                      }
+                    : d,
+                ),
+              },
+            };
+            setSnapshot(current);
+          }, 2500);
+        });
         setLocked(false);
+        return () => timer && clearInterval(timer);
       }
       return;
     }
@@ -53,14 +88,17 @@ export function OverlayApp() {
     void window.gorn.overlay.getState().then((s) => {
       setMode(s.mode);
       setLocked(s.locked);
+      setPrefs({ popups: s.popups ?? true, sound: s.sound ?? true, volume: s.volume ?? 0.5 });
     });
     const offSnapshot = window.gorn.onSnapshot(setSnapshot);
     const offMode = window.gorn.overlay.onMode((m) => setMode(m));
     const offLocked = window.gorn.overlay.onLocked(setLocked);
+    const offPrefs = window.gorn.overlay.onPrefs(setPrefs);
     return () => {
       offSnapshot();
       offMode();
       offLocked();
+      offPrefs();
     };
   }, []);
 
@@ -86,13 +124,27 @@ export function OverlayApp() {
         <div className="ov-grip">
           <span>Горн</span>
           <div className="ov-actions">
-            <button onClick={() => window.gorn.overlay.cycleMode()} title="Режим">
+            <button
+              onClick={() => window.gorn?.overlay.setPrefs({ popups: !prefs.popups })}
+              title={prefs.popups ? 'Выключить всплывашки' : 'Включить всплывашки'}
+              className={prefs.popups ? '' : 'ov-off'}
+            >
+              ✦
+            </button>
+            <button
+              onClick={() => window.gorn?.overlay.setPrefs({ sound: !prefs.sound })}
+              title={prefs.sound ? 'Выключить звук' : 'Включить звук'}
+              className={prefs.sound ? '' : 'ov-off'}
+            >
+              ♪
+            </button>
+            <button onClick={() => window.gorn?.overlay.cycleMode()} title="Режим">
               ⇱
             </button>
-            <button onClick={() => window.gorn.overlay.toggleLock()} title="Закрепить">
+            <button onClick={() => window.gorn?.overlay.toggleLock()} title="Закрепить">
               ⌖
             </button>
-            <button onClick={() => window.gorn.overlay.close()} title="Закрыть">
+            <button onClick={() => window.gorn?.overlay.close()} title="Закрыть">
               ✕
             </button>
           </div>

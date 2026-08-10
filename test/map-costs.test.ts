@@ -103,6 +103,100 @@ describe('вложения принадлежат карте, а не город
   });
 });
 
+function loot(configBaseId: number, qty: number, ts: number): ItemDelta {
+  return {
+    ts,
+    configBaseId,
+    qty,
+    proto: 'PickItem',
+    kind: 'loot',
+    pageId: 102,
+    slotId: 0,
+  };
+}
+
+/**
+ * Портал в город и обратно — один забег, а не два. Без склейки вторая
+ * половина карты становилась отдельным забегом без вложений: счётчик
+ * забегов раздувался, а стратегия с маяком теряла половину дохода.
+ */
+describe('возврат в ту же карту продолжает забег', () => {
+  it('выход в хаб и возврат склеиваются в один забег', () => {
+    const seg = new RunSegmenter();
+    seg.noteAsset('XZ_YuJinZhiXiBiNanSuo200');
+    seg.enterLevel(enter(110, T0));
+    seg.addDelta(cost(400033, 1, T0 + 1000));
+
+    seg.noteAsset('YL_MaNeiLaYuLin100');
+    seg.enterLevel(enter(5348, T0 + 2000));
+    seg.addDelta(loot(FE_ID, 10, T0 + 30_000));
+
+    // Портал в город: продать добычу.
+    seg.noteAsset('XZ_YuJinZhiXiBiNanSuo200');
+    seg.enterLevel(enter(110, T0 + 60_000));
+
+    // Возврат в ту же карту.
+    seg.noteAsset('YL_MaNeiLaYuLin100');
+    seg.enterLevel(enter(5348, T0 + 120_000));
+    seg.addDelta(loot(FE_ID, 5, T0 + 150_000));
+
+    const runs = seg.finish(T0 + 200_000);
+    const farm = runs.filter((r) => !r.isHub);
+    expect(farm).toHaveLength(1);
+    expect(farm[0]!.costs).toHaveLength(1);
+    expect(farm[0]!.drops.map((d) => d.qty)).toEqual([10, 5]);
+    expect(farm[0]!.startedAt).toBe(T0 + 2000);
+  });
+
+  it('новая карта того же типа с новым вложением НЕ склеивается', () => {
+    const seg = new RunSegmenter();
+    seg.noteAsset('YL_MaNeiLaYuLin100');
+    seg.enterLevel(enter(5348, T0));
+
+    seg.noteAsset('XZ_YuJinZhiXiBiNanSuo200');
+    seg.enterLevel(enter(110, T0 + 60_000));
+    // В городе открыта НОВАЯ карта того же типа.
+    seg.addDelta(cost(400033, 1, T0 + 65_000));
+
+    seg.noteAsset('YL_MaNeiLaYuLin100');
+    seg.enterLevel(enter(5348, T0 + 70_000));
+
+    const farm = seg.finish(T0 + 120_000).filter((r) => !r.isHub);
+    expect(farm).toHaveLength(2);
+    expect(farm[1]!.costs).toHaveLength(1);
+  });
+
+  it('возврат спустя долгое время — новый забег', () => {
+    const seg = new RunSegmenter();
+    seg.noteAsset('YL_MaNeiLaYuLin100');
+    seg.enterLevel(enter(5348, T0));
+
+    seg.noteAsset('XZ_YuJinZhiXiBiNanSuo200');
+    seg.enterLevel(enter(110, T0 + 60_000));
+
+    seg.noteAsset('YL_MaNeiLaYuLin100');
+    seg.enterLevel(enter(5348, T0 + 60_000 + 600_000)); // десять минут в городе
+
+    const farm = seg.finish(T0 + 800_000).filter((r) => !r.isHub);
+    expect(farm).toHaveLength(2);
+  });
+
+  it('другая карта между выходом и возвратом отменяет склейку', () => {
+    const seg = new RunSegmenter();
+    seg.noteAsset('YL_MaNeiLaYuLin100');
+    seg.enterLevel(enter(5348, T0));
+
+    seg.noteAsset('SD_YuanGuTongDao201');
+    seg.enterLevel(enter(5351, T0 + 30_000));
+
+    seg.noteAsset('YL_MaNeiLaYuLin100');
+    seg.enterLevel(enter(5348, T0 + 60_000));
+
+    const farm = seg.finish(T0 + 120_000).filter((r) => !r.isHub);
+    expect(farm).toHaveLength(3);
+  });
+});
+
 /**
  * Ответ биржи на дешёвые материалы приходит без поля currency.
  * Подлинный фрагмент лога для Пламенного песка (100200).

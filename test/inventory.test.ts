@@ -154,3 +154,74 @@ describe('классификация протоколов', () => {
     expect(d.unknownProtos.get('SomeNewSS14Proto')).toBe(1);
   });
 });
+
+/**
+ * Дроп в слот, пустовавший с самого входа в игру.
+ *
+ * Подлинная последовательность из лога 2026-08-10: страница 103
+ * инициализировала 52 занятых слота, Серебряный фитиль упал в пустой 53-й.
+ * Пустые слоты в InitBagData не попадают, и без строки ItemChange@ Add
+ * первый Modfy такого слота уходил на установку базы — фитиль
+ * не засчитывался в добычу вообще.
+ */
+describe('дроп в пустовавший с входа слот', () => {
+  const WICK_LINES = [
+    '[2026.08.10-14.52.46:202][762]TLLua: Display: [Game] ItemChange@ ProtoName=PickItems start',
+    '[2026.08.10-14.52.46:202][762]TLLua: Display: [Game] ItemChange@ Add Id=10321_25b2b109-94cb-11f1-b5e9-000000000034 BagNum=1 in PageId=103 SlotId=53',
+    '[2026.08.10-14.52.46:202][762]TLLua: Display: [Game] BagMgr@:Modfy BagItem PageId = 103 SlotId = 53 ConfigBaseId = 10321 Num = 1',
+    '[2026.08.10-14.52.46:202][762]TLLua: Display: [Game] ItemChange@ ProtoName=PickItems end',
+  ];
+
+  it('серебряный фитиль засчитывается как лут', () => {
+    const parser = new EventParser();
+    const inv = new InventoryTracker(diag());
+    let delta = null;
+
+    for (const line of WICK_LINES) {
+      const ev = parser.parse(line);
+      if (!ev) continue;
+      switch (ev.kind) {
+        case 'itemChange':
+          if (ev.phase === 'start') inv.beginTransaction(ev.proto);
+          else inv.endTransaction();
+          break;
+        case 'bagAdd':
+          inv.applyAdd(ev);
+          break;
+        case 'bagModify':
+          delta = inv.applyModify(ev);
+          break;
+      }
+    }
+
+    expect(delta).not.toBeNull();
+    expect(delta!.configBaseId).toBe(10321);
+    expect(delta!.qty).toBe(1);
+    expect(delta!.kind).toBe('loot');
+  });
+
+  it('Add по занятому тем же предметом слоту не сбрасывает базу', () => {
+    // Иначе повторный Add задваивал бы стак: 10 в слоте + Add + Modfy 12
+    // должно дать +2, а не +12.
+    const parser = new EventParser();
+    const inv = new InventoryTracker(diag());
+
+    inv.applyInit(
+      parser.parse(
+        L('BagMgr@:InitBagData PageId = 102 SlotId = 4 ConfigBaseId = 5028 Num = 10'),
+      ) as never,
+    );
+    inv.beginTransaction('PickItem');
+    const add = parser.parse(
+      L('ItemChange@ Add Id=5028_25b2b109-94cb-11f1-b5e9-000000000034 BagNum=2 in PageId=102 SlotId=4'),
+    );
+    if (add?.kind === 'bagAdd') inv.applyAdd(add);
+    const delta = inv.applyModify(
+      parser.parse(
+        L('BagMgr@:Modfy BagItem PageId = 102 SlotId = 4 ConfigBaseId = 5028 Num = 12'),
+      ) as never,
+    );
+
+    expect(delta!.qty).toBe(2);
+  });
+});

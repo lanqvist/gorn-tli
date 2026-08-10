@@ -18,10 +18,11 @@ export default defineConfig({
     emptyOutDir: true,
     target: 'chrome130',
     rollupOptions: {
-      // Два окна — две страницы: дашборд и оверлей.
+      // Три окна — три страницы: дашборд, оверлей и слой всплывающего дохода.
       input: {
         index: resolve(import.meta.dirname, 'src/renderer/index.html'),
         overlay: resolve(import.meta.dirname, 'src/renderer/overlay.html'),
+        toasts: resolve(import.meta.dirname, 'src/renderer/toasts.html'),
       },
     },
   },

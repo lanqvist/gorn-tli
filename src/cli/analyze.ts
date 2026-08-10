@@ -9,6 +9,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
+import { activeDuration } from '../core/analysis.js';
 import { analyzeLogFile } from '../core/pipeline.js';
 import {
   confidenceLabel,
@@ -61,7 +62,8 @@ async function main(): Promise<void> {
   const elapsed = Date.now() - started;
 
   const farming = result.runs.filter((r) => !r.isHub && r.durationMs !== null);
-  const inMapMs = farming.reduce((a, r) => a + (r.durationMs ?? 0), 0);
+  // Активное время: паузы дольше трёх минут в зачёт не идут.
+  const inMapMs = farming.reduce((a, r) => a + activeDuration(r), 0);
   const totalFe = farming.reduce((a, r) => a + feGained(r), 0);
 
   console.log('═══ ЛОГ ═══');
@@ -85,7 +87,7 @@ async function main(): Promise<void> {
   if (farming.length > 0) {
     const rates = farming
       .filter((r) => (r.durationMs ?? 0) > 5000)
-      .map((r) => perHour(feGained(r), r.durationMs ?? 0));
+      .map((r) => perHour(feGained(r), activeDuration(r)));
     const s = summarize(rates);
     console.log('\n═══ ФЕ В ЧАС ═══');
     console.log(`  медиана          ${formatNumber(s.median)} ФЕ/час`);

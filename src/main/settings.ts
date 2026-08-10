@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
 /** Режимы оверлея — от самого компактного к подробному. */
@@ -18,6 +18,12 @@ export interface Settings {
   /** Русские названия покрывают 96% справочника, поэтому это разумное умолчание.
    *  Часть игроков привыкла к английским — отсюда переключатель. */
   itemNames: NameLanguage;
+  /**
+   * Первичные цены из краудсорс-базы TITrack (titrack.ninja). Убирают
+   * необходимость пробивать каждый предмет руками; свои пробивки всегда
+   * в приоритете. Отключается для полностью офлайновой работы.
+   */
+  communityPrices: boolean;
   overlay: {
     enabled: boolean;
     mode: OverlayMode;
@@ -26,11 +32,18 @@ export interface Settings {
     opacity: number;
     fontScale: number;
     placement: OverlayPlacement | null;
+    /** Всплывающий доход: «+N ФЕ» при подборе, итог при закрытии карты. */
+    popups: boolean;
+    /** Звук подбора и закрытия карты. */
+    sound: boolean;
+    /** Громкость звука, 0–1. */
+    volume: number;
   };
 }
 
 const DEFAULTS: Settings = {
   itemNames: 'ru',
+  communityPrices: true,
   overlay: {
     enabled: false,
     mode: 'compact',
@@ -38,6 +51,9 @@ const DEFAULTS: Settings = {
     opacity: 0.9,
     fontScale: 1,
     placement: null,
+    popups: true,
+    sound: true,
+    volume: 0.5,
   },
 };
 
@@ -68,6 +84,7 @@ export class SettingsStore {
       if (raw.version !== SCHEMA_VERSION || !raw.settings) return structuredClone(DEFAULTS);
       return {
         itemNames: raw.settings.itemNames ?? DEFAULTS.itemNames,
+        communityPrices: raw.settings.communityPrices ?? DEFAULTS.communityPrices,
         overlay: { ...DEFAULTS.overlay, ...raw.settings.overlay },
       };
     } catch {
@@ -89,6 +106,15 @@ export class SettingsStore {
     this.save();
   }
 
+  get communityPrices(): boolean {
+    return this.data.communityPrices;
+  }
+
+  setCommunityPrices(enabled: boolean): void {
+    this.data.communityPrices = enabled;
+    this.save();
+  }
+
   patchOverlay(patch: Partial<Settings['overlay']>): Settings['overlay'] {
     this.data.overlay = { ...this.data.overlay, ...patch };
     this.save();
@@ -98,11 +124,15 @@ export class SettingsStore {
   private save(): void {
     try {
       mkdirSync(dirname(this.path), { recursive: true });
+      // Запись через временный файл: краш посреди записи иначе оставляет
+      // битый JSON, и все настройки молча слетают в умолчания.
+      const tmp = `${this.path}.tmp`;
       writeFileSync(
-        this.path,
+        tmp,
         JSON.stringify({ version: SCHEMA_VERSION, settings: this.data }, null, 2),
         'utf8',
       );
+      renameSync(tmp, this.path);
     } catch {
       // Настройки — не критичные данные, потеря не повод падать.
     }

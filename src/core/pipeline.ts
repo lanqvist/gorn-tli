@@ -81,6 +81,10 @@ export async function analyzeLogFile(path: string): Promise<AnalysisResult> {
         inventory.applyInit(ev);
         break;
 
+      case 'bagAdd':
+        inventory.applyAdd(ev);
+        break;
+
       case 'bagRemove': {
         const delta = inventory.applyRemove(ev);
         if (delta) {

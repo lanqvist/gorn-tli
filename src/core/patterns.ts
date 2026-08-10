@@ -39,6 +39,20 @@ export const ITEM_CHANGE_RE = new RegExp(
   CATEGORY + String.raw`ItemChange@\s*ProtoName=(\w+)\s+(start|end)`,
 );
 
+/**
+ * ItemChange@ Add Id=10321_25b2b109-… BagNum=1 in PageId=103 SlotId=53
+ *
+ * Игра пишет её, когда НОВЫЙ экземпляр предмета ложится в слот
+ * (для роста существующего стака этой строки нет). Это единственный
+ * способ увидеть дроп в слот, который был пуст при входе: пустые слоты
+ * в InitBagData не попадают, и без этой строки первый предмет в таком
+ * слоте выглядел бы как «установка базы», а не добыча.
+ */
+export const ITEM_ADD_RE = new RegExp(
+  CATEGORY +
+    String.raw`ItemChange@\s*Add\s+Id=(\d+)_[0-9a-fA-F-]+\s+BagNum=(\d+)\s+in\s+PageId=(\d+)\s+SlotId=(\d+)`,
+);
+
 export const ENTER_LEVEL_RE = new RegExp(
   CATEGORY + String.raw`LevelMgr:_EnterLevelSuccess\(\)\s*(\d+)`,
 );
@@ -61,9 +75,6 @@ export const SOCKET_START_RE = new RegExp(
 export const SOCKET_END_RE = new RegExp(
   CATEGORY + String.raw`-+Socket\s+(?:SendMessage|RecvMessage|PushMessage|RecvPushMsg)\s+End-+`,
 );
-
-/** Строка тела сокет-дампа: `+ключ [значение]`, вложенность рисуется через `|`. */
-export const BODY_FIELD_RE = /(\S+)[^[]*\[([^\]]*)\]/;
 
 /**
  * Классификация ProtoName. От неё зависит, попадёт ли изменение сумки в доход.

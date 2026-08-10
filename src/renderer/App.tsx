@@ -229,6 +229,9 @@ function OverlayButton() {
   useEffect(() => {
     if (!window.gorn) return;
     void window.gorn.overlay.getState().then((s) => setOpen(s.enabled));
+    // Оверлей переключается и хоткеем, и собственным крестиком — кнопка
+    // обязана узнавать об этом, а не помнить только свой последний клик.
+    return window.gorn.overlay.onEnabled(setOpen);
   }, []);
 
   if (!window.gorn) return null;
@@ -432,7 +435,17 @@ function DropList({ drops }: { drops: RunView['drops'] }) {
                 без цены
               </span>
             ) : (
-              <Fe value={d.totalFe} />
+              <span
+                {...(d.priceSource === 'community'
+                  ? {
+                      className: 'price-community',
+                      title:
+                        'Цена из базы сообщества (titrack.ninja). Пробей предмет сам — своя пробивка точнее и заменит её.',
+                    }
+                  : {})}
+              >
+                <Fe value={d.totalFe} />
+              </span>
             )}
           </span>
         </li>
@@ -648,7 +661,8 @@ function MissingPrices({ snapshot }: { snapshot: Snapshot }) {
  * говорить, что ослеп, а не показывать нули как ни в чём не бывало.
  */
 function Diagnostics({ snapshot }: { snapshot: Snapshot }) {
-  const { unknownProtos, pricedItems } = snapshot.diagnostics;
+  const { unknownProtos, pricedItems, communityPrices, communityEnabled } =
+    snapshot.diagnostics;
 
   return (
     <section className="card diag">
@@ -657,7 +671,18 @@ function Diagnostics({ snapshot }: { snapshot: Snapshot }) {
           иначе справочная строка выглядит как проблема. */}
       <div className="diag-row">
         <span className="ok">✓</span>
-        <span>Предметов с известной ценой: {num(pricedItems)}</span>
+        <span>Своих пробивок: {num(pricedItems)}</span>
+      </div>
+      <div className="diag-row">
+        <span className={communityEnabled ? 'ok' : 'muted'}>
+          {communityEnabled ? '✓' : '·'}
+        </span>
+        <span>
+          {communityEnabled
+            ? `Цен из базы сообщества: ${num(communityPrices)}`
+            : 'Цены сообщества выключены — только свои пробивки.'}
+        </span>
+        <CommunityPricesToggle enabled={communityEnabled} />
       </div>
       {unknownProtos.length > 0 && (
         <div className="diag-row">
@@ -669,5 +694,26 @@ function Diagnostics({ snapshot }: { snapshot: Snapshot }) {
         </div>
       )}
     </section>
+  );
+}
+
+/**
+ * Первичные цены — из краудсорс-базы TITrack. Свои пробивки в приоритете.
+ * Отключение — для тех, кто хочет полностью офлайновый трекер.
+ */
+function CommunityPricesToggle({ enabled }: { enabled: boolean }) {
+  if (!window.gorn) return null;
+  return (
+    <button
+      className="diag-toggle"
+      title={
+        enabled
+          ? 'Отключить загрузку цен сообщества (titrack.ninja). Останутся только ваши пробивки.'
+          : 'Включить первичные цены из базы сообщества (titrack.ninja).'
+      }
+      onClick={() => void window.gorn.setCommunityPrices(!enabled)}
+    >
+      {enabled ? 'выключить' : 'включить'}
+    </button>
   );
 }

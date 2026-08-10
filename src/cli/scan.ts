@@ -8,6 +8,7 @@
 import { readFileSync } from 'node:fs';
 import { basename, resolve } from 'node:path';
 
+import { activeDuration } from '../core/analysis.js';
 import {
   confidenceLabel,
   formatDateTime,
@@ -16,6 +17,7 @@ import {
 } from '../core/format.js';
 import { findLogDirectory } from '../core/locate.js';
 import { pluralize, RUN } from '../core/plural.js';
+import { isBoundName } from '../core/priceStore.js';
 import { retroScan, runCost, runValue } from '../core/retroScan.js';
 import { perHour, summarize } from '../core/stats.js';
 import { FE_ID, type ConfigBaseId } from '../core/types.js';
@@ -24,6 +26,7 @@ import { Storage } from '../storage/db.js';
 interface ItemRow {
   id: number;
   name: string;
+  nameRu?: string | null;
   type: string;
 }
 
@@ -54,11 +57,16 @@ async function main(): Promise<void> {
     console.log(`  [${p.index + 1}/${p.total}] ${basename(p.file)}`);
   });
 
-  result.prices.registerKnownItems(items.keys());
+  const bound: ConfigBaseId[] = [];
+  for (const [id, it] of items) {
+    if (isBoundName(it.name) || isBoundName(it.nameRu)) bound.push(id);
+  }
+  result.prices.registerBoundIds(bound);
   const priceOf = (id: ConfigBaseId) => result.prices.priceOf(id);
 
   const farming = result.runs.filter((r) => !r.isHub && (r.durationMs ?? 0) > 5000);
-  const inMapMs = farming.reduce((a, r) => a + (r.durationMs ?? 0), 0);
+  // Активное время, а не по часам: простой в карте занижает «в час».
+  const inMapMs = farming.reduce((a, r) => a + activeDuration(r), 0);
 
   console.log('\n═══ ОХВАТ ═══');
   console.log(`  файлов           ${result.filesScanned}`);
@@ -83,10 +91,10 @@ async function main(): Promise<void> {
       const fe = r.drops
         .filter((d) => d.configBaseId === FE_ID)
         .reduce((a, d) => a + d.qty, 0);
-      return perHour(fe, r.durationMs ?? 0);
+      return perHour(fe, activeDuration(r));
     });
     const valueRates = farming.map((r) =>
-      perHour(runValue(r, priceOf) - runCost(r, priceOf), r.durationMs ?? 0),
+      perHour(runValue(r, priceOf) - runCost(r, priceOf), activeDuration(r)),
     );
 
     const feStats = summarize(feRates);
@@ -154,7 +162,7 @@ async function main(): Promise<void> {
 
   // Логи ротируются и удаляются игрой, поэтому разобранное сохраняем к себе.
   const storage = new Storage(resolve('data/gorn.db'));
-  const seasonId = [...result.seasonIds][0] ?? null;
+  const seasonId = result.latestSeasonId ?? [...result.seasonIds].pop() ?? null;
   storage.saveRuns(result.runs, seasonId);
   storage.savePrices(result.prices.all());
   storage.saveTrade(result.trade.listings, result.trade.receipts);

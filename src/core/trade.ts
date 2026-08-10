@@ -52,6 +52,31 @@ export interface RealizationSummary {
   unpricedItems: ConfigBaseId[];
 }
 
+/**
+ * Слияние списков событий с дедупликацией по ключу, но БЕЗ схлопывания
+ * законных повторов: две одинаковые выплаты в одну миллисекунду — это
+ * две выплаты (выкуп двух одинаковых лотов), а один и тот же файл,
+ * прочитанный дважды после ротации, — по-прежнему один набор событий.
+ * Поэтому по каждому ключу берётся МАКСИМУМ вхождений среди источников.
+ */
+export function mergeByKey<T>(sources: T[][], keyOf: (item: T) => string): T[] {
+  const best = new Map<string, T[]>();
+  for (const source of sources) {
+    const grouped = new Map<string, T[]>();
+    for (const item of source) {
+      const key = keyOf(item);
+      const list = grouped.get(key);
+      if (list) list.push(item);
+      else grouped.set(key, [item]);
+    }
+    for (const [key, list] of grouped) {
+      const existing = best.get(key);
+      if (!existing || list.length > existing.length) best.set(key, list);
+    }
+  }
+  return [...best.values()].flat();
+}
+
 export class TradeLedger {
   readonly listings: Listing[] = [];
   readonly receipts: Receipt[] = [];
@@ -97,11 +122,36 @@ export class TradeLedger {
         break;
 
       case 'XchgRecall':
-        // Лот отозван — предмет вернулся, продажи не было.
+        // Лот отозван — предмет вернулся, продажи не было. Выставление
+        // при этом снимается с бумажного счёта: иначе отозванный
+        // и выставленный заново предмет считался бы дважды, занижая
+        // коэффициент реализации.
+        if (delta.qty > 0 && delta.configBaseId !== FE_ID) {
+          this.removeListing(delta.configBaseId, delta.qty);
+        }
         break;
 
       default:
         break;
+    }
+  }
+
+  /** Снимает отозванный лот: сначала точное совпадение, затем последний лот предмета. */
+  private removeListing(configBaseId: ConfigBaseId, qty: number): void {
+    for (let i = this.listings.length - 1; i >= 0; i--) {
+      const l = this.listings[i]!;
+      if (l.configBaseId !== configBaseId) continue;
+      if (l.qty === qty) {
+        this.listings.splice(i, 1);
+        return;
+      }
+    }
+    for (let i = this.listings.length - 1; i >= 0; i--) {
+      const l = this.listings[i]!;
+      if (l.configBaseId !== configBaseId) continue;
+      if (l.qty > qty) l.qty -= qty;
+      else this.listings.splice(i, 1);
+      return;
     }
   }
 

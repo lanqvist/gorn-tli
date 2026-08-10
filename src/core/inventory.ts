@@ -1,5 +1,6 @@
 import { protoKind } from './patterns.js';
 import type {
+  BagAddEvent,
   BagInitEvent,
   BagModifyEvent,
   BagRemoveEvent,
@@ -92,6 +93,29 @@ export class InventoryTracker {
       pageId: ev.pageId,
       slotId: ev.slotId,
     };
+  }
+
+  /**
+   * ItemChange@ Add — новый экземпляр предмета лёг в слот.
+   *
+   * Единственный источник правды для слота, пустовавшего с самого входа:
+   * пустые слоты в InitBagData не попадают, слот для нас «не существует»,
+   * и следующий за Add Modfy ушёл бы на установку базы. Так терялись
+   * фитили и компасы, падавшие на свободное место (найдено на подлинном
+   * логе: Серебряный фитиль, PageId 103, SlotId 53 — страница
+   * инициализировала 52 занятых слота, 53-й был пуст).
+   *
+   * Слот помечается «предмет есть, количество 0» — дельту начислит
+   * следующий Modfy обычным путём. Если по нашему состоянию в слоте
+   * лежал ДРУГОЙ предмет, Add авторитетен: состояние устарело,
+   * перебазируемся на новый предмет. Занятый тем же предметом слот
+   * не трогаем — рост стака считается по Modfy.
+   */
+  applyAdd(ev: BagAddEvent): void {
+    const key = slotKey(ev.pageId, ev.slotId);
+    const prev = this.slots.get(key);
+    if (prev !== undefined && prev.configBaseId === ev.configBaseId) return;
+    this.slots.set(key, { configBaseId: ev.configBaseId, qty: 0 });
   }
 
   /** Возвращает дельту, если изменение действительно является приростом/расходом. */

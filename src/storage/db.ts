@@ -57,9 +57,13 @@ CREATE TABLE IF NOT EXISTS cost_item (
 );
 CREATE INDEX IF NOT EXISTS idx_cost_run ON cost_item(run_id);
 
+-- season_id участвует в первичном ключе, а в SQLite NULL != NULL,
+-- поэтому NULL здесь запрещён: неизвестный сезон записывается нулём.
+-- Иначе INSERT OR REPLACE никогда не срабатывал и каждый запуск
+-- добавлял полный дубль всех цен.
 CREATE TABLE IF NOT EXISTS price (
   config_base_id  INTEGER NOT NULL,
-  season_id       INTEGER,
+  season_id       INTEGER NOT NULL DEFAULT 0,
   fe              REAL NOT NULL,
   median          REAL NOT NULL,
   min_price       REAL NOT NULL,
@@ -76,10 +80,13 @@ CREATE TABLE IF NOT EXISTS listing (
   UNIQUE (ts, config_base_id, qty)
 );
 
+-- seq различает одинаковые выплаты в одну миллисекунду: выкуп двух
+-- одинаковых лотов — это две выплаты, а не одна.
 CREATE TABLE IF NOT EXISTS receipt (
-  ts  INTEGER NOT NULL,
-  fe  INTEGER NOT NULL,
-  UNIQUE (ts, fe)
+  ts   INTEGER NOT NULL,
+  fe   INTEGER NOT NULL,
+  seq  INTEGER NOT NULL DEFAULT 0,
+  UNIQUE (ts, fe, seq)
 );
 
 -- Позиция чтения каждого файла лога, чтобы не разбирать заново.
@@ -108,6 +115,46 @@ export class Storage {
     this.db.exec('PRAGMA journal_mode = WAL');
     this.db.exec('PRAGMA foreign_keys = ON');
     this.db.exec(SCHEMA);
+    this.migrate();
+  }
+
+  /** Приведение баз, созданных прошлыми версиями, к текущей схеме. */
+  private migrate(): void {
+    // 1. Цены: season_id был NULL, а NULL в SQLite не равен NULL, поэтому
+    //    «PRIMARY KEY» не дедуплицировал и каждый запуск плодил дубли.
+    //    Убираем дубли (GROUP BY считает NULL-ы равными) и переводим
+    //    неизвестный сезон в 0.
+    try {
+      this.db.exec(`
+        DELETE FROM price WHERE rowid NOT IN (
+          SELECT MAX(rowid) FROM price
+          GROUP BY config_base_id, season_id, observed_at
+        )`);
+      this.db.exec('UPDATE price SET season_id = 0 WHERE season_id IS NULL');
+    } catch {
+      // Старой таблицы может не быть вовсе — тогда мигрировать нечего.
+    }
+
+    // 2. Выплаты: добавилась колонка seq. UNIQUE-ограничение старой таблицы
+    //    снять нельзя, поэтому таблица пересоздаётся.
+    const cols = this.db.prepare('PRAGMA table_info(receipt)').all() as Array<{
+      name: string;
+    }>;
+    if (!cols.some((c) => c.name === 'seq')) {
+      this.db.exec(`
+        BEGIN;
+        CREATE TABLE receipt_migrated (
+          ts   INTEGER NOT NULL,
+          fe   INTEGER NOT NULL,
+          seq  INTEGER NOT NULL DEFAULT 0,
+          UNIQUE (ts, fe, seq)
+        );
+        INSERT INTO receipt_migrated (ts, fe, seq) SELECT ts, fe, 0 FROM receipt;
+        DROP TABLE receipt;
+        ALTER TABLE receipt_migrated RENAME TO receipt;
+        COMMIT;
+      `);
+    }
   }
 
   /**
@@ -121,8 +168,17 @@ export class Storage {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const findRun = this.db.prepare(
-      'SELECT id FROM run WHERE started_at = ? AND area_id = ?',
+      'SELECT id, duration_ms FROM run WHERE started_at = ? AND area_id = ?',
     );
+    const updateRun = this.db.prepare(`
+      UPDATE run SET
+        season_id  = COALESCE(?, season_id),
+        asset      = COALESCE(?, asset),
+        level_type = COALESCE(?, level_type),
+        ended_at   = ?,
+        duration_ms = ?
+      WHERE id = ?
+    `);
     const insertDrop = this.db.prepare(`
       INSERT INTO drop_item (run_id, config_base_id, qty, proto, ts) VALUES (?, ?, ?, ?, ?)
     `);
@@ -146,8 +202,28 @@ export class Storage {
           run.durationMs,
           run.isHub ? 1 : 0,
         );
-        const row = findRun.get(run.startedAt, run.areaId) as { id: number } | undefined;
+        const row = findRun.get(run.startedAt, run.areaId) as
+          | { id: number; duration_ms: number | null }
+          | undefined;
         if (!row) continue;
+
+        // Запись обновляется только более полной версией забега: копия
+        // из оборванного при ротации файла короче настоящей, и затирать
+        // ею полную нельзя. Раньше состав дропа перезаписывался всегда,
+        // а строка забега — никогда, и после усечённого первого сохранения
+        // полный дроп навсегда делился на усечённую длительность.
+        const better =
+          row.duration_ms === null || (run.durationMs ?? 0) >= row.duration_ms;
+        if (!better) continue;
+
+        updateRun.run(
+          seasonId,
+          run.asset,
+          run.levelType,
+          run.endedAt,
+          run.durationMs,
+          row.id,
+        );
 
         // Перезаписываем состав: повторный разбор мог стать точнее.
         clearDrops.run(row.id);
@@ -177,7 +253,17 @@ export class Storage {
     this.db.exec('BEGIN');
     try {
       for (const r of records) {
-        stmt.run(r.configBaseId, r.seasonId, r.fe, r.median, r.min, r.sampleSize, r.observedAt);
+        // Неизвестный сезон пишется нулём: NULL сломал бы дедупликацию
+        // по первичному ключу (NULL != NULL в SQLite).
+        stmt.run(
+          r.configBaseId,
+          r.seasonId ?? 0,
+          r.fe,
+          r.median,
+          r.min,
+          r.sampleSize,
+          r.observedAt,
+        );
       }
       this.db.exec('COMMIT');
     } catch (err) {
@@ -192,12 +278,20 @@ export class Storage {
       'INSERT OR IGNORE INTO listing (ts, config_base_id, qty) VALUES (?, ?, ?)',
     );
     const insertReceipt = this.db.prepare(
-      'INSERT OR IGNORE INTO receipt (ts, fe) VALUES (?, ?)',
+      'INSERT OR IGNORE INTO receipt (ts, fe, seq) VALUES (?, ?, ?)',
     );
     this.db.exec('BEGIN');
     try {
       for (const l of listings) insertListing.run(l.ts, l.configBaseId, l.qty);
-      for (const r of receipts) insertReceipt.run(r.ts, r.fe);
+      // Одинаковые выплаты в одну миллисекунду различаются порядковым
+      // номером — иначе выкуп двух одинаковых лотов схлопывался в один.
+      const seq = new Map<string, number>();
+      for (const r of receipts) {
+        const key = `${r.ts}:${r.fe}`;
+        const n = seq.get(key) ?? 0;
+        seq.set(key, n + 1);
+        insertReceipt.run(r.ts, r.fe, n);
+      }
       this.db.exec('COMMIT');
     } catch (err) {
       this.db.exec('ROLLBACK');
@@ -335,6 +429,7 @@ export class Storage {
       farmingRuns: one('SELECT COUNT(*) AS n FROM run WHERE is_hub = 0'),
       drops: one('SELECT COUNT(*) AS n FROM drop_item'),
       prices: one('SELECT COUNT(DISTINCT config_base_id) AS n FROM price'),
+      priceRows: one('SELECT COUNT(*) AS n FROM price'),
       listings: one('SELECT COUNT(*) AS n FROM listing'),
       receipts: one('SELECT COUNT(*) AS n FROM receipt'),
     };

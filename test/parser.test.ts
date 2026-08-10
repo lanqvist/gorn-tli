@@ -166,6 +166,65 @@ describe('цены с биржи', () => {
     expect(observed!.unitPrices).toEqual([0.0001000100010001, 0.0002000200020002]);
   });
 
+  it('потерянный маркер End не глушит парсер до конца сессии', () => {
+    // Обрыв дампа (ротация, краш) раньше оставлял парсер в режиме
+    // «копим тело» навсегда: все последующие события молча глотались.
+    const parser = new EventParser();
+    parser.parse(
+      '[2026.08.09-19.58.29:724][248]TLNetGame: Display: [Game] ----Socket SendMessage STT----XchgSearchPrice----SynId = 96',
+    );
+    parser.parse('+filters+1+refer [112410]');
+    // End потерян; приходит обычное событие сумки.
+    const ev = parser.parse(
+      '[2026.08.10-10.04.54:717][838]TLLua: Display: [Game] BagMgr@:Modfy BagItem PageId = 102 SlotId = 0 ConfigBaseId = 100300 Num = 6616',
+    );
+    expect(ev?.kind).toBe('bagModify');
+  });
+
+  it('новый дамп сбрасывает недописанный, а не приклеивается к нему', () => {
+    const parser = new EventParser();
+    let observed: PriceObservationEvent | null = null;
+    const lines = [
+      // Запрос по предмету 111111 — без End.
+      '[2026.08.09-19.58.29:724][248]TLNetGame: Display: [Game] ----Socket SendMessage STT----XchgSearchPrice----SynId = 1',
+      '+filters+1+refer [111111]',
+      // Полный обмен по предмету 222222.
+      '[2026.08.09-19.58.30:000][249]TLNetGame: Display: [Game] ----Socket SendMessage STT----XchgSearchPrice----SynId = 2',
+      '+filters+1+refer [222222]',
+      '[2026.08.09-19.58.30:000][249]TLNetGame: Display: [Game] ----Socket SendMessage End----',
+      '[2026.08.09-19.58.30:100][250]TLNetGame: Display: [Game] ----Socket RecvMessage STT----XchgSearchPrice----SynId = 2',
+      '+prices+1+currency [100300]',
+      '|      | +unitPrices+1 [9999]',
+      '[2026.08.09-19.58.30:100][250]TLNetGame: Display: [Game] ----Socket RecvMessage End----',
+    ];
+    for (const line of lines) {
+      const ev = parser.parse(line);
+      if (ev?.kind === 'priceObservation') observed = ev;
+    }
+    // Цены достались предмету 222222, а не зависшему 111111.
+    expect(observed!.configBaseId).toBe(222222);
+  });
+
+  it('строки тела, приклеенные к префиксу лога, разбираются по тем же колонкам', () => {
+    // Игра пишет часть тела через логгер: перед `+` стоит префикс с датой
+    // и номером кадра, и колонки сдвинуты на его длину.
+    const body = parseBody([
+      '[2026.08.10-12.01.37:968][300]TLNetGame: Display: [Game] +prices+1+currency [100300]',
+      '|      | +unitPrices+1 [7.5]',
+    ]);
+    const prices = body.get('prices') as Map<string, unknown>;
+    const group = prices.get('1') as Map<string, unknown>;
+    expect(group.get('currency')).toBe('100300');
+    expect((group.get('unitPrices') as Map<string, unknown>).get('1')).toBe('7.5');
+  });
+
+  it('плюс внутри значения не ломает дерево', () => {
+    // Экспоненциальная запись числа содержит `+` — это значение, а не ключ.
+    const body = parseBody(['+unitPrices+1 [1e+06]']);
+    const prices = body.get('unitPrices') as Map<string, unknown>;
+    expect(prices.get('1')).toBe('1e+06');
+  });
+
   it('если группы в ФЕ нет, валюта не подменяется на ФЕ', () => {
     // Иначе цена в песке была бы записана как цена в ФЕ — ошибка
     // в тысячи раз, причём в сторону завышения.

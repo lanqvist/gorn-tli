@@ -195,6 +195,11 @@ body {
   border-top: 1px solid rgb(255 255 255 / 8%);
 }
 
+/* Выключенная кнопка в полоске управления (всплывашки/звук). */
+.ov-actions .ov-off {
+  opacity: 0.35;
+}
+
 .fe {
   display: inline-flex;
   align-items: baseline;

@@ -2,8 +2,8 @@ import {
   BAG_INIT_RE,
   BAG_MODIFY_RE,
   BAG_REMOVE_RE,
-  BODY_FIELD_RE,
   ENTER_LEVEL_RE,
+  ITEM_ADD_RE,
   ITEM_CHANGE_RE,
   LEVEL_IDS_RE,
   LEVEL_PATH_RE,
@@ -67,11 +67,30 @@ export class EventParser {
         this.pending = null;
         return this.finishSocket(done, line);
       }
-      // Строки тела идут либо отдельно, либо приклеены к строке с категорией.
-      this.pending.body.push(raw);
-      return null;
+      // Маркер End может потеряться: обрыв хвоста при ротации, краш игры
+      // посреди дампа. Раньше парсер навсегда застревал в режиме «копим
+      // тело» и молча глотал ВСЕ последующие события до конца сессии.
+      // Поэтому недописанный дамп бросаем, как только строка опознаётся
+      // как начало нового дампа или любое обычное событие.
+      if (SOCKET_START_RE.test(raw)) {
+        this.pending = null;
+        // Дальше строка разбирается как обычное начало дампа.
+      } else {
+        const rescued = this.parseEvent(raw, line);
+        if (rescued) {
+          this.pending = null;
+          return rescued;
+        }
+        this.pending.body.push(raw);
+        return null;
+      }
     }
 
+    return this.parseEvent(raw, line) ?? this.parseSocketStart(raw);
+  }
+
+  /** Однострочные события — всё, кроме сокет-дампов. */
+  private parseEvent(raw: string, line: number): LogEvent | null {
     const ts = parseTimestamp(raw);
 
     let m: RegExpExecArray | null;
@@ -118,6 +137,19 @@ export class EventParser {
       };
     }
 
+    if ((m = ITEM_ADD_RE.exec(raw))) {
+      if (ts === null) return null;
+      return {
+        kind: 'bagAdd',
+        ts,
+        line,
+        configBaseId: Number(m[1]),
+        num: Number(m[2]),
+        pageId: Number(m[3]),
+        slotId: Number(m[4]),
+      };
+    }
+
     if ((m = ENTER_LEVEL_RE.exec(raw))) {
       if (ts === null) return null;
       return { kind: 'enterLevel', ts, line, areaId: Number(m[1]) };
@@ -140,17 +172,20 @@ export class EventParser {
       };
     }
 
-    if ((m = SOCKET_START_RE.exec(raw))) {
+    return null;
+  }
+
+  private parseSocketStart(raw: string): null {
+    const m = SOCKET_START_RE.exec(raw);
+    if (m) {
       this.pending = {
         direction: m[1]!,
         action: m[2]!.trim(),
         synId: Number(m[3]),
-        ts: ts ?? 0,
+        ts: parseTimestamp(raw) ?? 0,
         body: [],
       };
-      return null;
     }
-
     return null;
   }
 
@@ -244,15 +279,29 @@ export type BodyNode = Map<string, BodyNode | string>;
  * Дешёвые материалы продаются и за ФЕ, и за Пламенный песок, поэтому
  * их цена в ФЕ терялась целиком.
  */
+/**
+ * Часть строк тела приклеена к префиксу лога: `[дата][кадр]Категория:
+ * Display: [Game] +ключ […]`. Колонки в таких строках сдвинуты на длину
+ * префикса, и сравнивать их с колонками «голых» строк-продолжений нельзя —
+ * тем более что счётчик кадров растёт и меняет длину префикса посреди дампа.
+ */
+const BODY_PREFIX_RE = /^\[[^\]]*\]\[[^\]]*\][^:[\]]*:\s*Display:\s*\[Game\]\s?/;
+
 export function parseBody(lines: string[]): BodyNode {
   const root: BodyNode = new Map();
   let path: Array<{ col: number; key: string }> = [];
 
   for (const raw of lines) {
+    const stripped = raw.replace(BODY_PREFIX_RE, '');
+    // Ключи ищем только до первого значения: `+` может встретиться
+    // и внутри скобок — например, в числе экспоненциальной записи.
+    const bracket = stripped.indexOf('[');
+    const head = bracket === -1 ? stripped : stripped.slice(0, bracket);
+
     const tokens: Array<{ col: number; key: string }> = [];
     const re = /\+([^+\s[\]|]+)/g;
     let m: RegExpExecArray | null;
-    while ((m = re.exec(raw))) tokens.push({ col: m.index, key: m[1]! });
+    while ((m = re.exec(head))) tokens.push({ col: m.index, key: m[1]! });
     if (tokens.length === 0) continue;
 
     for (const token of tokens) {
@@ -261,7 +310,7 @@ export function parseBody(lines: string[]): BodyNode {
       path.push(token);
     }
 
-    const value = /\[([^\]]*)\]\s*$/.exec(raw);
+    const value = /\[([^\]]*)\]\s*$/.exec(stripped);
     if (value) setPath(root, path.map((p) => p.key), value[1]!);
   }
 

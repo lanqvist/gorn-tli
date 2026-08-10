@@ -8,10 +8,11 @@ export const FE_ID: ConfigBaseId = 100300;
 export const FLAME_SAND_ID: ConfigBaseId = 100200;
 
 /**
- * Связанные (непередаваемые) варианты предметов имеют id = базовый + 1000
- * и всегда стоят 0 ФЕ, потому что их нельзя продать.
+ * Связанные (непередаваемые) предметы всегда стоят 0 ФЕ: их нельзя продать.
+ * Признак связанности — название в справочнике («Bound …», «绑定…»),
+ * а не арифметика id: пары «id + 1000» в большинстве случаев оказываются
+ * просто соседними предметами.
  */
-export const BOUND_ID_OFFSET = 1000;
 
 /** Смысл транзакции. Определяется по ItemChange@ ProtoName. */
 export type ProtoKind =
@@ -52,6 +53,19 @@ export interface BagRemoveEvent extends LogEventBase {
   kind: 'bagRemove';
   pageId: number;
   slotId: number;
+}
+
+/**
+ * ItemChange@ Add — новый экземпляр предмета лёг в слот. Единственный
+ * сигнал о дропе в слот, пустовавший с самого входа: такие слоты
+ * в InitBagData не попадают.
+ */
+export interface BagAddEvent extends LogEventBase {
+  kind: 'bagAdd';
+  pageId: number;
+  slotId: number;
+  configBaseId: ConfigBaseId;
+  num: number;
 }
 
 /** ItemChange@ ProtoName=X start|end — рамка транзакции вокруг изменений сумки. */
@@ -105,6 +119,7 @@ export type LogEvent =
   | BagModifyEvent
   | BagInitEvent
   | BagRemoveEvent
+  | BagAddEvent
   | ItemChangeEvent
   | EnterLevelEvent
   | LevelPathEvent

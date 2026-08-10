@@ -1,8 +1,10 @@
+import { statSync } from 'node:fs';
+
 import type { SlotState } from './inventory.js';
 import { listLogFiles } from './locate.js';
 import { analyzeLogFile } from './pipeline.js';
 import { PriceStore } from './priceStore.js';
-import { TradeLedger } from './trade.js';
+import { TradeLedger, mergeByKey } from './trade.js';
 import type { ConfigBaseId, Run } from './types.js';
 
 /**
@@ -35,6 +37,15 @@ export interface RetroScanResult {
    * после запуска трекера уходит на установку базы и теряется.
    */
   slots: Array<[string, SlotState]>;
+  /** Сезон последнего файла — текущий. Первый в seasonIds — самый старый. */
+  latestSeasonId: number | null;
+  /**
+   * Размер текущего лога сразу после его разбора. Живое дочитывание
+   * начинает с этой позиции, а не с конца файла на момент своего старта:
+   * иначе строки, записанные игрой между сканом и стартом дочитывания,
+   * не достаются никому.
+   */
+  currentLog: { path: string; position: number } | null;
 }
 
 export interface RetroScanProgress {
@@ -57,6 +68,13 @@ export async function retroScan(
   const seasonIds = new Set<number>();
   let linesScanned = 0;
   let seasonId: number | null = null;
+  let currentLog: RetroScanResult['currentLog'] = null;
+
+  // Файлы могут перекрываться после ротации при краше, поэтому торговые
+  // события каждого файла копятся отдельно и сливаются с дедупликацией.
+  const listingsByFile: Array<TradeLedger['listings']> = [];
+  const receiptsByFile: Array<TradeLedger['receipts']> = [];
+  const purchasesByFile: Array<TradeLedger['purchases']> = [];
 
   // Цены складываем в один store: они общие для сезона.
   const prices = new PriceStore(null);
@@ -87,24 +105,44 @@ export async function retroScan(
 
     for (const observation of result.prices) prices.observe(observation);
 
-    for (const listing of result.trade.listings) trade.listings.push(listing);
-    for (const receipt of result.trade.receipts) trade.receipts.push(receipt);
-    for (const purchase of result.trade.purchases) trade.purchases.push(purchase);
+    listingsByFile.push(result.trade.listings);
+    receiptsByFile.push(result.trade.receipts);
+    purchasesByFile.push(result.trade.purchases);
 
     for (const [proto, n] of result.diagnostics.unknownProtos) {
       unknownProtos.set(proto, (unknownProtos.get(proto) ?? 0) + n);
     }
+
+    if (file.isCurrent) {
+      // Размер файла на момент окончания разбора: с него продолжит tailer.
+      try {
+        currentLog = { path: file.path, position: statSync(file.path).size };
+      } catch {
+        currentLog = { path: file.path, position: file.size };
+      }
+    }
   }
 
-  void seasonId;
+  trade.listings.push(...mergeByKey(listingsByFile, (l) => `${l.ts}:${l.configBaseId}:${l.qty}`));
+  trade.receipts.push(...mergeByKey(receiptsByFile, (r) => `${r.ts}:${r.fe}`));
+  trade.purchases.push(
+    ...mergeByKey(purchasesByFile, (p) => `${p.ts}:${p.configBaseId}:${p.qty}`),
+  );
 
   // Забеги из разных файлов могут перекрываться, если игра упала и лог
-  // ротировался посреди карты. Сортируем и убираем дубли по времени старта.
+  // ротировался посреди карты. Сортируем и убираем дубли по времени старта;
+  // из двух копий одного забега остаётся более полная, а не первая
+  // попавшаяся: копия из оборванного файла может быть усечённой.
   runs.sort((a, b) => a.startedAt - b.startedAt);
   const deduped: Run[] = [];
   for (const run of runs) {
     const prev = deduped[deduped.length - 1];
-    if (prev && prev.startedAt === run.startedAt && prev.areaId === run.areaId) continue;
+    if (prev && prev.startedAt === run.startedAt && prev.areaId === run.areaId) {
+      const prevScore = (prev.durationMs ?? 0) + prev.drops.length + prev.costs.length;
+      const runScore = (run.durationMs ?? 0) + run.drops.length + run.costs.length;
+      if (runScore > prevScore) deduped[deduped.length - 1] = run;
+      continue;
+    }
     deduped.push(run);
   }
 
@@ -119,6 +157,8 @@ export async function retroScan(
     unknownProtos,
     failed,
     slots,
+    latestSeasonId: seasonId,
+    currentLog,
   };
 }
 

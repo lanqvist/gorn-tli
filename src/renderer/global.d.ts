@@ -8,6 +8,12 @@ import type { UpdateState } from '../main/updater.js';
  * глобального объекта рано или поздно расходятся.
  */
 declare global {
+  interface GornOverlayPrefs {
+    popups: boolean;
+    sound: boolean;
+    volume: number;
+  }
+
   interface GornOverlayApi {
     getState: () => Promise<{
       enabled: boolean;
@@ -15,6 +21,9 @@ declare global {
       locked: boolean;
       opacity: number;
       fontScale: number;
+      popups: boolean;
+      sound: boolean;
+      volume: number;
     }>;
     toggle: () => Promise<boolean>;
     close: () => void;
@@ -23,8 +32,11 @@ declare global {
     toggleLock: () => void;
     setOpacity: (value: number) => void;
     reportHeight: (height: number) => void;
+    setPrefs: (prefs: Partial<GornOverlayPrefs>) => void;
     onMode: (cb: (mode: OverlayMode) => void) => () => void;
     onLocked: (cb: (locked: boolean) => void) => () => void;
+    onEnabled: (cb: (open: boolean) => void) => () => void;
+    onPrefs: (cb: (prefs: GornOverlayPrefs) => void) => () => void;
   }
 
   type NameLanguage = 'ru' | 'en' | 'both';
@@ -34,6 +46,12 @@ declare global {
     onSnapshot: (cb: (snapshot: Snapshot) => void) => () => void;
     getItemNames: () => Promise<NameLanguage>;
     setItemNames: (language: NameLanguage) => Promise<NameLanguage>;
+    getCommunityPrices: () => Promise<boolean>;
+    setCommunityPrices: (enabled: boolean) => Promise<boolean>;
+    toasts: {
+      reportHeight: (height: number) => void;
+      reportActive: (active: boolean) => void;
+    };
     overlay: GornOverlayApi;
     update: {
       get: () => Promise<UpdateState | null>;

@@ -17,10 +17,19 @@ import { StringDecoder } from 'node:string_decoder';
 const POLL_INTERVAL_MS = 300;
 /** Максимум за один проход, чтобы не блокировать процесс на гигабайтном логе. */
 const MAX_CHUNK_BYTES = 4 * 1024 * 1024;
+/** Позиция неизвестна: файл не удалось прочитать при старте. */
+const UNKNOWN_POSITION = -1;
 
 export interface TailerOptions {
   /** Начать с конца файла (обычный запуск) или с начала (первичный разбор). */
   fromStart?: boolean;
+  /**
+   * Явная стартовая позиция в байтах — то место, до которого файл уже
+   * разобран ретро-сканом. Приоритетнее fromStart. Закрывает щель между
+   * сканом и стартом дочитывания: строки, записанные игрой в этом окне,
+   * иначе не достаются никому.
+   */
+  initialPosition?: number;
   onLines: (lines: string[]) => void;
   onRotate?: () => void;
   onError?: (err: Error) => void;
@@ -42,10 +51,18 @@ export class LogTailer {
 
   start(): void {
     this.stopped = false;
-    try {
-      this.position = this.options.fromStart ? 0 : statSync(this.path).size;
-    } catch {
-      this.position = 0;
+    if (this.options.initialPosition !== undefined) {
+      this.position = this.options.initialPosition;
+    } else {
+      try {
+        this.position = this.options.fromStart ? 0 : statSync(this.path).size;
+      } catch {
+        // Файла ещё нет или он мгновение заблокирован. Раньше здесь ставился
+        // ноль, и при живом файле первый же pump скармливал движку ВЕСЬ лог —
+        // все забеги задваивались. Помечаем позицию неизвестной: pump выставит
+        // её по первому успешному stat.
+        this.position = UNKNOWN_POSITION;
+      }
     }
 
     try {
@@ -76,6 +93,14 @@ export class LogTailer {
         size = statSync(this.path).size;
       } catch {
         return; // игра ещё не создала файл
+      }
+
+      if (this.position === UNKNOWN_POSITION) {
+        // Первый успешный stat после неудачного старта. Сюда попадаем,
+        // когда файла не существовало (движок передаёт initialPosition
+        // всякий раз, когда лог был разобран сканом) — значит, игра
+        // создала его только что, и это начало сессии: читаем целиком.
+        this.position = 0;
       }
 
       // Файл стал меньше — игра ротировала лог и начала новый.

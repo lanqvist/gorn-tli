@@ -75,6 +75,52 @@ describe('хранилище', () => {
     expect(db.realizedFe()).toBe(43);
   });
 
+  it('две одинаковые выплаты в одну миллисекунду сохраняются обе', () => {
+    // Выкуп двух одинаковых лотов — две выплаты. UNIQUE(ts, fe) их терял.
+    db.saveTrade([], [
+      { ts: 10, fe: 30 },
+      { ts: 10, fe: 30 },
+    ]);
+    db.saveTrade([], [
+      { ts: 10, fe: 30 },
+      { ts: 10, fe: 30 },
+    ]);
+    expect(db.counts().receipts).toBe(2);
+    expect(db.realizedFe()).toBe(60);
+  });
+
+  it('усечённая копия забега не затирает полную', () => {
+    // Копия из оборванного при ротации файла короче настоящей.
+    const full = run(1000, 5348, [[100300, 44], [100200, 10]]);
+    db.saveRuns([full], 1501);
+
+    const truncated = { ...run(1000, 5348, [[100300, 20]]), durationMs: 30_000, endedAt: 31_000 };
+    db.saveRuns([truncated], 1501);
+
+    expect(db.counts().drops).toBe(2);
+    const loaded = db.loadRuns().find((r) => r.startedAt === 1000)!;
+    expect(loaded.durationMs).toBe(84_000);
+  });
+
+  it('цены с неизвестным сезоном не плодят дублей при повторном сохранении', () => {
+    // season_id участвует в первичном ключе, а NULL != NULL в SQLite:
+    // раньше каждый запуск добавлял полный дубль всех цен.
+    const record = {
+      configBaseId: 10042,
+      fe: 5,
+      median: 6,
+      min: 4,
+      sampleSize: 100,
+      observedAt: 1000,
+      seasonId: null,
+    };
+    db.savePrices([record]);
+    db.savePrices([record]);
+    db.savePrices([record]);
+    expect(db.counts().priceRows).toBe(1);
+    expect(db.latestPrice(10042)).toBe(5);
+  });
+
   it('история цен хранит наблюдения, а последняя цена берётся по времени', () => {
     db.savePrices([
       {

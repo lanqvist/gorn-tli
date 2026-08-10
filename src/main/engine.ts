@@ -11,15 +11,16 @@ import {
 } from '../core/analysis.js';
 import { EventParser } from '../core/eventParser.js';
 import { InventoryTracker } from '../core/inventory.js';
-import { findLogDirectory, listLogFiles } from '../core/locate.js';
-import { PriceStore } from '../core/priceStore.js';
+import { findLogDirectory } from '../core/locate.js';
+import { isBoundName, PriceStore } from '../core/priceStore.js';
 import { retroScan } from '../core/retroScan.js';
 import { runCost, runValue } from '../core/retroScan.js';
 import { RunSegmenter } from '../core/runSegmenter.js';
 import { perHour, summarize, type RateSummary } from '../core/stats.js';
-import { TradeLedger } from '../core/trade.js';
+import { TradeLedger, mergeByKey } from '../core/trade.js';
 import { FE_ID, type ConfigBaseId, type Diagnostics, type Run } from '../core/types.js';
 import { Storage } from '../storage/db.js';
+import { CommunityPriceFeed } from './communityPrices.js';
 import { iconUrl } from './icons.js';
 import { LogTailer } from './tailer.js';
 
@@ -30,6 +31,8 @@ export interface DropView {
   qty: number;
   unitFe: number | null;
   totalFe: number | null;
+  /** Откуда цена: своя пробивка или база сообщества. */
+  priceSource: 'own' | 'community' | null;
 }
 
 export interface RunView {
@@ -81,6 +84,9 @@ export interface Snapshot {
     unknownProtos: Array<[string, number]>;
     pricedItems: number;
     unpricedDrops: number;
+    /** Сколько предметов оценено по базе сообщества (titrack.ninja). */
+    communityPrices: number;
+    communityEnabled: boolean;
   };
 }
 
@@ -139,19 +145,34 @@ export class Engine extends EventEmitter {
   private seasonId: number | null = null;
   private history: Run[] = [];
   private lastActivityAt = 0;
+  /** Метка времени последнего разобранного события — по часам лога. */
+  private lastEventTs = 0;
+  private community: CommunityPriceFeed;
+  private communityEnabled: boolean;
 
   constructor(
     dataDir: string,
     items: Array<{ id: number; name: string; nameRu?: string | null; icon: string | null }>,
     language: NameLanguage = 'ru',
+    options: { communityPrices?: boolean } = {},
   ) {
     super();
     this.storage = new Storage(join(dataDir, 'gorn.db'));
     for (const it of items) {
       this.items.set(it.id, { name: it.name, nameRu: it.nameRu ?? null, icon: it.icon });
     }
-    this.prices.registerKnownItems(this.items.keys());
+    // Связанность — по названию из справочника. Арифметика «id + 1000»
+    // ложно записывала в связанные 224 обычных предмета и обнуляла им цены.
+    const bound: ConfigBaseId[] = [];
+    for (const it of items) {
+      if (isBoundName(it.name) || isBoundName(it.nameRu)) bound.push(it.id);
+    }
+    this.prices.registerBoundIds(bound);
     this.language = language;
+
+    this.communityEnabled = options.communityPrices ?? true;
+    this.community = new CommunityPriceFeed(dataDir);
+    this.community.onUpdate(() => this.emit('snapshot', this.buildSnapshot()));
   }
 
   private language: NameLanguage;
@@ -193,7 +214,10 @@ export class Engine extends EventEmitter {
     }
 
     const scan = await retroScan(this.logDir);
-    this.seasonId = [...scan.seasonIds][0] ?? null;
+    // Сезон — из ПОСЛЕДНЕГО файла. Первый элемент seasonIds — самый старый:
+    // после смены сезона со старыми логами на диске трекер целый сезон
+    // писал бы данные в прошлый.
+    this.seasonId = scan.latestSeasonId ?? [...scan.seasonIds].pop() ?? null;
 
     // Разбор логов точнее сохранённого (мог улучшиться парсер), поэтому
     // при совпадении забега берём свежий разбор.
@@ -206,20 +230,18 @@ export class Engine extends EventEmitter {
       this.prices.set(record.configBaseId, record.fe, record.observedAt);
     }
 
-    const seenListing = new Set<string>();
-    for (const l of [...storedTrade.listings, ...scan.trade.listings]) {
-      const key = `${l.ts}:${l.configBaseId}:${l.qty}`;
-      if (seenListing.has(key)) continue;
-      seenListing.add(key);
-      this.trade.listings.push(l);
-    }
-    const seenReceipt = new Set<string>();
-    for (const r of [...storedTrade.receipts, ...scan.trade.receipts]) {
-      const key = `${r.ts}:${r.fe}`;
-      if (seenReceipt.has(key)) continue;
-      seenReceipt.add(key);
-      this.trade.receipts.push(r);
-    }
+    // Слияние со счётчиком вхождений: две одинаковые выплаты в одну
+    // миллисекунду — это две выплаты, а один и тот же лог, прочитанный
+    // дважды, — по-прежнему один набор событий.
+    this.trade.listings.push(
+      ...mergeByKey(
+        [storedTrade.listings, scan.trade.listings],
+        (l) => `${l.ts}:${l.configBaseId}:${l.qty}`,
+      ),
+    );
+    this.trade.receipts.push(
+      ...mergeByKey([storedTrade.receipts, scan.trade.receipts], (r) => `${r.ts}:${r.fe}`),
+    );
     for (const [proto, n] of scan.unknownProtos) {
       this.diagnostics.unknownProtos.set(proto, n);
     }
@@ -233,7 +255,13 @@ export class Engine extends EventEmitter {
     // и расход на первую же открытую карту после запуска не засчитывается.
     this.inventory.importSlots(scan.slots);
 
-    this.startTailing();
+    // Первичные цены сообщества: закрывают предметы, которые игрок ещё
+    // не пробивал сам. Собственные пробивки всегда в приоритете.
+    if (this.communityEnabled && this.seasonId !== null) {
+      this.community.start(this.seasonId);
+    }
+
+    this.startTailing(scan.currentLog);
     this.startHeartbeat();
     this.emit('snapshot', this.buildSnapshot());
   }
@@ -250,30 +278,66 @@ export class Engine extends EventEmitter {
   private startHeartbeat(): void {
     this.heartbeat = setInterval(() => {
       const open = this.segmenter.all.find((r) => r.endedAt === null);
-      if (open && !open.isHub) this.emit('snapshot', this.buildSnapshot());
+      if (open && !open.isHub) {
+        this.emit('snapshot', this.buildSnapshot());
+        return;
+      }
+      // Вне карты срез шлётся только когда подсказка статуса меняется:
+      // иначе «игра закрыта» вычислялось, но никогда не доезжало до экрана.
+      const hint = this.hintFor('idle');
+      if (hint !== this.lastIdleHint) {
+        this.lastIdleHint = hint;
+        this.emit('snapshot', this.buildSnapshot());
+      }
     }, 5000);
   }
 
   private heartbeat: NodeJS.Timeout | null = null;
+  private lastIdleHint: string | null = null;
 
-  private startTailing(): void {
+  private startTailing(currentLog: { path: string; position: number } | null): void {
     if (!this.logDir) return;
-    const files = listLogFiles(this.logDir);
-    const current = files.find((f) => f.isCurrent) ?? files[files.length - 1];
-    if (!current) return;
 
-    this.tailer = new LogTailer(current.path, {
+    // Хвостим всегда UE_game.log по фиксированному пути, а не «последний
+    // найденный файл»: если игра ещё не запускалась и лога нет, tailer сам
+    // дождётся его появления опросом. Раньше при отсутствии текущего лога
+    // дочитывание не запускалось вовсе, а при наличии одних бэкапов трекер
+    // навсегда прилипал к мёртвому файлу.
+    const path = currentLog?.path ?? join(this.logDir, 'UE_game.log');
+
+    this.tailer = new LogTailer(path, {
+      // Продолжаем ровно с того байта, где закончился ретро-скан: щель
+      // между сканом и стартом дочитывания иначе теряет строки.
+      ...(currentLog ? { initialPosition: currentLog.position } : {}),
       onLines: (lines) => this.consume(lines),
-      onRotate: () => {
-        // Новая сессия игры: состояние сумки и забегов начинается заново.
-        this.parser = new EventParser();
-        this.inventory = new InventoryTracker(this.diagnostics);
-        this.segmenter = new RunSegmenter();
-        this.emit('snapshot', this.buildSnapshot());
-      },
+      onRotate: () => this.onLogRotate(),
       onError: (err) => this.emit('error', err),
     });
     this.tailer.start();
+  }
+
+  /**
+   * Игра перезапущена: лог начался заново.
+   *
+   * Забеги, накопленные за сессию, ПЕРЕНОСЯТСЯ в историю, а не выбрасываются:
+   * раньше они жили только в сегментере, и каждый перезапуск клиента стирал
+   * с экрана весь вечерний фарм до перезапуска трекера.
+   */
+  private onLogRotate(): void {
+    const finished = this.segmenter.finish(this.lastEventTs || Date.now());
+    if (finished.length > 0) {
+      this.storage.saveRuns(finished, this.seasonId);
+      const byKey = new Map<string, Run>();
+      for (const run of this.history) byKey.set(`${run.startedAt}:${run.areaId}`, run);
+      for (const run of finished) byKey.set(`${run.startedAt}:${run.areaId}`, run);
+      this.history = [...byKey.values()].sort((a, b) => a.startedAt - b.startedAt);
+    }
+
+    // Состояние сумки и забегов начинается заново.
+    this.parser = new EventParser();
+    this.inventory = new InventoryTracker(this.diagnostics);
+    this.segmenter = new RunSegmenter();
+    this.emit('snapshot', this.buildSnapshot());
   }
 
   private consume(lines: string[]): void {
@@ -281,9 +345,14 @@ export class Engine extends EventEmitter {
 
     for (const raw of lines) {
       this.diagnostics.linesTotal++;
-      if (this.seasonId === null) {
-        const m = /\+SeasonId \[(\d+)\]/.exec(raw);
-        if (m) this.seasonId = Number(m[1]);
+      const m = /\+SeasonId \[(\d+)\]/.exec(raw);
+      if (m) {
+        const season = Number(m[1]);
+        if (season !== this.seasonId) {
+          // Смена сезона на лету: цены прошлого сезона неприменимы.
+          this.seasonId = season;
+          if (this.communityEnabled) this.community.start(season);
+        }
       }
 
       const ev = this.parser.parse(raw);
@@ -291,6 +360,7 @@ export class Engine extends EventEmitter {
       this.diagnostics.linesMatched++;
       changed = true;
       this.lastActivityAt = Date.now();
+      if ('ts' in ev && ev.ts > 0) this.lastEventTs = ev.ts;
 
       switch (ev.kind) {
         case 'itemChange':
@@ -299,6 +369,9 @@ export class Engine extends EventEmitter {
           break;
         case 'bagInit':
           this.inventory.applyInit(ev);
+          break;
+        case 'bagAdd':
+          this.inventory.applyAdd(ev);
           break;
         case 'bagRemove': {
           const delta = this.inventory.applyRemove(ev);
@@ -407,7 +480,33 @@ export class Engine extends EventEmitter {
       .join(' + ');
   }
 
-  private priceOf = (id: ConfigBaseId): number | null => this.prices.priceOf(id);
+  /**
+   * Цена предмета: сначала собственные пробивки игрока, затем база
+   * сообщества. Свои данные в приоритете: они с ЕГО сервера и свежее.
+   */
+  private priceOf = (id: ConfigBaseId): number | null => {
+    const own = this.prices.priceOf(id);
+    if (own !== null) return own;
+    if (!this.communityEnabled) return null;
+    return this.community.priceOf(id)?.fe ?? null;
+  };
+
+  private priceSourceOf(id: ConfigBaseId): 'own' | 'community' | null {
+    if (this.prices.priceOf(id) !== null) return 'own';
+    if (this.communityEnabled && this.community.priceOf(id) !== null) return 'community';
+    return null;
+  }
+
+  /** Включение и отключение цен сообщества на лету. */
+  setCommunityPrices(enabled: boolean): void {
+    this.communityEnabled = enabled;
+    if (enabled && this.seasonId !== null) {
+      this.community.start(this.seasonId);
+    } else {
+      this.community.stop();
+    }
+    this.emit('snapshot', this.buildSnapshot());
+  }
 
   private toView(run: Run): RunView {
     const feGained = run.drops
@@ -436,6 +535,7 @@ export class Engine extends EventEmitter {
           qty,
           unitFe,
           totalFe: unitFe === null ? null : unitFe * qty,
+          priceSource: this.priceSourceOf(configBaseId),
         };
       })
       .sort((a, b) => (b.totalFe ?? -1) - (a.totalFe ?? -1));
@@ -460,7 +560,14 @@ export class Engine extends EventEmitter {
     const live = this.segmenter.all;
     const open = live.find((r) => r.endedAt === null) ?? null;
 
-    const allRuns = [...this.history, ...live.filter((r) => r.endedAt !== null)];
+    // Дедупликация истории и живых забегов по ключу: перестраховка от
+    // задвоения при повторном разборе того же лога. Живой разбор свежее.
+    const byKey = new Map<string, Run>();
+    for (const run of this.history) byKey.set(`${run.startedAt}:${run.areaId}`, run);
+    for (const run of live) {
+      if (run.endedAt !== null) byKey.set(`${run.startedAt}:${run.areaId}`, run);
+    }
+    const allRuns = [...byKey.values()].sort((a, b) => a.startedAt - b.startedAt);
     const farming = allRuns.filter((r) => !r.isHub && (r.durationMs ?? 0) > 5000);
 
     // Время считаем активное, а не по часам: простой внутри карты
@@ -540,6 +647,8 @@ export class Engine extends EventEmitter {
         unknownProtos: [...this.diagnostics.unknownProtos.entries()],
         pricedItems: this.prices.size,
         unpricedDrops,
+        communityPrices: this.communityEnabled ? this.community.size : 0,
+        communityEnabled: this.communityEnabled,
       },
     };
   }
@@ -565,9 +674,16 @@ export class Engine extends EventEmitter {
     return { ...base, status, hint };
   }
 
+  private stopped = false;
+
   stop(): void {
+    // stop() зовут и window-all-closed, и before-quit — повторное закрытие
+    // базы бросает исключение посреди выхода.
+    if (this.stopped) return;
+    this.stopped = true;
     if (this.heartbeat) clearInterval(this.heartbeat);
     this.heartbeat = null;
+    this.community.stop();
     this.tailer?.stop();
     this.persistFinished();
     this.storage.close();

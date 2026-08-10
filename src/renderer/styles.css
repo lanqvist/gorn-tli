@@ -658,6 +658,28 @@ body {
   font-weight: 700;
 }
 
+.diag-toggle {
+  margin-left: auto;
+  background: none;
+  border: 1px solid rgb(255 255 255 / 14%);
+  border-radius: 5px;
+  color: var(--muted);
+  font-size: 11px;
+  padding: 2px 8px;
+  cursor: pointer;
+}
+
+.diag-toggle:hover {
+  color: #fff;
+  border-color: rgb(255 255 255 / 30%);
+}
+
+/* Цена из базы сообщества: пунктир как знак «оценка, не своя пробивка». */
+.price-community {
+  border-bottom: 1px dashed rgb(255 255 255 / 25%);
+  cursor: help;
+}
+
 /* ── прочее ─────────────────────────────────────────────────────── */
 
 .muted {

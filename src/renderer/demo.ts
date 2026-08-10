@@ -23,6 +23,7 @@ const drop = (
   qty: number,
   unitFe: number | null,
   icon: string | null = null,
+  priceSource: 'own' | 'community' | null = unitFe === null ? null : 'own',
 ) => ({
   configBaseId,
   name,
@@ -30,6 +31,7 @@ const drop = (
   qty,
   unitFe,
   totalFe: unitFe === null ? null : unitFe * qty,
+  priceSource,
 });
 
 export const demoSnapshot: Snapshot = {
@@ -187,5 +189,7 @@ export const demoSnapshot: Snapshot = {
     unknownProtos: [],
     pricedItems: 58,
     unpricedDrops: 3,
+    communityPrices: 2154,
+    communityEnabled: true,
   },
 };

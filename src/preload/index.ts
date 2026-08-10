@@ -30,6 +30,18 @@ contextBridge.exposeInMainWorld('gorn', {
   getItemNames: () => ipcRenderer.invoke('settings:itemNames'),
   setItemNames: (language: string) => ipcRenderer.invoke('settings:setItemNames', language),
 
+  /** Первичные цены сообщества: включение и отключение. */
+  getCommunityPrices: () => ipcRenderer.invoke('settings:communityPrices'),
+  setCommunityPrices: (enabled: boolean) =>
+    ipcRenderer.invoke('settings:setCommunityPrices', enabled),
+
+  /** Слой всплывающего дохода у центра экрана. */
+  toasts: {
+    reportHeight: (height: number) => ipcRenderer.send('toasts:height', height),
+    /** Есть плашки — окно видно; кончились — главный процесс его прячет. */
+    reportActive: (active: boolean) => ipcRenderer.send('toasts:active', active),
+  },
+
   overlay: {
     /** Текущие настройки оверлея. */
     getState: () => ipcRenderer.invoke('overlay:state'),
@@ -51,6 +63,22 @@ contextBridge.exposeInMainWorld('gorn', {
       const handler = (_e: unknown, locked: boolean) => callback(locked);
       ipcRenderer.on('overlay:locked', handler);
       return () => ipcRenderer.removeListener('overlay:locked', handler);
+    },
+
+    /** Открыт ли оверлей — для кнопки в шапке главного окна. */
+    onEnabled: (callback: (open: boolean) => void) => {
+      const handler = (_e: unknown, open: boolean) => callback(open);
+      ipcRenderer.on('overlay:enabled', handler);
+      return () => ipcRenderer.removeListener('overlay:enabled', handler);
+    },
+
+    /** Настройки всплывашек и звука. */
+    setPrefs: (prefs: { popups?: boolean; sound?: boolean; volume?: number }) =>
+      ipcRenderer.send('overlay:setPrefs', prefs),
+    onPrefs: (callback: (prefs: unknown) => void) => {
+      const handler = (_e: unknown, prefs: unknown) => callback(prefs);
+      ipcRenderer.on('overlay:prefs', handler);
+      return () => ipcRenderer.removeListener('overlay:prefs', handler);
     },
   },
 });

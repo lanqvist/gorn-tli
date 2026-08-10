@@ -1,5 +1,5 @@
 import { percentile } from './stats.js';
-import { BOUND_ID_OFFSET, FE_ID, type ConfigBaseId, type PriceObservationEvent } from './types.js';
+import { FE_ID, type ConfigBaseId, type PriceObservationEvent } from './types.js';
 
 /**
  * Цены берутся из ответов биржи на пробивку: игра пишет в лог цены
@@ -25,6 +25,15 @@ export interface PriceRecord {
 
 /** Доля лотов, отсекаемая снизу при выборе референсной цены. */
 export const REFERENCE_PERCENTILE = 0.1;
+
+/**
+ * Связанный (непередаваемый) предмет опознаётся по названию из справочника:
+ * «Bound …» в английском, «绑定…» в китайском, «Связанный: …» в русском.
+ */
+export function isBoundName(name: string | null | undefined): boolean {
+  if (!name) return false;
+  return /^Bound\s/i.test(name) || name.startsWith('绑定') || /^Связанн/i.test(name);
+}
 
 export function referencePrice(unitPrices: number[]): number {
   const sorted = [...unitPrices].filter((p) => p > 0).sort((a, b) => a - b);
@@ -89,20 +98,26 @@ export class PriceStore {
     return this.prices.get(configBaseId)?.fe ?? null;
   }
 
-  /** Связанный вариант существует, если есть базовый предмет с id на 1000 меньше. */
   private isBound(configBaseId: ConfigBaseId): boolean {
     return this.boundIds.has(configBaseId);
   }
 
   private boundIds = new Set<ConfigBaseId>();
 
-  /** Регистрирует, какие id считаются связанными, по справочнику предметов. */
-  registerKnownItems(ids: Iterable<ConfigBaseId>): void {
-    const all = new Set(ids);
-    for (const id of all) {
-      const bound = id + BOUND_ID_OFFSET;
-      if (all.has(bound)) this.boundIds.add(bound);
-    }
+  /**
+   * Регистрирует связанные предметы.
+   *
+   * Раньше связанность выводилась арифметикой «id = базовый + 1000».
+   * Проверка по реальному справочнику показала, что из 237 таких пар
+   * настоящих связанных только 13: у легендарок и органов id стоят
+   * плотно, и +1000 попадает в соседний обычный предмет. Такому предмету
+   * цена обнулялась, а из списка «нет цены» он пропадал — самодиагностика
+   * слепла ровно там, где должна была сработать. Поэтому связанность
+   * теперь определяет вызывающая сторона по НАЗВАНИЮ из справочника,
+   * а здесь хранится только готовое множество id.
+   */
+  registerBoundIds(ids: Iterable<ConfigBaseId>): void {
+    for (const id of ids) this.boundIds.add(id);
   }
 
   get(configBaseId: ConfigBaseId): PriceRecord | undefined {

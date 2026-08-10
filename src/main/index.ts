@@ -8,10 +8,23 @@ import { Engine, type Snapshot } from './engine.js';
 import { IconCache, registerIconScheme } from './icons.js';
 import { Overlay } from './overlay.js';
 import { SettingsStore, type NameLanguage, type OverlayMode } from './settings.js';
+import { ToastLayer } from './toastLayer.js';
 import { Updater, type UpdateState } from './updater.js';
 
 // Схему нужно объявить до готовности приложения.
 registerIconScheme();
+
+// Два экземпляра делят одну базу и один файл настроек — это гонки записи
+// и SQLITE_BUSY на ровном месте. Второй экземпляр просто поднимает первый.
+if (!app.requestSingleInstanceLock()) {
+  app.quit();
+}
+app.on('second-instance', () => {
+  if (window && !window.isDestroyed()) {
+    if (window.isMinimized()) window.restore();
+    window.focus();
+  }
+});
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const isDev = !app.isPackaged;
@@ -20,6 +33,7 @@ let window: BrowserWindow | null = null;
 let engine: Engine | null = null;
 let latest: Snapshot | null = null;
 let overlay: Overlay | null = null;
+let toastLayer: ToastLayer | null = null;
 let settings: SettingsStore | null = null;
 let debugSink: DebugSink | null = null;
 let updater: Updater | null = null;
@@ -64,6 +78,15 @@ function createWindow(): void {
 
   window.once('ready-to-show', () => window?.show());
 
+  // На Windows закрытие главного окна — это выход. Без этого открытый
+  // оверлей не давал сработать window-all-closed, и приложение зависало
+  // фоновым процессом без единого способа вернуть дашборд.
+  window.on('closed', () => {
+    window = null;
+    overlay?.close(false);
+    toastLayer?.close();
+  });
+
   // В режиме диагностики поднимаем сообщения из renderer наверх: иначе
   // нарушения политики безопасности видны только в devtools.
   if (isDev || process.argv.some((a) => a.startsWith('--capture='))) {
@@ -76,10 +99,12 @@ function createWindow(): void {
   }
 
   // Внешние ссылки открываем в браузере, а не внутри приложения.
+  // Только http/https: file: и прочие схемы в openExternal — дыра.
   window.webContents.setWindowOpenHandler(({ url }) => {
-    void shell.openExternal(url);
+    if (/^https?:/i.test(url)) void shell.openExternal(url);
     return { action: 'deny' };
   });
+  window.webContents.on('will-navigate', (e) => e.preventDefault());
 
   if (isDev && process.env['VITE_DEV_SERVER_URL']) {
     void window.loadURL(process.env['VITE_DEV_SERVER_URL']);
@@ -98,7 +123,16 @@ app.whenReady().then(async () => {
 
   settings = new SettingsStore(app.getPath('userData'));
   overlay = new Overlay(settings);
-  engine = new Engine(app.getPath('userData'), items, settings.itemNames);
+  toastLayer = new ToastLayer(settings);
+  engine = new Engine(app.getPath('userData'), items, settings.itemNames, {
+    communityPrices: settings.communityPrices,
+  });
+
+  // Кнопка «Оверлей» в шапке обязана отражать реальность и когда оверлей
+  // переключили хоткеем или закрыли его собственным крестиком.
+  overlay.onOpenChanged = (open) => {
+    if (window && !window.isDestroyed()) window.webContents.send('overlay:enabled', open);
+  };
 
   // Не `--debug`: этот флаг перехватывает сам Node как устаревший отладчик
   // и до приложения он не доходит.
@@ -116,6 +150,7 @@ app.whenReady().then(async () => {
       window.webContents.send('snapshot', snapshot);
     }
     overlay?.send('snapshot', snapshot);
+    toastLayer?.send('snapshot', snapshot);
     debugSink?.record(snapshot);
   });
   engine.on('error', (err: Error) => {
@@ -140,6 +175,13 @@ app.whenReady().then(async () => {
     return language;
   });
 
+  ipcMain.handle('settings:communityPrices', () => settings?.communityPrices ?? true);
+  ipcMain.handle('settings:setCommunityPrices', (_e, enabled: boolean) => {
+    settings?.setCommunityPrices(enabled);
+    engine?.setCommunityPrices(enabled);
+    return enabled;
+  });
+
   ipcMain.handle('overlay:state', () => settings?.overlay ?? null);
   ipcMain.handle('overlay:toggle', () => {
     overlay?.toggle();
@@ -151,10 +193,33 @@ app.whenReady().then(async () => {
   ipcMain.on('overlay:toggleLock', () => overlay?.toggleLocked());
   ipcMain.on('overlay:setOpacity', (_e, value: number) => overlay?.setOpacity(value));
   ipcMain.on('overlay:height', (_e, height: number) => overlay?.setContentHeight(height));
+  ipcMain.on(
+    'overlay:setPrefs',
+    (_e, prefs: { popups?: boolean; sound?: boolean; volume?: number }) => {
+      overlay?.patchPrefs(prefs);
+      // Слой всплывашек живёт своим окном: настройки долетают и туда,
+      // а само окно появляется и исчезает вслед за ними.
+      toastLayer?.sync();
+      const current = settings?.overlay;
+      if (current) {
+        toastLayer?.send('overlay:prefs', {
+          popups: current.popups,
+          sound: current.sound,
+          volume: current.volume,
+        });
+      }
+    },
+  );
+
+  ipcMain.on('toasts:height', (_e, height: number) => toastLayer?.setContentHeight(height));
+  ipcMain.on('toasts:active', (_e, active: boolean) => toastLayer?.setActive(active));
 
   registerShortcuts();
 
   if (settings.overlay.enabled) overlay.open();
+  // Слой всплывашек независим от оверлея-панели: доход у центра экрана
+  // показывается и тем, кто панель не держит.
+  toastLayer.sync();
 
   await engine.start();
 

@@ -43,6 +43,9 @@ const MAX_HEIGHT = 520;
 export class Overlay {
   private window: BrowserWindow | null = null;
 
+  /** Зовётся при каждом открытии/закрытии — главное окно держит кнопку в актуальном виде. */
+  onOpenChanged: ((open: boolean) => void) | null = null;
+
   constructor(private readonly settings: SettingsStore) {}
 
   get isOpen(): boolean {
@@ -96,10 +99,12 @@ export class Overlay {
     this.window.on('moved', () => this.rememberPosition());
     this.window.on('closed', () => {
       this.window = null;
+      this.onOpenChanged?.(false);
     });
 
     void this.load();
     this.settings.patchOverlay({ enabled: true });
+    this.onOpenChanged?.(true);
   }
 
   private async load(): Promise<void> {
@@ -112,10 +117,14 @@ export class Overlay {
     }
   }
 
-  close(): void {
+  /**
+   * persist=false — закрытие при выходе из приложения: настройка
+   * «оверлей включён» должна пережить перезапуск.
+   */
+  close(persist = true): void {
     this.window?.close();
     this.window = null;
-    this.settings.patchOverlay({ enabled: false });
+    if (persist) this.settings.patchOverlay({ enabled: false });
   }
 
   toggle(): void {
@@ -139,7 +148,9 @@ export class Overlay {
     this.settings.patchOverlay({ mode });
     // Ширину задаём сразу, высоту пришлёт интерфейс после перерисовки.
     const bounds = this.window?.getBounds();
-    if (bounds) this.window?.setBounds({ ...bounds, width: WIDTHS[mode] });
+    if (bounds) {
+      this.window?.setBounds(this.keepOnScreen({ ...bounds, width: WIDTHS[mode] }));
+    }
     this.send('overlay:mode', mode);
   }
 
@@ -154,7 +165,26 @@ export class Overlay {
     const target = Math.max(INITIAL_HEIGHT, Math.min(MAX_HEIGHT, Math.ceil(height)));
     const bounds = this.window!.getBounds();
     if (Math.abs(bounds.height - target) < 2) return;
-    this.window!.setBounds({ ...bounds, height: target });
+    this.window!.setBounds(this.keepOnScreen({ ...bounds, height: target }));
+  }
+
+  /**
+   * Не даёт окну вылезти за рабочую область при росте высоты или ширины:
+   * позиция восстанавливалась со стартовой высотой 64px, и подросшее окно
+   * могло свеситься за нижний край экрана.
+   */
+  private keepOnScreen(bounds: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  }): { x: number; y: number; width: number; height: number } {
+    const area = screen.getDisplayMatching(bounds).workArea;
+    return {
+      ...bounds,
+      x: Math.min(Math.max(bounds.x, area.x), area.x + area.width - bounds.width),
+      y: Math.min(Math.max(bounds.y, area.y), area.y + area.height - bounds.height),
+    };
   }
 
   cycleMode(): OverlayMode {
@@ -168,6 +198,20 @@ export class Overlay {
     const clamped = Math.min(1, Math.max(0.25, opacity));
     this.settings.patchOverlay({ opacity: clamped });
     this.window?.setOpacity(clamped);
+  }
+
+  /** Настройки всплывашек и звука. Оверлей узнаёт об изменении сразу. */
+  patchPrefs(patch: { popups?: boolean; sound?: boolean; volume?: number }): void {
+    const clean = { ...patch };
+    if (clean.volume !== undefined) {
+      clean.volume = Math.min(1, Math.max(0, clean.volume));
+    }
+    const prefs = this.settings.patchOverlay(clean);
+    this.send('overlay:prefs', {
+      popups: prefs.popups,
+      sound: prefs.sound,
+      volume: prefs.volume,
+    });
   }
 
   send(channel: string, payload: unknown): void {

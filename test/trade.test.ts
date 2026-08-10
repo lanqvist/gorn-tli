@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import { EventParser } from '../src/core/eventParser.js';
 import { InventoryTracker } from '../src/core/inventory.js';
-import { PriceStore, referencePrice } from '../src/core/priceStore.js';
-import { TradeLedger } from '../src/core/trade.js';
+import { PriceStore, isBoundName, referencePrice } from '../src/core/priceStore.js';
+import { TradeLedger, mergeByKey } from '../src/core/trade.js';
 import { FE_ID, type Diagnostics } from '../src/core/types.js';
 
 function diag(): Diagnostics {
@@ -120,6 +120,58 @@ describe('реализованная выручка', () => {
   });
 });
 
+describe('слияние торговых событий', () => {
+  it('перекрывающиеся файлы не задваивают выплаты', () => {
+    const fileA = [
+      { ts: 1, fe: 100 },
+      { ts: 2, fe: 50 },
+    ];
+    const fileB = [
+      { ts: 2, fe: 50 },
+      { ts: 3, fe: 70 },
+    ];
+    const merged = mergeByKey([fileA, fileB], (r) => `${r.ts}:${r.fe}`);
+    expect(merged).toHaveLength(3);
+    expect(merged.reduce((a, r) => a + r.fe, 0)).toBe(220);
+  });
+
+  it('две одинаковые выплаты в одну миллисекунду не схлопываются', () => {
+    // Выкуп двух одинаковых лотов — две выплаты, а не одна.
+    const receipts = [
+      { ts: 5, fe: 30 },
+      { ts: 5, fe: 30 },
+    ];
+    const merged = mergeByKey([receipts], (r) => `${r.ts}:${r.fe}`);
+    expect(merged).toHaveLength(2);
+  });
+
+  it('отзыв лота снимает его с бумажного счёта', () => {
+    const ledger = new TradeLedger();
+    ledger.add({
+      ts: 1,
+      configBaseId: 5028,
+      qty: -4,
+      proto: 'XchgForSale',
+      kind: 'trade',
+      pageId: 102,
+      slotId: 3,
+    });
+    expect(ledger.listings).toHaveLength(1);
+
+    ledger.add({
+      ts: 2,
+      configBaseId: 5028,
+      qty: 4,
+      proto: 'XchgRecall',
+      kind: 'trade',
+      pageId: 102,
+      slotId: 3,
+    });
+    // Отозванный и выставленный заново лот не должен считаться дважды.
+    expect(ledger.listings).toHaveLength(0);
+  });
+});
+
 describe('референсная цена', () => {
   it('берётся 10-й перцентиль, а не минимум и не среднее', () => {
     // Один демпинговый лот не должен становиться референсом.
@@ -134,8 +186,35 @@ describe('референсная цена', () => {
 
   it('связанные варианты стоят ноль, их нельзя продать', () => {
     const store = new PriceStore();
-    store.registerKnownItems([100300, 101300]); // базовый и связанный
+    store.registerBoundIds([101300]); // Bound Flame Elementium
     expect(store.priceOf(101300)).toBe(0);
+  });
+
+  it('связанность определяется названием, а не арифметикой id', () => {
+    // 237 пар id отличаются на 1000, но настоящих связанных из них 13.
+    // Старая эвристика «+1000» обнуляла цены обычных легендарок.
+    expect(isBoundName('Bound Flame Elementium')).toBe(true);
+    expect(isBoundName('绑定初火源质')).toBe(true);
+    expect(isBoundName('Связанный: Элементиевое пламя')).toBe(true);
+    expect(isBoundName('Grace Boots')).toBe(false);
+    expect(isBoundName('Second Divinity')).toBe(false);
+    expect(isBoundName(null)).toBe(false);
+  });
+
+  it('пробитая игроком цена обычного предмета не обнуляется', () => {
+    // Регресс старой эвристики: 112410 Grace Boots попадала в «связанные»,
+    // потому что в справочнике существует 111410.
+    const store = new PriceStore();
+    store.observe({
+      kind: 'priceObservation',
+      ts: 5,
+      line: 1,
+      configBaseId: 112410,
+      currency: FE_ID,
+      unitPrices: [12.5, 13, 20],
+      synId: 1,
+    });
+    expect(store.priceOf(112410)).toBeCloseTo(12.6, 1);
   });
 
   it('цена в чужой валюте не принимается', () => {

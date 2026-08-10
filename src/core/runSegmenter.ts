@@ -28,9 +28,25 @@ export class RunSegmenter {
     this.pendingLevelType = levelType;
   }
 
+  /**
+   * Окно, в котором возврат в ту же карту считается продолжением забега.
+   * Сходить в город продать добычу — минуты; всё, что дольше, вероятнее
+   * новая карта того же типа, а не тот же самый портал.
+   */
+  private static readonly RESUME_TTL_MS = 480_000;
+
   enterLevel(ev: EnterLevelEvent): void {
     this.closeCurrent(ev.ts);
     const isHub = isHubAsset(this.pendingAsset);
+
+    // Портал в город и обратно — это ОДИН забег, а не два. Без склейки
+    // вторая половина карты становилась отдельным забегом без вложений:
+    // счётчик забегов раздувался, медианы резались пополам, а стратегия
+    // с маяком теряла половину своего дохода в пользу «Без вложений».
+    if (!isHub) {
+      const resumed = this.tryResume(ev);
+      if (resumed) return;
+    }
 
     this.current = {
       areaId: ev.areaId,
@@ -46,6 +62,32 @@ export class RunSegmenter {
     };
     this.pendingAsset = null;
     this.pendingLevelType = null;
+  }
+
+  /**
+   * areaId — это тип карты, а не экземпляр, поэтому совпадения зоны мало.
+   * Продолжением считается только если между выходом и возвратом были
+   * одни хабы, не открывалась новая карта (нет ожидающих вложений)
+   * и прошло меньше RESUME_TTL_MS.
+   */
+  private tryResume(ev: EnterLevelEvent): boolean {
+    if (this.pendingCosts.length > 0) return false;
+
+    for (let i = this.runs.length - 1; i >= 0; i--) {
+      const run = this.runs[i]!;
+      if (run.isHub) continue;
+      if (run.areaId !== ev.areaId || run.asset !== this.pendingAsset) return false;
+      if (run.endedAt === null || ev.ts - run.endedAt > RunSegmenter.RESUME_TTL_MS) return false;
+
+      this.runs.splice(i, 1);
+      run.endedAt = null;
+      run.durationMs = null;
+      this.current = run;
+      this.pendingAsset = null;
+      this.pendingLevelType = null;
+      return true;
+    }
+    return false;
   }
 
   private takePendingCosts(ts: number): ItemDelta[] {
