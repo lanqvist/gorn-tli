@@ -125,12 +125,19 @@ body {
   border: 1px solid rgb(95 208 138 / 30%);
 }
 
-/* Итог карты — карточка: момент закрытия карты игрок готов читать. */
+/* Итог карты — карточка: момент закрытия карты игрок готов читать.
+   Окно слоя всего 560px — карточка обязана влезать, а не резаться
+   краем окна: находки переносятся на вторую строку. */
+.ov-toast-runEnd {
+  max-width: 548px;
+}
+
 .ov-runend {
   display: flex;
   flex-direction: column;
   gap: 4px;
   align-items: center;
+  min-width: 0;
 }
 
 .ov-runend-head {
@@ -154,10 +161,13 @@ body {
 
 .ov-runend-drops {
   display: flex;
-  gap: 14px;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 3px 14px;
   font-size: 12.5px;
   font-weight: 500;
   color: #cfd4df;
+  max-width: 100%;
 }
 
 .ov-runend-drop {
@@ -173,7 +183,9 @@ body {
 }
 
 .ov-runend-name {
-  max-width: 130px;
+  /* Просторнее, чем кажется нужным: обрезанное «Воинственный Солд…»
+     бесполезно, а лишние находки переносятся на вторую строку. */
+  max-width: 210px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
