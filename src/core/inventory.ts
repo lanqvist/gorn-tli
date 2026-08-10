@@ -121,6 +121,23 @@ export class InventoryTracker {
     };
   }
 
+  /**
+   * Состояние слотов целиком.
+   *
+   * Нужно, чтобы передать базу от разбора накопленных логов живому
+   * дочитыванию. Без этого первое изменение каждого слота после запуска
+   * трекера уходит на установку базы, и расход на первую же открытую
+   * карту теряется — приложение видит списание маяка, но не знает,
+   * сколько их было до этого, и промолчать обязано.
+   */
+  exportSlots(): Array<[string, { configBaseId: ConfigBaseId; qty: number }]> {
+    return [...this.slots.entries()].map(([key, slot]) => [key, { ...slot }]);
+  }
+
+  importSlots(entries: Array<[string, { configBaseId: ConfigBaseId; qty: number }]>): void {
+    for (const [key, slot] of entries) this.slots.set(key, { ...slot });
+  }
+
   /** Текущее содержимое сумки — для оценки нетворса. */
   snapshot(): Map<ConfigBaseId, number> {
     const out = new Map<ConfigBaseId, number>();

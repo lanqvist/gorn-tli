@@ -107,7 +107,7 @@ export function OverlayApp() {
         {run ? (
           <span className="ov-timer">{clock(elapsed)}</span>
         ) : (
-          <span className="ov-timer ov-idle">не в карте</span>
+          <span className="ov-timer ov-idle">не на карте</span>
         )}
       </div>
 

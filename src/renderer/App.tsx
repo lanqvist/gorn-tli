@@ -105,7 +105,7 @@ function Header({ snapshot }: { snapshot: Snapshot }) {
       <div className={`status status-${dot}`}>
         <i />
         {snapshot.status === 'running'
-          ? 'В карте'
+          ? 'На карте'
           : snapshot.status === 'idle'
             ? 'Ожидание'
             : 'Игра не найдена'}
@@ -180,10 +180,12 @@ function Hero({ snapshot }: { snapshot: Snapshot }) {
       </div>
 
       <div className="hero-tiles">
-        {/* «Сейчас» двигается при каждом подборе, медиана — намеренно нет. */}
-        <Tile label="Сейчас, в час" value={<Fe value={snapshot.liveRate} />} live />
+        {/* Накопительный темп: двигается при подборе, медиана — намеренно нет.
+            Подпись «за сессию» важна, иначе медленное сползание между
+            подборами выглядит как ошибка, а не как рост знаменателя. */}
+        <Tile label="За сессию, в час" value={<Fe value={snapshot.liveRate} />} live />
         <Tile label="Чистый ФЕ в час" value={<Fe value={feRate.median} />} />
-        <Tile label="В картах" value={duration(totals.inMapMs)} />
+        <Tile label="На картах" value={duration(totals.inMapMs)} />
         <Tile label="Вложено" value={<Fe value={totals.costFe} />} />
       </div>
     </section>
@@ -230,7 +232,7 @@ function CurrentRun({ snapshot, now }: { snapshot: Snapshot; now: number }) {
       return (
         <section className="card current empty">
           <h2>Текущий забег</h2>
-          <p className="muted">{snapshot.hint ?? 'Ждём вход в карту.'}</p>
+          <p className="muted">{snapshot.hint ?? 'Ждём вход на карту.'}</p>
         </section>
       );
     }
@@ -415,48 +417,62 @@ function Strategies({ snapshot }: { snapshot: Snapshot }) {
   const { strategies } = snapshot;
   if (strategies.length < 2) return null;
 
-  const best = Math.max(...strategies.map((s) => s.rate.median));
+  // Лучшую отмечаем только среди тех, у кого выборка уже что-то значит.
+  // Подсвечивать «1 136 в час» на двух забегах — ровно та ошибка,
+  // против которой построен весь остальной интерфейс.
+  const trustworthy = strategies.filter((s) => s.rate.confidence !== 'insufficient');
+  const best = trustworthy.length > 1 ? Math.max(...trustworthy.map((s) => s.rate.median)) : null;
 
   return (
     <section className="card">
       <h2>Стратегии</h2>
       <div className="strategies">
-        {strategies.map((s) => (
-          <div key={s.key} className={`strategy ${s.rate.median === best ? 'best' : ''}`}>
-            <div className="strategy-head">
-              <div className="strategy-icons">
-                {s.costItems.length === 0 ? (
-                  <span className="muted small">без вложений</span>
-                ) : (
-                  s.costItems.map((c) => <ItemIcon key={c.configBaseId} src={c.icon} />)
+        {strategies.map((s) => {
+          const conf = CONFIDENCE[s.rate.confidence];
+          return (
+            <div
+              key={s.key}
+              className={`strategy ${best !== null && s.rate.median === best ? 'best' : ''}`}
+            >
+              <div className="strategy-head">
+                {s.costItems.length > 0 && (
+                  <div className="strategy-icons">
+                    {s.costItems.map((c) => (
+                      <ItemIcon key={c.configBaseId} src={c.icon} />
+                    ))}
+                  </div>
                 )}
+                <span className="strategy-title" title={s.title}>
+                  {s.title}
+                </span>
               </div>
-              <span className="strategy-title">{s.title}</span>
-            </div>
 
-            <div className="strategy-rate">
-              <Fe value={s.rate.median} />
-              <span className="muted small">в час</span>
-            </div>
+              <div className="strategy-rate">
+                <Fe value={s.rate.median} />
+                <span className="muted small">в час</span>
+              </div>
 
-            <div className="strategy-meta">
-              <span>{pluralize(s.runs, RUN)}</span>
-              <span className="muted">
-                разброс {num(s.rate.p25)}–{num(s.rate.p75)}
-              </span>
-            </div>
+              <div className="strategy-meta">
+                <span className={`badge badge-${conf.tone}`}>{conf.label}</span>
+                <span className="muted">{pluralize(s.runs, RUN)}</span>
+                <span className="muted">
+                  разброс {num(s.rate.p25)}–{num(s.rate.p75)}
+                </span>
+              </div>
 
-            <div className="strategy-money">
-              <span>
-                вложено <Fe value={s.costPerRun} /> · чистыми <Fe value={s.netPerRun} />
-              </span>
+              <div className="strategy-money">
+                <span>
+                  вложено <Fe value={s.costPerRun} /> · чистыми <Fe value={s.netPerRun} />
+                </span>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
       <p className="muted small">
-        Стратегия определяется автоматически по тому, чем открыта карта. Сравнивайте только
-        при сопоставимом числе забегов.
+        {best === null
+          ? 'Стратегия определяется автоматически по тому, чем открыта карта. Пока ни по одной не набралось данных для сравнения — нужно хотя бы 15 забегов.'
+          : 'Стратегия определяется автоматически по тому, чем открыта карта. Сравнивайте только при сопоставимом числе забегов.'}
       </p>
     </section>
   );

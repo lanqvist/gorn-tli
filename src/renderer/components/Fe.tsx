@@ -19,6 +19,20 @@ interface FeProps {
   className?: string;
 }
 
+/**
+ * Разрядность по величине.
+ *
+ * Многие материалы стоят доли ФЕ. Округление до целого превращало их
+ * в «0 ФЕ», и предмет выглядел бесплатным, хотя цена у него есть —
+ * просто маленькая. Крупные суммы дробей не требуют.
+ */
+function digitsFor(value: number): number {
+  const abs = Math.abs(value);
+  if (abs === 0 || abs >= 10) return 0;
+  if (abs >= 1) return 1;
+  return 2;
+}
+
 const NBSP = ' ';
 
 function format(value: number, fractionDigits: number): string {
@@ -30,10 +44,12 @@ function format(value: number, fractionDigits: number): string {
     .replace(/\s/g, NBSP);
 }
 
-export function Fe({ value, signed = false, fractionDigits = 0, className }: FeProps) {
-  const rounded = fractionDigits === 0 ? Math.round(value) : value;
+export function Fe({ value, signed = false, fractionDigits, className }: FeProps) {
+  const digits = fractionDigits ?? digitsFor(value);
+  const rounded = digits === 0 ? Math.round(value) : value;
   const sign = signed && rounded > 0 ? '+' : '';
-  const text = rounded < 0 ? `−${format(Math.abs(rounded), fractionDigits)}` : format(rounded, fractionDigits);
+  const text =
+    rounded < 0 ? `−${format(Math.abs(rounded), digits)}` : format(rounded, digits);
 
   return (
     <span className={`fe ${className ?? ''}`}>

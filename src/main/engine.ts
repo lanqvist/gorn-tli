@@ -193,6 +193,11 @@ export class Engine extends EventEmitter {
     this.storage.savePrices(scan.prices.all());
     this.storage.saveTrade(scan.trade.listings, scan.trade.receipts);
 
+    // Передаём живому трекеру состояние сумки, полученное при разборе.
+    // Без этого первое изменение каждого слота уходит на установку базы,
+    // и расход на первую же открытую карту после запуска не засчитывается.
+    this.inventory.importSlots(scan.slots);
+
     this.startTailing();
     this.startHeartbeat();
     this.emit('snapshot', this.buildSnapshot());
@@ -200,14 +205,18 @@ export class Engine extends EventEmitter {
 
   /**
    * Пока идёт забег, время в карте растёт само по себе, без новых строк
-   * в логе. Без периодической отправки темп «в час» замирал бы между
-   * подборами, хотя знаменатель всё это время увеличивается.
+   * в логе, и таймер должен идти.
+   *
+   * Интервал намеренно редкий: при частой отправке накопительный темп
+   * заметно уползает вниз между подборами — знаменатель растёт, числитель
+   * нет. Математически это верно, но число, которое само по себе убывает
+   * каждую секунду, читается как поломка.
    */
   private startHeartbeat(): void {
     this.heartbeat = setInterval(() => {
       const open = this.segmenter.all.find((r) => r.endedAt === null);
       if (open && !open.isHub) this.emit('snapshot', this.buildSnapshot());
-    }, 2000);
+    }, 5000);
   }
 
   private heartbeat: NodeJS.Timeout | null = null;
@@ -317,11 +326,41 @@ export class Engine extends EventEmitter {
     return [...ids];
   }
 
-  /** Имя стратегии — перечисление того, чем открывалась карта. */
+  /**
+   * Человекочитаемое имя забега.
+   *
+   * В логе есть только внутреннее имя ассета в пиньине — MaNeiLaYuLin,
+   * YuanSuKuangDong. Игровых названий там нет ни на русском, ни на английском.
+   *
+   * Зато известно, чем карта открыта, а маяк называет план Инобытия прямо:
+   * «Voidlands Beacon (Timemark 8)» → «Пустоши · метка 8». Это то, чем игрок
+   * карту и опознаёт, в отличие от транслитерации китайского названия.
+   */
+  private runName(run: Run): string {
+    for (const cost of run.costs) {
+      const name = this.items.get(cost.configBaseId)?.name;
+      if (!name) continue;
+      const readable = planeName(name);
+      if (readable) return readable;
+    }
+    return mapName(run.asset, run.areaId);
+  }
+
+  /**
+   * Имя стратегии — перечисление того, чем открывалась карта.
+   *
+   * Полные названия маяков не помещаются в карточку («Bronze Wick +
+   * Voidlands Beacon (Timemark 8)» обрезается на полуслове), поэтому
+   * маяк сокращается до плана и метки.
+   */
   private strategyTitle(stats: StrategyStats): string {
     if (stats.costItems.length === 0) return 'Без вложений';
     return stats.costItems
-      .map((id) => this.items.get(id)?.name ?? `id ${id}`)
+      .map((id) => {
+        const name = this.items.get(id)?.name;
+        if (!name) return `id ${id}`;
+        return planeName(name) ?? name;
+      })
       .join(' + ');
   }
 
@@ -362,7 +401,7 @@ export class Engine extends EventEmitter {
 
     return {
       areaId: run.areaId,
-      name: mapName(run.asset, run.areaId),
+      name: this.runName(run),
       startedAt: run.startedAt,
       durationMs: run.durationMs,
       feGained,
@@ -475,7 +514,7 @@ export class Engine extends EventEmitter {
     if (Date.now() - this.lastActivityAt > 120_000) {
       return 'Игра давно ничего не пишет в лог — похоже, закрыта.';
     }
-    return 'Ждём вход в карту.';
+    return 'Ждём вход на карту.';
   }
 
   snapshot(status: Snapshot['status'], hint: string): Snapshot {
@@ -499,7 +538,43 @@ export class Engine extends EventEmitter {
  * когда будет готов глоссарий; пока показываем очищенный ассет,
  * а не «зона 5348».
  */
+/**
+ * Русские названия планов Инобытия.
+ *
+ * Официальной русской локализации подтвердить не удалось, поэтому названия
+ * согласованы с тем, как их называет русскоязычное сообщество игры.
+ */
+const PLANES: Array<[RegExp, string]> = [
+  [/Glacial Abyss/i, 'Ледяная бездна'],
+  [/Blistering Lava Sea/i, 'Море лавы'],
+  [/Steel Forge/i, 'Стальная кузня'],
+  [/Thunder Wastes?/i, 'Громовые пустоши'],
+  [/Voidlands/i, 'Пустоши бездны'],
+  [/Deep Space/i, 'Дальний космос'],
+];
+
+/**
+ * Достаёт из названия предмета план и метку времени.
+ * «Voidlands Beacon (Timemark 8)» → «Пустоши бездны · метка 8».
+ * Возвращает null, если предмет картой не является.
+ */
+function planeName(itemName: string): string | null {
+  if (!/Beacon/i.test(itemName)) return null;
+  const plane = PLANES.find(([re]) => re.test(itemName));
+  if (!plane) return null;
+  const mark = /Timemark\s*(\d+)/i.exec(itemName);
+  return mark ? `${plane[1]} · метка ${mark[1]}` : plane[1];
+}
+
 function mapName(asset: string | null, areaId: number): string {
   if (!asset) return `Зона ${areaId}`;
-  return asset.replace(/^[A-Z]{2}_/, '').replace(/(\d+)$/, '');
+  const cleaned = asset
+    // Префикс папки бывает любой длины: XZ_, SD_, JH_, KD_.
+    .replace(/^[A-Z]{2,4}_/, '')
+    // Хвостовой номер экземпляра карты.
+    .replace(/\d+$/, '')
+    // После снятия номера может остаться висящий разделитель:
+    // JH_YWMD_00001 превращался в «YWMD_».
+    .replace(/[_\s-]+$/, '');
+  return cleaned || `Зона ${areaId}`;
 }

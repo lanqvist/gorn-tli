@@ -30,6 +30,8 @@ export class RunSegmenter {
 
   enterLevel(ev: EnterLevelEvent): void {
     this.closeCurrent(ev.ts);
+    const isHub = isHubAsset(this.pendingAsset);
+
     this.current = {
       areaId: ev.areaId,
       asset: this.pendingAsset,
@@ -37,23 +39,55 @@ export class RunSegmenter {
       startedAt: ev.ts,
       endedAt: null,
       durationMs: null,
-      isHub: isHubAsset(this.pendingAsset),
+      isHub,
       drops: [],
-      costs: [],
+      // Вложения, сделанные в городе перед входом, принадлежат этой карте.
+      costs: isHub ? [] : this.takePendingCosts(ev.ts),
     };
     this.pendingAsset = null;
     this.pendingLevelType = null;
   }
 
-  /** Приросты и расходы приписываются текущей зоне. */
-  addDelta(delta: ItemDelta): void {
-    if (!this.current) return;
-    if (delta.kind === 'loot' && delta.qty > 0) {
-      this.current.drops.push(delta);
-    } else if (delta.kind === 'mapCost' && delta.qty < 0) {
-      this.current.costs.push({ ...delta, qty: -delta.qty });
-    }
+  private takePendingCosts(ts: number): ItemDelta[] {
+    const fresh = this.pendingCosts.filter(
+      (c) => ts - c.ts <= RunSegmenter.PENDING_TTL_MS,
+    );
+    this.pendingCosts = [];
+    return fresh;
   }
+
+  /**
+   * Приросты приписываются текущей зоне, расходы — той карте,
+   * ради которой они сделаны.
+   *
+   * Компас, маяк или фитиль списываются, пока игрок ещё в городе:
+   *
+   *   12:05:06  Spv3Open → маяк 400033: 23 → 22
+   *   12:05:06  ВХОД В ЗОНУ 5348
+   *
+   * Приписывать такой расход текущему забегу нельзя — это городской
+   * забег, и он выброшен из статистики. Поэтому вложения придерживаются
+   * и переносятся в следующую боевую карту.
+   */
+  addDelta(delta: ItemDelta): void {
+    if (delta.kind === 'mapCost' && delta.qty < 0) {
+      const cost = { ...delta, qty: -delta.qty };
+      if (this.current && !this.current.isHub) this.current.costs.push(cost);
+      else this.pendingCosts.push(cost);
+      return;
+    }
+
+    if (!this.current) return;
+    if (delta.kind === 'loot' && delta.qty > 0) this.current.drops.push(delta);
+  }
+
+  /**
+   * Вложения ждут своей карты, но не бесконечно: если игрок открыл карту
+   * и ушёл заниматься другими делами, расход не должен приклеиться
+   * к случайному забегу через полчаса.
+   */
+  private pendingCosts: ItemDelta[] = [];
+  private static readonly PENDING_TTL_MS = 300_000;
 
   private closeCurrent(ts: number): void {
     if (!this.current) return;

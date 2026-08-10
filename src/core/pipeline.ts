@@ -12,6 +12,8 @@ export interface AnalysisResult {
   prices: PriceObservationEvent[];
   trade: TradeLedger;
   inventory: Map<ConfigBaseId, number>;
+  /** Состояние слотов на конец файла — база для живого дочитывания. */
+  slots: Array<[string, { configBaseId: ConfigBaseId; qty: number }]>;
   diagnostics: Diagnostics;
   seasonId: number | null;
   firstTs: number | null;
@@ -125,6 +127,7 @@ export async function analyzeLogFile(path: string): Promise<AnalysisResult> {
     prices,
     trade,
     inventory: inventory.snapshot(),
+    slots: inventory.exportSlots(),
     diagnostics,
     seasonId,
     firstTs,

@@ -3,6 +3,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
+import { DebugSink } from './debug.js';
 import { Engine, type Snapshot } from './engine.js';
 import { IconCache, registerIconScheme } from './icons.js';
 import { Overlay } from './overlay.js';
@@ -19,6 +20,7 @@ let engine: Engine | null = null;
 let latest: Snapshot | null = null;
 let overlay: Overlay | null = null;
 let settings: SettingsStore | null = null;
+let debugSink: DebugSink | null = null;
 
 function loadItems(): Array<{ id: number; name: string; icon: string | null }> {
   const candidates = [
@@ -93,12 +95,23 @@ app.whenReady().then(async () => {
   settings = new SettingsStore(app.getPath('userData'));
   overlay = new Overlay(settings);
 
+  // Не `--debug`: этот флаг перехватывает сам Node как устаревший отладчик
+  // и до приложения он не доходит.
+  const debugArg = process.argv.find((a) => a.startsWith('--observe='));
+  if (debugArg && window) {
+    const dir = debugArg.slice('--observe='.length);
+    debugSink = new DebugSink(dir);
+    debugSink.attach(window);
+    console.log('[наблюдение] пишу в', dir);
+  }
+
   engine.on('snapshot', (snapshot: Snapshot) => {
     latest = snapshot;
     if (window && !window.isDestroyed()) {
       window.webContents.send('snapshot', snapshot);
     }
     overlay?.send('snapshot', snapshot);
+    debugSink?.record(snapshot);
   });
   engine.on('error', (err: Error) => {
     console.error('[движок]', err.message);
@@ -227,6 +240,8 @@ app.on('window-all-closed', () => {
 });
 
 app.on('before-quit', () => {
+  debugSink?.stop();
+  debugSink = null;
   engine?.stop();
   engine = null;
 });

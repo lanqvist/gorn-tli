@@ -65,7 +65,7 @@ async function main(): Promise<void> {
   console.log(`  строк            ${formatNumber(result.linesScanned)}`);
   console.log(`  сезоны           ${[...result.seasonIds].join(', ') || 'не определены'}`);
   console.log(`  забегов          ${result.runs.length}, из них фарм ${farming.length}`);
-  console.log(`  времени в картах ${formatDuration(inMapMs)}`);
+  console.log(`  времени на картах ${formatDuration(inMapMs)}`);
   console.log(`  разобрано за     ${formatDuration(result.elapsedMs)}`);
 
   console.log('\n═══ ЦЕНЫ ═══');

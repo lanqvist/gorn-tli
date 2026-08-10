@@ -11,7 +11,7 @@ import {
   SOCKET_START_RE,
   TIMESTAMP_RE,
 } from './patterns.js';
-import type { LogEvent, PriceObservationEvent } from './types.js';
+import { FE_ID, type LogEvent, type PriceObservationEvent } from './types.js';
 
 /**
  * Метки в UE_game.log записаны в UTC: последняя строка сессии 07:30:50
@@ -181,7 +181,12 @@ export class EventParser {
     }
     if (unitPrices.length === 0) return null;
 
-    const currency = Number(fields.get('currency') ?? 0);
+    // Поле currency присутствует не всегда: для дешёвых материалов
+    // (например, Пламенного песка по 0,0001) игра его не пишет.
+    // Отсутствие означает валюту по умолчанию, то есть ФЕ. Раньше такие
+    // ответы отбрасывались целиком, и цена у предмета не появлялась никогда.
+    const rawCurrency = fields.get('currency');
+    const currency = rawCurrency === undefined ? FE_ID : Number(rawCurrency);
 
     const ev: PriceObservationEvent = {
       kind: 'priceObservation',

@@ -28,6 +28,12 @@ export interface RetroScanResult {
   unknownProtos: Map<string, number>;
   /** Файлы, которые не удалось прочитать (обычно ротация во время скана). */
   failed: Array<{ path: string; reason: string }>;
+  /**
+   * Состояние слотов сумки после последнего файла.
+   * Передаётся живому дочитыванию, иначе расход на первую же карту
+   * после запуска трекера уходит на установку базы и теряется.
+   */
+  slots: Array<[string, { configBaseId: number; qty: number }]>;
 }
 
 export interface RetroScanProgress {
@@ -45,6 +51,7 @@ export async function retroScan(
 
   const runs: Run[] = [];
   const trade = new TradeLedger();
+  let slots: RetroScanResult['slots'] = [];
   const unknownProtos = new Map<string, number>();
   const seasonIds = new Set<number>();
   let linesScanned = 0;
@@ -69,6 +76,8 @@ export async function retroScan(
     }
 
     runs.push(...result.runs);
+    // Состояние сумки берём от последнего файла: он и есть текущая сессия.
+    slots = result.slots;
     linesScanned += result.diagnostics.linesTotal;
     if (result.seasonId !== null) {
       seasonIds.add(result.seasonId);
@@ -108,6 +117,7 @@ export async function retroScan(
     elapsedMs: Date.now() - started,
     unknownProtos,
     failed,
+    slots,
   };
 }
 

@@ -79,7 +79,7 @@ async function main(): Promise<void> {
   console.log('\n═══ ЗАБЕГИ ═══');
   console.log(`  всего зон        ${result.runs.length}`);
   console.log(`  из них фарм      ${farming.length}`);
-  console.log(`  времени в картах ${formatDuration(inMapMs)}`);
+  console.log(`  времени на картах ${formatDuration(inMapMs)}`);
   console.log(`  получено ФЕ      ${formatNumber(totalFe)}`);
 
   if (farming.length > 0) {
