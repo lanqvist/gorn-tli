@@ -10,10 +10,23 @@ import type { Snapshot } from '../main/engine.js';
  */
 const now = Date.now();
 
-const drop = (configBaseId: number, name: string, qty: number, unitFe: number | null) => ({
+/**
+ * В приложении иконки приходят по схеме gorn-icon:// из локального кэша,
+ * но в браузере её нет — для демо берём исходные адреса, чтобы вёрстку
+ * с иконками можно было проверять.
+ */
+const CDN = 'https://cdn.tlidb.com/UI/Textures/Common/Icon';
+
+const drop = (
+  configBaseId: number,
+  name: string,
+  qty: number,
+  unitFe: number | null,
+  icon: string | null = null,
+) => ({
   configBaseId,
   name,
-  icon: null,
+  icon,
   qty,
   unitFe,
   totalFe: unitFe === null ? null : unitFe * qty,
@@ -34,11 +47,11 @@ export const demoSnapshot: Snapshot = {
     netFe: 21.3,
     perHour: 799,
     drops: [
-      drop(10022, 'Fortuitous Cube Compass', 1, 34),
-      drop(200028, 'Precious Ember', 2, 6.4),
-      drop(5028, 'Netherrealm resonance', 1, 3.1),
-      drop(100300, 'Flame Elementium', 3, 1),
-      drop(100200, 'Flame Sand', 20, 0.12),
+      drop(10022, 'Soldier Compass', 1, 34, `${CDN}/Compass/128/UI_Compass_MonsterNormal_1_1_Icon_128.webp`),
+      drop(200028, 'Precious Ember', 2, 6.4, `${CDN}/Ash/128/UI_Ash_20StonelowYOUZHI_Icon_128.webp`),
+      drop(5028, 'Netherrealm resonance', 1, 3.1, `${CDN}/Item/128/UI_Item_Echo_01_Icon_128.webp`),
+      drop(100300, 'Flame Elementium', 3, 1, `${CDN}/Item/128/UI_Item_chuhuoyuanzhiV3_Icon_128.webp`),
+      drop(100200, 'Flame Sand', 20, 0.12, `${CDN}/Item/128/UI_Item_chuhuolingshaV3_Icon_128.webp`),
       drop(261010, 'Неизвестный предмет', 1, null),
     ],
   },

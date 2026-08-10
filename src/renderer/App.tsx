@@ -172,6 +172,17 @@ function Hero({ snapshot }: { snapshot: Snapshot }) {
   );
 }
 
+/**
+ * Иконка предмета. Загрузка может не удаться: нет интернета при первом показе
+ * либо предмета нет в справочнике. Тогда остаётся пустое место того же
+ * размера — строка не съезжает.
+ */
+function ItemIcon({ src }: { src: string | null }) {
+  const [broken, setBroken] = useState(false);
+  if (!src || broken) return <span className="no-icon" />;
+  return <img src={src} alt="" loading="lazy" onError={() => setBroken(true)} />;
+}
+
 function Tile({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="tile">
@@ -184,13 +195,20 @@ function Tile({ label, value }: { label: string; value: React.ReactNode }) {
 function CurrentRun({ snapshot, now }: { snapshot: Snapshot; now: number }) {
   const run = snapshot.current;
 
+  // Карта закончилась — показываем прошлый забег, а не пустую карточку.
+  // Иначе добыча исчезает с экрана ровно в тот момент, когда её хотят
+  // рассмотреть: сразу после выхода из карты.
   if (!run) {
-    return (
-      <section className="card current empty">
-        <h2>Текущий забег</h2>
-        <p className="muted">{snapshot.hint ?? 'Ждём вход в карту.'}</p>
-      </section>
-    );
+    const previous = snapshot.recent[0];
+    if (!previous) {
+      return (
+        <section className="card current empty">
+          <h2>Текущий забег</h2>
+          <p className="muted">{snapshot.hint ?? 'Ждём вход в карту.'}</p>
+        </section>
+      );
+    }
+    return <FinishedRun run={previous} hint={snapshot.hint} />;
   }
 
   const elapsed = now - run.startedAt;
@@ -223,29 +241,54 @@ function CurrentRun({ snapshot, now }: { snapshot: Snapshot; now: number }) {
           ))}
       </div>
 
-      {run.drops.length === 0 ? (
-        <p className="muted">Пока ничего не выпало.</p>
-      ) : (
-        <ul className="drops">
-          {run.drops.slice(0, 12).map((d) => (
-            <li key={d.configBaseId}>
-              {d.icon ? <img src={d.icon} alt="" loading="lazy" /> : <span className="no-icon" />}
-              <span className="drop-name">{d.name}</span>
-              <span className="drop-qty">×{num(d.qty)}</span>
-              <span className="drop-value">
-                {d.totalFe === null ? (
-                  <span className="muted" title="Цена неизвестна — пробей предмет на бирже">
-                    без цены
-                  </span>
-                ) : (
-                  <Fe value={d.totalFe} />
-                )}
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
+      <DropList drops={run.drops} />
     </section>
+  );
+}
+
+/** Последний завершённый забег: держим его на экране, пока не начнётся новый. */
+function FinishedRun({ run, hint }: { run: RunView; hint: string | null }) {
+  return (
+    <section className="card current">
+      <div className="current-head">
+        <h2>
+          {run.name} <span className="muted small">· прошлый забег</span>
+        </h2>
+        <span className="timer">{duration(run.durationMs ?? 0)}</span>
+      </div>
+
+      <div className="current-value">
+        <Fe value={run.netFe} />
+        <span className="delta muted">{num(run.perHour)} в час</span>
+      </div>
+
+      <DropList drops={run.drops} />
+      {hint && <p className="muted small">{hint}</p>}
+    </section>
+  );
+}
+
+function DropList({ drops }: { drops: RunView['drops'] }) {
+  if (drops.length === 0) return <p className="muted">Ничего не выпало.</p>;
+  return (
+    <ul className="drops">
+      {drops.slice(0, 12).map((d) => (
+        <li key={d.configBaseId}>
+          <ItemIcon src={d.icon} />
+          <span className="drop-name">{d.name}</span>
+          <span className="drop-qty">×{num(d.qty)}</span>
+          <span className="drop-value">
+            {d.totalFe === null ? (
+              <span className="muted" title="Цена неизвестна — пробей предмет в Торговом доме">
+                без цены
+              </span>
+            ) : (
+              <Fe value={d.totalFe} />
+            )}
+          </span>
+        </li>
+      ))}
+    </ul>
   );
 }
 

@@ -12,6 +12,7 @@ import { perHour, summarize, type RateSummary } from '../core/stats.js';
 import { TradeLedger } from '../core/trade.js';
 import { FE_ID, type ConfigBaseId, type Diagnostics, type Run } from '../core/types.js';
 import { Storage } from '../storage/db.js';
+import { iconUrl } from './icons.js';
 import { LogTailer } from './tailer.js';
 
 export interface DropView {
@@ -225,6 +226,19 @@ export class Engine extends EventEmitter {
     this.storage.saveTrade(this.trade.listings, this.trade.receipts);
   }
 
+  /** Предметы, которые игроку уже падали или которые он выставлял. */
+  seenItemIds(): ConfigBaseId[] {
+    const ids = new Set<ConfigBaseId>();
+    for (const run of [...this.history, ...this.segmenter.all]) {
+      for (const d of run.drops) ids.add(d.configBaseId);
+      for (const c of run.costs) ids.add(c.configBaseId);
+    }
+    for (const l of this.trade.listings) ids.add(l.configBaseId);
+    // Цены пробивают ровно для того, что собираются продавать.
+    for (const p of this.prices.all()) ids.add(p.configBaseId);
+    return [...ids];
+  }
+
   private priceOf = (id: ConfigBaseId): number | null => this.prices.priceOf(id);
 
   private toView(run: Run): RunView {
@@ -248,7 +262,9 @@ export class Engine extends EventEmitter {
         return {
           configBaseId,
           name: info?.name ?? `id ${configBaseId}`,
-          icon: info?.icon ?? null,
+          // Отдаём адрес собственной схемы, а не ссылку на чужой CDN:
+          // иконка приедет из локального кэша, а при первом показе — скачается.
+          icon: info?.icon ? iconUrl(configBaseId) : null,
           qty,
           unitFe,
           totalFe: unitFe === null ? null : unitFe * qty,

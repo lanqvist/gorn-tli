@@ -4,6 +4,10 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 import { Engine, type Snapshot } from './engine.js';
+import { IconCache, registerIconScheme } from './icons.js';
+
+// Схему нужно объявить до готовности приложения.
+registerIconScheme();
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const isDev = !app.isPackaged;
@@ -63,9 +67,14 @@ function createWindow(): void {
 }
 
 app.whenReady().then(async () => {
+  const items = loadItems();
+
+  const icons = new IconCache(app.getPath('userData'), items);
+  icons.install();
+
   createWindow();
 
-  engine = new Engine(app.getPath('userData'), loadItems());
+  engine = new Engine(app.getPath('userData'), items);
   engine.on('snapshot', (snapshot: Snapshot) => {
     latest = snapshot;
     if (window && !window.isDestroyed()) {
@@ -79,6 +88,12 @@ app.whenReady().then(async () => {
   ipcMain.handle('snapshot:get', () => latest);
 
   await engine.start();
+
+  // Иконки виденных предметов подтягиваем фоном, чтобы они уже лежали
+  // на диске к моменту, когда игрок войдёт в карту.
+  void icons.prefetch(engine.seenItemIds()).then((n) => {
+    if (n > 0) console.log(`[иконки] загружено ${n}`);
+  });
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
