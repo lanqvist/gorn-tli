@@ -15,6 +15,13 @@ contextBridge.exposeInMainWorld('gorn', {
     return () => ipcRenderer.removeListener('snapshot', handler);
   },
 
+  /** Прогресс разбора накопленных логов — для заглушки первого запуска. */
+  onScanProgress: (callback: (progress: unknown) => void) => {
+    const handler = (_event: unknown, progress: unknown) => callback(progress);
+    ipcRenderer.on('scan:progress', handler);
+    return () => ipcRenderer.removeListener('scan:progress', handler);
+  },
+
   update: {
     get: () => ipcRenderer.invoke('update:get'),
     download: () => ipcRenderer.invoke('update:download'),

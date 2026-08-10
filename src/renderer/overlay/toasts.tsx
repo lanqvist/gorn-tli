@@ -159,26 +159,27 @@ export function useIncomeToasts(snapshot: Snapshot | null, opts: ToastOptions): 
     const merged = now - lastPickupAt.current < MERGE_WINDOW_MS;
     lastPickupAt.current = now;
 
+    // Темп и громкость ударов сглаживает сам sound.ts (троттлинг
+    // с накоплением) — дельта уходит туда как есть, без ослабления.
+    if (sound) playPickup(gained, volume);
+    if (!popups) return;
+
     if (merged) {
       // Продлеваем и наращиваем последнюю плашку подбора, а не плодим новые.
-      if (popups) {
-        const idx = listRef.current.findIndex((t) => t.kind === 'pickup');
-        if (idx === -1) {
-          // Плашка успела погаснуть — начинаем новую, дельту не теряем.
-          push({ id: nextId++, kind: 'pickup', fe: gained });
-        } else {
-          const updated = [...listRef.current];
-          updated[idx] = { ...updated[idx]!, fe: updated[idx]!.fe + gained };
-          commit(updated);
-          scheduleExpiry(updated[idx]!.id, 'pickup');
-        }
+      const idx = listRef.current.findIndex((t) => t.kind === 'pickup');
+      if (idx === -1) {
+        // Плашка успела погаснуть — начинаем новую, дельту не теряем.
+        push({ id: nextId++, kind: 'pickup', fe: gained });
+      } else {
+        const updated = [...listRef.current];
+        updated[idx] = { ...updated[idx]!, fe: updated[idx]!.fe + gained };
+        commit(updated);
+        scheduleExpiry(updated[idx]!.id, 'pickup');
       }
-      if (sound) playPickup(gained, volume * 0.5);
       return;
     }
 
     push({ id: nextId++, kind: 'pickup', fe: gained });
-    if (sound) playPickup(gained, volume);
   }, [snapshot]);
 
   return toasts;

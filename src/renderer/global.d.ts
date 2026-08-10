@@ -1,3 +1,4 @@
+import type { RetroScanProgress } from '../core/retroScan.js';
 import type { Snapshot } from '../main/engine.js';
 import type { OverlayMode } from '../main/settings.js';
 import type { UpdateState } from '../main/updater.js';
@@ -44,6 +45,7 @@ declare global {
   interface GornApi {
     getSnapshot: () => Promise<Snapshot | null>;
     onSnapshot: (cb: (snapshot: Snapshot) => void) => () => void;
+    onScanProgress: (cb: (progress: RetroScanProgress) => void) => () => void;
     getItemNames: () => Promise<NameLanguage>;
     setItemNames: (language: NameLanguage) => Promise<NameLanguage>;
     getCommunityPrices: () => Promise<boolean>;

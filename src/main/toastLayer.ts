@@ -18,6 +18,8 @@ const MAX_HEIGHT = 260;
  *    floating combat text;
  *  - позиция фиксированная: по горизонтали центр, по вертикали чуть выше
  *    середины — над персонажем, но не поверх прицела и не поверх босс-бара;
+ *    стек растёт ВВЕРХ от закреплённой нижней кромки: вниз расти нельзя,
+ *    три плашки доставали бы до персонажа в бою;
  *  - окно скрыто, пока показывать нечего: прозрачная площадь стоит
  *    композитору дорого, а слой большую часть времени пуст.
  *
@@ -27,6 +29,8 @@ const MAX_HEIGHT = 260;
 export class ToastLayer {
   private window: BrowserWindow | null = null;
   private hideTimer: NodeJS.Timeout | null = null;
+  /** Экранная координата нижней кромки — от неё стек растёт вверх. */
+  private anchorBottom = 0;
 
   constructor(private readonly settings: SettingsStore) {}
 
@@ -118,8 +122,8 @@ export class ToastLayer {
     const target = Math.max(INITIAL_HEIGHT, Math.min(MAX_HEIGHT, Math.ceil(height)));
     const bounds = this.window!.getBounds();
     if (Math.abs(bounds.height - target) < 2) return;
-    // Верхний край зафиксирован: стек плашек растёт вниз, к персонажу.
-    this.window!.setBounds({ ...bounds, height: target });
+    // Нижняя кромка зафиксирована: окно растёт вверх, от персонажа.
+    this.window!.setBounds({ ...bounds, y: this.anchorBottom - target, height: target });
   }
 
   send(channel: string, payload: unknown): void {
@@ -132,10 +136,12 @@ export class ToastLayer {
       screen.getAllDisplays().find((d) => d.id === overlayDisplayId) ??
       screen.getPrimaryDisplay();
     const area = display.workArea;
+    // Кромка чуть выше середины: одиночная плашка стоит над персонажем,
+    // а полный стек уходит вверх, не доставая до полосы босса.
+    this.anchorBottom = Math.round(area.y + area.height * 0.36);
     return {
       x: Math.round(area.x + (area.width - WIDTH) / 2),
-      // Чуть выше середины: над персонажем, под полосой босса.
-      y: Math.round(area.y + area.height * 0.3),
+      y: this.anchorBottom - INITIAL_HEIGHT,
     };
   }
 }

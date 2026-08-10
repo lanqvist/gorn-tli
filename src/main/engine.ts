@@ -213,7 +213,9 @@ export class Engine extends EventEmitter {
       this.prices.set(record.configBaseId, record.fe, record.observedAt);
     }
 
-    const scan = await retroScan(this.logDir);
+    // Прогресс уходит наверх: на большой пачке логов статичная заглушка
+    // неотличима от зависания.
+    const scan = await retroScan(this.logDir, (p) => this.emit('scanProgress', p));
     // Сезон — из ПОСЛЕДНЕГО файла. Первый элемент seasonIds — самый старый:
     // после смены сезона со старыми логами на диске трекер целый сезон
     // писал бы данные в прошлый.

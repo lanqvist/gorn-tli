@@ -156,6 +156,9 @@ app.whenReady().then(async () => {
   engine.on('error', (err: Error) => {
     console.error('[движок]', err.message);
   });
+  engine.on('scanProgress', (progress: unknown) => {
+    if (window && !window.isDestroyed()) window.webContents.send('scan:progress', progress);
+  });
 
   ipcMain.handle('snapshot:get', () => latest);
 

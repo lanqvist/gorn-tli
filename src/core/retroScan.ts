@@ -52,6 +52,8 @@ export interface RetroScanProgress {
   file: string;
   index: number;
   total: number;
+  /** Забегов найдено к началу этого файла — живая цифра для заглушки. */
+  runsFound: number;
 }
 
 export async function retroScan(
@@ -82,7 +84,7 @@ export async function retroScan(
   const failed: Array<{ path: string; reason: string }> = [];
 
   for (const [index, file] of files.entries()) {
-    onProgress?.({ file: file.path, index, total: files.length });
+    onProgress?.({ file: file.path, index, total: files.length, runsFound: runs.length });
 
     // Игра может ротировать или переписать файл прямо во время чтения.
     // Один недочитанный файл не должен ронять разбор остальных.

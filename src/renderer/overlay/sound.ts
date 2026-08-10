@@ -11,6 +11,11 @@
  *     срезаны верха, из-за которых синтез звучит «дёшево».
  *  3. Каждый удар чуть случаен по высоте (±4%) — повторяющийся сэмпл
  *     раздражает, слегка живой — нет.
+ *  4. Подборы звучат не чаще одного удара за окно троттлинга: лог тикает
+ *     каждые 300 мс, и удар на каждый тик — звуковой спам, от которого
+ *     игрок за час выключит звук совсем. Дельты внутри окна копятся
+ *     и озвучиваются одним ударом с весом накопленного; мелочь тише
+ *     порога не звенит вовсе.
  *
  * Синтез вместо файлов: нет ассетов и лицензий, высота и вес звука
  * масштабируются от ценности находки непрерывно. AudioContext создаётся
@@ -22,6 +27,27 @@ let ctx: AudioContext | null = null;
 function context(): AudioContext {
   if (!ctx) ctx = new AudioContext();
   return ctx;
+}
+
+let bus: DynamicsCompressorNode | null = null;
+
+/**
+ * Общая выходная шина с компрессором-лимитером: хвосты пикапов, джекпот
+ * и треск углей суммируются в одну точку, и на громкости ближе к единице
+ * без него возможен клиппинг.
+ */
+function output(): AudioNode {
+  const audio = context();
+  if (!bus) {
+    bus = audio.createDynamicsCompressor();
+    bus.threshold.value = -18;
+    bus.knee.value = 12;
+    bus.ratio.value = 6;
+    bus.attack.value = 0.002;
+    bus.release.value = 0.12;
+    bus.connect(audio.destination);
+  }
+  return bus;
 }
 
 /** Ингармонические соотношения частичных тонов удара по металлу. */
@@ -58,7 +84,7 @@ function metalHit(
   lowpass.frequency.value = 1800 + brightness * 2600;
   lowpass.Q.value = 0.6;
 
-  lowpass.connect(master).connect(audio.destination);
+  lowpass.connect(master).connect(output());
 
   for (const [ratio, share] of METAL_PARTIALS) {
     const level = share * (ratio === 1 ? 1 : brightness);
@@ -103,7 +129,7 @@ function emberCrackle(at: number, durationSec: number, volume: number): void {
   band.type = 'bandpass';
   band.frequency.value = 2400;
   band.Q.value = 2;
-  band.connect(master).connect(audio.destination);
+  band.connect(master).connect(output());
 
   let t = at + 0.12;
   while (t < at + durationSec) {
@@ -122,12 +148,48 @@ function emberCrackle(at: number, durationSec: number, volume: number): void {
   }
 }
 
+/** Пикапы звучат не чаще одного удара за это окно. */
+const PICKUP_THROTTLE_MS = 1800;
+/** Накопленная мелочь тише этого порога не озвучивается вовсе. */
+const PICKUP_MIN_FE = 1;
+
+let pendingFe = 0;
+let pendingVolume = 0;
+let lastHitAt = 0;
+let flushTimer: ReturnType<typeof setTimeout> | null = null;
+
 /**
  * Подбор добычи: короткий глухой звяк монеты о металл.
- * Ценность добавляет весу (ниже и дольше), а не пронзительности.
+ *
+ * Троттлинг живёт здесь, а не у вызывающего: дельты внутри окна копятся
+ * и звучат одним ударом с весом накопленной суммы. Джекпот и итог карты
+ * идут мимо — они редкие и осмысленные.
  */
 export function playPickup(valueFe: number, volume: number): void {
   if (volume <= 0) return;
+  pendingFe += valueFe;
+  pendingVolume = Math.max(pendingVolume, volume);
+  const sinceLast = Date.now() - lastHitAt;
+  if (sinceLast >= PICKUP_THROTTLE_MS) {
+    flushPickup();
+  } else if (flushTimer === null) {
+    flushTimer = setTimeout(flushPickup, PICKUP_THROTTLE_MS - sinceLast);
+  }
+}
+
+function flushPickup(): void {
+  if (flushTimer !== null) {
+    clearTimeout(flushTimer);
+    flushTimer = null;
+  }
+  const valueFe = pendingFe;
+  const volume = pendingVolume;
+  pendingFe = 0;
+  pendingVolume = 0;
+  // Не добравшаяся до порога мелочь сбрасывается, а не копится вечно:
+  // иначе мусор по 0,1 ФЕ раз в десять минут внезапно звенел бы.
+  if (valueFe < PICKUP_MIN_FE) return;
+  lastHitAt = Date.now();
   try {
     const audio = context();
     const now = audio.currentTime;

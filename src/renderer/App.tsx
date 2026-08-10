@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 
+import type { RetroScanProgress } from '../core/retroScan.js';
 import type { RunView, Snapshot } from '../main/engine.js';
 import type { UpdateState } from '../main/updater.js';
 import { Fe, FeIcon } from './components/Fe.js';
@@ -48,6 +49,7 @@ const CONFIDENCE = {
 
 export function App() {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
+  const [scanProgress, setScanProgress] = useState<RetroScanProgress | null>(null);
   const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
@@ -60,7 +62,12 @@ export function App() {
       return;
     }
     void window.gorn.getSnapshot().then((s) => s && setSnapshot(s));
-    return window.gorn.onSnapshot(setSnapshot);
+    const offSnapshot = window.gorn.onSnapshot(setSnapshot);
+    const offScan = window.gorn.onScanProgress(setScanProgress);
+    return () => {
+      offSnapshot();
+      offScan();
+    };
   }, []);
 
   // Таймер текущего забега должен идти, даже когда в лог ничего не падает.
@@ -74,6 +81,16 @@ export function App() {
       <div className="boot">
         <div className="boot-spark" />
         <p>Разбираю логи…</p>
+        {/* На большой пачке логов без живой цифры заглушка неотличима
+            от зависания. */}
+        {scanProgress && (
+          <p className="muted small">
+            Файл {scanProgress.index + 1} из {scanProgress.total}
+            {scanProgress.runsFound > 0 && (
+              <> · найдено {pluralize(scanProgress.runsFound, RUN)}</>
+            )}
+          </p>
+        )}
       </div>
     );
   }
@@ -104,6 +121,7 @@ export function App() {
  */
 function UpdateBanner() {
   const [state, setState] = useState<UpdateState | null>(null);
+  const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
     if (!window.gorn) return;
@@ -111,13 +129,28 @@ function UpdateBanner() {
     return window.gorn.update.onState(setState);
   }, []);
 
+  // «Скрыть» относится к конкретному сообщению: сменился статус — полоса
+  // имеет право показаться снова.
+  useEffect(() => {
+    setDismissed(false);
+  }, [state?.status]);
+
   if (!state || state.status === 'idle' || state.status === 'checking') return null;
+  if (dismissed) return null;
 
   // Неудачная проверка обновлений — не событие для игрока: приложение
-  // работает и без неё. Одна приглушённая строка, без подробностей.
+  // работает и без неё. Одна приглушённая строка; техножаргон ошибки —
+  // только в подсказке, для любопытных.
   if (state.status === 'error') {
     return (
-      <div className="update update-quiet">Обновления не проверились: {state.error}</div>
+      <div className="update update-quiet">
+        <span title={state.error ?? undefined}>
+          Обновления не проверились — нет сети? Приложение работает как обычно.
+        </span>
+        <button className="update-close" title="Скрыть" onClick={() => setDismissed(true)}>
+          ✕
+        </button>
+      </div>
     );
   }
 
@@ -150,9 +183,23 @@ function UpdateBanner() {
       {state.supported ? (
         <button onClick={() => void window.gorn.update.download()}>Загрузить</button>
       ) : (
-        <span className="muted small">
-          Портативная версия не обновляется сама — скачайте новую с GitHub.
-        </span>
+        <>
+          <span className="muted small">
+            Портативная версия не обновляется сама —{' '}
+            <a
+              href="https://github.com/lanqvist/gorn-tli/releases/latest"
+              target="_blank"
+              rel="noreferrer"
+            >
+              скачайте новую с GitHub
+            </a>
+            .
+          </span>
+          {/* Внутри приложения с этой новостью сделать нечего — полосе нужен способ уйти. */}
+          <button className="update-close" title="Скрыть" onClick={() => setDismissed(true)}>
+            ✕
+          </button>
+        </>
       )}
     </div>
   );
@@ -307,6 +354,50 @@ function Hero({ snapshot }: { snapshot: Snapshot }) {
 }
 
 /**
+ * Копия в буфер с запасным путём: Clipboard API может быть запрещён
+ * политикой окружения, execCommand работает и там.
+ */
+async function copyText(text: string): Promise<void> {
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch {
+    const area = document.createElement('textarea');
+    area.value = text;
+    area.style.position = 'fixed';
+    area.style.opacity = '0';
+    document.body.appendChild(area);
+    area.select();
+    document.execCommand('copy');
+    area.remove();
+  }
+}
+
+/**
+ * Имя предмета, копируемое кликом. Цену пробивают поиском на бирже,
+ * и перепечатывать «Voidlands Beacon (Timemark 8)» руками — мучение.
+ * Подтверждение показывается на месте имени: взгляд уже там.
+ */
+function CopyName({ name }: { name: string }) {
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!copied) return;
+    const t = setTimeout(() => setCopied(false), 1100);
+    return () => clearTimeout(t);
+  }, [copied]);
+
+  return (
+    <button
+      className={`drop-name copy-name ${copied ? 'copied' : ''}`}
+      title="Скопировать название"
+      onClick={() => void copyText(name).then(() => setCopied(true))}
+    >
+      {copied ? 'Скопировано ✓' : name}
+    </button>
+  );
+}
+
+/**
  * Иконка предмета. Загрузка может не удаться: нет интернета при первом показе
  * либо предмета нет в справочнике. Тогда остаётся пустое место того же
  * размера — строка не съезжает.
@@ -427,7 +518,7 @@ function DropList({ drops }: { drops: RunView['drops'] }) {
       {drops.slice(0, 12).map((d) => (
         <li key={d.configBaseId}>
           <ItemIcon src={d.icon} />
-          <span className="drop-name">{d.name}</span>
+          <CopyName name={d.name} />
           <span className="drop-qty">×{num(d.qty)}</span>
           <span className="drop-value">
             {d.totalFe === null ? (
@@ -646,7 +737,7 @@ function MissingPrices({ snapshot }: { snapshot: Snapshot }) {
         {missing.map((m) => (
           <li key={m.configBaseId}>
             <ItemIcon src={m.icon} />
-            <span className="drop-name">{m.name}</span>
+            <CopyName name={m.name} />
             <span className="drop-qty">{num(m.qty)} шт</span>
             <span className="muted small">в {pluralize(m.runs, RUN_IN)}</span>
           </li>
@@ -689,11 +780,49 @@ function Diagnostics({ snapshot }: { snapshot: Snapshot }) {
           <span className="warn">!</span>
           <span>
             Незнакомые операции: {unknownProtos.map(([p, n]) => `${p} ×${n}`).join(', ')}.
-            Возможно, игра обновилась — сообщи, чтобы я их учёл.
+            Возможно, игра обновилась —{' '}
+            <a
+              href="https://github.com/lanqvist/gorn-tli/issues"
+              target="_blank"
+              rel="noreferrer"
+            >
+              сообщите
+            </a>
+            , чтобы я их учёл.
           </span>
+          <CopyProtosReport snapshot={snapshot} />
         </div>
       )}
     </section>
+  );
+}
+
+/**
+ * Готовый текст для баг-репорта: игроку достаточно вставить его в issue,
+ * не переписывая имена протоколов руками.
+ */
+function CopyProtosReport({ snapshot }: { snapshot: Snapshot }) {
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!copied) return;
+    const t = setTimeout(() => setCopied(false), 1100);
+    return () => clearTimeout(t);
+  }, [copied]);
+
+  const report = [
+    `Незнакомые операции в логе (сезон ${snapshot.seasonId ?? '?'}):`,
+    ...snapshot.diagnostics.unknownProtos.map(([p, n]) => `- ${p} ×${n}`),
+  ].join('\n');
+
+  return (
+    <button
+      className="diag-toggle"
+      title="Скопировать список для баг-репорта"
+      onClick={() => void copyText(report).then(() => setCopied(true))}
+    >
+      {copied ? 'скопировано ✓' : 'скопировать отчёт'}
+    </button>
   );
 }
 

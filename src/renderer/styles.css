@@ -16,12 +16,27 @@
   box-sizing: border-box;
 }
 
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
 body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
   font: 14px/1.45 'Segoe UI', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+}
+
+/* Текст должен выделяться: пробивка цены начинается с поиска предмета
+   по имени на бирже. Случайное выделение мешает только в шапке и на кнопках. */
+.header,
+button {
   user-select: none;
 }
 
@@ -135,6 +150,20 @@ body {
   background: var(--surface);
   border-color: var(--line);
   color: var(--muted);
+}
+
+.update-close {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
+  padding: 0 2px;
+}
+
+.update-close:hover {
+  color: var(--text);
 }
 
 .update button {
@@ -446,6 +475,25 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Имя-кнопка: клик копирует название — его вбивают в поиск биржи. */
+.copy-name {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: copy;
+}
+
+.copy-name:hover {
+  color: var(--accent);
+}
+
+.copy-name.copied {
+  color: var(--up);
 }
 
 .drop-qty {
