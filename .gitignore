@@ -2,6 +2,9 @@ node_modules/
 dist/
 out/
 release/
+# Иконка собирается скриптом (npm run icon), в репозитории не нужна.
+build/icon.png
+build/icon.ico
 *.log
 !test/fixtures/*.log
 .DS_Store

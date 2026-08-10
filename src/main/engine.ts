@@ -372,14 +372,21 @@ export class Engine extends EventEmitter {
    * карту и опознаёт, в отличие от транслитерации китайского названия.
    */
   private runName(run: Run): string {
+    const map = mapName(run.asset, run.areaId);
+
     for (const cost of run.costs) {
       const info = this.items.get(cost.configBaseId);
       if (!info) continue;
       // План ищем по русскому названию маячка, английское — как запасной вариант.
-      const readable = planeName(info.nameRu ?? info.name) ?? planeName(info.name);
-      if (readable) return readable;
+      const plane = planeName(info.nameRu ?? info.name) ?? planeName(info.name);
+      if (!plane) continue;
+      // План — это стратегия, но карты внутри него разные. Одним планом
+      // все строки таблицы называются одинаково и перестают различаться,
+      // поэтому конкретная карта идёт следом.
+      return run.asset ? `${plane} · ${map}` : plane;
     }
-    return mapName(run.asset, run.areaId);
+
+    return map;
   }
 
   /**

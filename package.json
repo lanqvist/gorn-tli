@@ -4,6 +4,9 @@
   "private": true,
   "description": "Горн — трекер валюты и фарм-эффективности для Torchlight: Infinite",
   "type": "module",
+  "main": "dist/main/index.js",
+  "author": "Горн",
+  "license": "MIT",
   "engines": {
     "node": ">=20"
   },
@@ -11,11 +14,59 @@
     "dev": "node scripts/dev.mjs",
     "build": "node scripts/build-electron.mjs && vite build",
     "start": "npm run build && electron dist/main/index.js",
+    "icon": "node scripts/make-icon.mjs",
+    "dist": "npm run build && electron-builder --win",
     "analyze": "tsx src/cli/analyze.ts",
     "scan": "tsx src/cli/scan.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit"
+  },
+  "build": {
+    "appId": "com.gorn.tli",
+    "productName": "Горн",
+    "copyright": "Неофициальный инструмент. Torchlight: Infinite © XD Inc.",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "data",
+        "to": "data",
+        "filter": [
+          "items.json",
+          "names-ru.json"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "artifactName": "Gorn-${version}-setup.${ext}",
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Горн",
+      "installerLanguages": [
+        "ru_RU"
+      ],
+      "language": "1049"
+    },
+    "portable": {
+      "artifactName": "Gorn-${version}-portable.${ext}"
+    }
   },
   "devDependencies": {
     "@types/node": "^26.2.0",
@@ -23,6 +74,7 @@
     "@types/react-dom": "^19.2.4",
     "@vitejs/plugin-react": "^6.0.5",
     "electron": "^43.3.0",
+    "electron-builder": "^26.15.3",
     "esbuild": "^0.28.2",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
