@@ -80,6 +80,13 @@ export class Overlay {
       return;
     }
 
+    // Первое включение — открепленным: у закреплённого оверлея нет ни одного
+    // видимого органа управления, и игрок не узнал бы ни про перетаскивание,
+    // ни про режимы. Дальше — как оставил игрок.
+    if (!this.settings.overlay.introShown) {
+      this.settings.patchOverlay({ locked: false, introShown: true });
+    }
+
     const prefs = this.settings.overlay;
     const size = {
       width: Math.round(WIDTHS[prefs.mode] * prefs.fontScale),

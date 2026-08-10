@@ -167,6 +167,13 @@ export function OverlayApp() {
         </div>
       )}
 
+      {/* Шпаргалка видна ровно тогда, когда оверлей настраивают. */}
+      {!locked && (
+        <div className="ov-hint">
+          перетащите за полоску · ⌖ или Ctrl+Alt+L — закрепить · Ctrl+Alt+M — режим
+        </div>
+      )}
+
       <div className="ov-line">
         <span className="ov-rate">
           <Fe value={median} />

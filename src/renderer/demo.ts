@@ -37,6 +37,9 @@ const drop = (
 export const demoSnapshot: Snapshot = {
   status: 'running',
   hint: null,
+  lastActivityAt: now - 4_000,
+  logDir:
+    'C:\\Program Files (x86)\\Steam\\steamapps\\common\\Torchlight Infinite\\UE_game\\TorchLight\\Saved\\Logs',
   seasonId: 1501,
   current: {
     areaId: 5348,
@@ -191,5 +194,7 @@ export const demoSnapshot: Snapshot = {
     unpricedDrops: 3,
     communityPrices: 2154,
     communityEnabled: true,
+    communityFetchedAt: now - 4 * 60_000,
+    communityStale: false,
   },
 };

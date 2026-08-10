@@ -121,6 +121,46 @@ button {
   opacity: 0.75;
 }
 
+/* «Трекер жив»: возраст последнего события лога. */
+.log-age {
+  font-size: 12px;
+}
+
+.log-age-fresh {
+  color: var(--up);
+}
+
+.log-age-ok {
+  color: var(--muted);
+}
+
+.log-age-stale {
+  color: var(--down);
+}
+
+/* Пульс точки, пока лог сыплет событиями прямо сейчас. */
+.status-pulse i {
+  animation: status-pulse 1.4s ease-out infinite;
+}
+
+@keyframes status-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgb(95 208 138 / 45%);
+  }
+  70% {
+    box-shadow: 0 0 0 7px rgb(95 208 138 / 0%);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgb(95 208 138 / 0%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .status-pulse i {
+    animation: none;
+  }
+}
+
 .header-right {
   margin-left: auto;
   display: flex;
@@ -877,6 +917,61 @@ button {
   flex-direction: column;
   justify-content: center;
   min-height: 180px;
+}
+
+/* Первый запуск: шаги вместо пустоты. */
+.onboarding {
+  justify-content: flex-start;
+  gap: 8px;
+}
+
+.steps {
+  margin: 4px 0;
+  padding-left: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.steps li::marker {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* ── тултипы ────────────────────────────────────────────────────── */
+
+.tip {
+  position: relative;
+  cursor: help;
+}
+
+.tip-pop {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: 280px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 12.5px;
+  font-weight: 400;
+  line-height: 1.4;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--text);
+  box-shadow: 0 6px 22px rgb(0 0 0 / 45%);
+  z-index: 30;
+  white-space: normal;
+  text-align: left;
+}
+
+.tip:hover .tip-pop,
+.tip:focus-visible .tip-pop {
+  display: block;
 }
 
 .boot {

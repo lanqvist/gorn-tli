@@ -51,6 +51,8 @@ export interface Settings {
     soundImportantOnly: boolean;
     /** Порог «золотой» находки, в ФЕ. */
     jackpotFe: number;
+    /** Первое включение оверлея уже было — больше не открывать открепленным. */
+    introShown: boolean;
   };
 }
 
@@ -72,6 +74,7 @@ const DEFAULTS: Settings = {
     volume: 0.5,
     soundImportantOnly: false,
     jackpotFe: 50,
+    introShown: false,
   },
 };
 

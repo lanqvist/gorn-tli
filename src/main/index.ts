@@ -312,6 +312,7 @@ app.whenReady().then(async () => {
     closeToTray: settings?.closeToTray ?? false,
     autoStart: settings?.autoStart ?? false,
     version: app.getVersion(),
+    busyHotkeys,
   }));
   ipcMain.handle('app:setCloseToTray', (_e, enabled: boolean) => {
     settings?.setCloseToTray(enabled);
@@ -464,6 +465,9 @@ async function maybeCapture(): Promise<void> {
  *
  * Сочетания намеренно редкие: пересечься с игровыми биндами почти нечем.
  */
+/** Сочетания, которые занять не удалось, — показываются в настройках. */
+const busyHotkeys: string[] = [];
+
 function registerShortcuts(): void {
   const bindings: Array<[string, () => void]> = [
     ['Control+Alt+G', () => overlay?.toggle()],
@@ -473,7 +477,10 @@ function registerShortcuts(): void {
 
   for (const [accelerator, handler] of bindings) {
     const ok = globalShortcut.register(accelerator, handler);
-    if (!ok) console.warn(`[хоткеи] не удалось занять ${accelerator} — занято другой программой`);
+    if (!ok) {
+      busyHotkeys.push(accelerator.replace(/Control/g, 'Ctrl'));
+      console.warn(`[хоткеи] не удалось занять ${accelerator} — занято другой программой`);
+    }
   }
 }
 

@@ -52,6 +52,13 @@ export interface Snapshot {
   status: 'searching' | 'idle' | 'running';
   /** Пояснение статуса для игрока: почему ничего не происходит. */
   hint: string | null;
+  /**
+   * Когда лог последний раз дал распознанное событие; 0 — ещё ни разу.
+   * Интерфейс считает «N с назад» сам — снапшот не обязан тикать.
+   */
+  lastActivityAt: number;
+  /** Папка логов, с которой работает движок. null — игра не найдена. */
+  logDir: string | null;
   seasonId: number | null;
   current: RunView | null;
   recent: RunView[];
@@ -87,6 +94,10 @@ export interface Snapshot {
     /** Сколько предметов оценено по базе сообщества (titrack.ninja). */
     communityPrices: number;
     communityEnabled: boolean;
+    /** Когда цены сообщества успешно сверялись с сетью; null — ни разу. */
+    communityFetchedAt: number | null;
+    /** Последняя сверка не удалась — данные из кэша. */
+    communityStale: boolean;
   };
 }
 
@@ -622,6 +633,8 @@ export class Engine extends EventEmitter {
     return {
       status,
       hint: this.hintFor(status),
+      lastActivityAt: this.lastActivityAt,
+      logDir: this.logDir,
       seasonId: this.seasonId,
       current: open && !open.isHub ? this.toView(open) : null,
       recent: farming
@@ -671,6 +684,8 @@ export class Engine extends EventEmitter {
         unpricedDrops,
         communityPrices: this.communityEnabled ? this.community.size : 0,
         communityEnabled: this.communityEnabled,
+        communityFetchedAt: this.community.fetchedAtMs,
+        communityStale: this.community.stale,
       },
     };
   }

@@ -85,6 +85,8 @@ declare global {
     closeToTray: boolean;
     autoStart: boolean;
     version: string;
+    /** Горячие клавиши, занятые другими программами. */
+    busyHotkeys: string[];
   }
 
   interface GornLogDirResult {

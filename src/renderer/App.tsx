@@ -35,6 +35,37 @@ function clock(ms: number): string {
 const time = (ts: number) =>
   new Intl.DateTimeFormat('ru-RU', { hour: '2-digit', minute: '2-digit' }).format(new Date(ts));
 
+const cacheDate = (ts: number) =>
+  new Intl.DateTimeFormat('ru-RU', {
+    day: 'numeric',
+    month: 'long',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(ts));
+
+/** Возраст события человеческим языком. */
+function ago(ms: number): string {
+  if (ms < 8_000) return 'только что';
+  if (ms < 60_000) return `${Math.round(ms / 1000)} с назад`;
+  if (ms < 3_600_000) return `${Math.round(ms / 60_000)} мин назад`;
+  return `${Math.round(ms / 3_600_000)} ч назад`;
+}
+
+/**
+ * Свой тултип вместо нативного title: тот появляется с секундной задержкой,
+ * невидим, пока не догадаешься навести, и не работает с клавиатуры.
+ */
+function Tip({ tip, children }: { tip: string; children: React.ReactNode }) {
+  return (
+    <span className="tip" tabIndex={0}>
+      {children}
+      <span className="tip-pop" role="tooltip">
+        {tip}
+      </span>
+    </span>
+  );
+}
+
 /**
  * Сколько карта должна идти, прежде чем показывать сравнение темпа
  * с обычным. Меньше минуты знаменатель слишком мал: одна находка
@@ -43,10 +74,27 @@ const time = (ts: number) =>
 const WARMUP_MS = 60_000;
 
 const CONFIDENCE = {
-  insufficient: { label: 'данных мало', tone: 'weak' },
-  emerging: { label: 'есть картина', tone: 'mid' },
-  solid: { label: 'надёжно', tone: 'good' },
+  insufficient: {
+    label: 'данных мало',
+    tone: 'weak',
+    tip: 'Меньше 15 забегов — цифра ещё гуляет от каждой находки.',
+  },
+  emerging: {
+    label: 'есть картина',
+    tone: 'mid',
+    tip: 'От 15 забегов — картина складывается, но редкие дорогие находки ещё недооценены.',
+  },
+  solid: { label: 'надёжно', tone: 'good', tip: 'От 50 забегов — медиане можно верить.' },
 } as const;
+
+function ConfidenceBadge({ level }: { level: keyof typeof CONFIDENCE }) {
+  const conf = CONFIDENCE[level];
+  return (
+    <Tip tip={conf.tip}>
+      <span className={`badge badge-${conf.tone}`}>{conf.label}</span>
+    </Tip>
+  );
+}
 
 export function App() {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
@@ -100,7 +148,7 @@ export function App() {
   return (
     <div className="app">
       <UpdateBanner />
-      <Header snapshot={snapshot} onOpenSettings={() => setSettingsOpen(true)} />
+      <Header snapshot={snapshot} now={now} onOpenSettings={() => setSettingsOpen(true)} />
       {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} />}
       <Hero snapshot={snapshot} />
       <div className="columns">
@@ -110,7 +158,7 @@ export function App() {
       <Strategies snapshot={snapshot} />
       <RecentRuns runs={snapshot.recent} median={snapshot.norm} />
       <MissingPrices snapshot={snapshot} />
-      <Diagnostics snapshot={snapshot} />
+      <Diagnostics snapshot={snapshot} now={now} />
     </div>
   );
 }
@@ -210,26 +258,39 @@ function UpdateBanner() {
 
 function Header({
   snapshot,
+  now,
   onOpenSettings,
 }: {
   snapshot: Snapshot;
+  now: number;
   onOpenSettings: () => void;
 }) {
   const dot =
     snapshot.status === 'running' ? 'live' : snapshot.status === 'idle' ? 'idle' : 'lost';
+
+  // «Трекер жив»: возраст последнего распознанного события лога.
+  // Считается на клиенте от тикающего now — снапшоту не нужно тикать самому.
+  const age = snapshot.lastActivityAt > 0 ? Math.max(0, now - snapshot.lastActivityAt) : null;
+  const showAge = age !== null && (snapshot.status === 'running' || age < 600_000);
+  const ageTone =
+    age === null ? '' : age < 15_000 ? 'fresh' : age < 60_000 ? 'ok' : 'stale';
+
   return (
     <header className="header">
       <div className="brand">
         <FeIcon />
         <span>Горн</span>
       </div>
-      <div className={`status status-${dot}`}>
+      <div
+        className={`status status-${dot} ${age !== null && age < 3_000 ? 'status-pulse' : ''}`}
+      >
         <i />
         {snapshot.status === 'running'
           ? 'На карте'
           : snapshot.status === 'idle'
             ? 'Ожидание'
             : 'Игра не найдена'}
+        {showAge && <span className={`log-age log-age-${ageTone}`}>лог {ago(age)}</span>}
         {snapshot.hint && <span className="hint">{snapshot.hint}</span>}
       </div>
       <div className="header-right">
@@ -497,6 +558,16 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
           <p className="muted small">
             Ctrl+Alt+G — показать · Ctrl+Alt+L — закрепить · Ctrl+Alt+M — режим
           </p>
+          {sys && sys.busyHotkeys.length > 0 && (
+            <p className="note warn">
+              {sys.busyHotkeys.join(', ')} — занято другой программой, сочетание
+              не сработает. Управляйте оверлеем кнопками из этого окна.
+            </p>
+          )}
+          <p className="muted small">
+            Не видно оверлея в игре? Переключите её в безрамочный режим —
+            эксклюзивный полный экран перекрыть нельзя.
+          </p>
         </section>
 
         <section className="set-section">
@@ -604,7 +675,6 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
  */
 function Hero({ snapshot }: { snapshot: Snapshot }) {
   const { rate, feRate, totals } = snapshot;
-  const conf = CONFIDENCE[rate.confidence];
   const spread = rate.p75 - rate.p25;
   // «Вложено 0» при потраченном маяке выглядит как поломка. Причина обычно
   // одна: у расходника нет цены, и вычесть нечего.
@@ -613,17 +683,25 @@ function Hero({ snapshot }: { snapshot: Snapshot }) {
   return (
     <section className="hero">
       <div className="hero-main">
-        <div className="hero-label">Добыча в час, за вычетом вложений</div>
+        <div className="hero-label">
+          <Tip tip="Оценка всей добычи по ценам (свои пробивки + база сообщества) минус вложения в карты. Медиана по забегам: устойчива к одной редкой дорогой находке.">
+            Добыча в час, за вычетом вложений
+          </Tip>
+        </div>
         <div className="hero-value">
           <Fe value={rate.median} />
         </div>
         <div className="hero-sub">
-          <span className={`badge badge-${conf.tone}`}>{conf.label}</span>
+          <ConfidenceBadge level={rate.confidence} />
           <span>{pluralize(rate.sampleSize, RUN)}</span>
-          <span className="muted">
-            обычный разброс {num(rate.p25)}–{num(rate.p75)}
-          </span>
-          <span className="muted">среднее {num(rate.mean)}</span>
+          <Tip tip="P25–P75: половина забегов укладывается в эти границы.">
+            <span className="muted">
+              обычный разброс {num(rate.p25)}–{num(rate.p75)}
+            </span>
+          </Tip>
+          <Tip tip="Среднее задирается одной редкой находкой и описывает забег, которого не бывает. Решения принимайте по медиане.">
+            <span className="muted">среднее {num(rate.mean)}</span>
+          </Tip>
         </div>
         {rate.sampleSize > 0 && spread > rate.median * 0.8 && (
           <p className="note">
@@ -643,11 +721,25 @@ function Hero({ snapshot }: { snapshot: Snapshot }) {
         {/* Накопительный темп: двигается при подборе, медиана — намеренно нет.
             Подпись «за сессию» важна, иначе медленное сползание между
             подборами выглядит как ошибка, а не как рост знаменателя. */}
-        <Tile label="За сессию, в час" value={<Fe value={snapshot.liveRate} />} live />
-        <Tile label="Чистый ФЕ в час" value={<Fe value={feRate.median} />} />
-        <Tile label="На картах" value={duration(totals.inMapMs)} />
+        <Tile
+          label="За сессию, в час"
+          tip="Накопительный темп: вся добыча сессии ÷ активное время в картах. Двигается при каждом подборе, между подборами медленно сползает — это рост знаменателя, не поломка."
+          value={<Fe value={snapshot.liveRate} />}
+          live
+        />
+        <Tile
+          label="Чистый ФЕ в час"
+          tip="Только сама валюта ФЕ, упавшая в сумку, — без оценки предметов по ценам."
+          value={<Fe value={feRate.median} />}
+        />
+        <Tile
+          label="На картах"
+          tip="Активное время: паузы дольше трёх минут не идут в зачёт."
+          value={duration(totals.inMapMs)}
+        />
         <Tile
           label="Вложено"
+          tip="Стоимость всего, чем открывались карты: компасы, маяки и прочие расходники."
           value={<Fe value={totals.costFe} />}
           {...(unpricedCost ? { warn: `${unpricedCost.name} без цены` } : {})}
         />
@@ -716,17 +808,21 @@ function Tile({
   value,
   live = false,
   warn,
+  tip,
 }: {
   label: string;
   value: React.ReactNode;
   live?: boolean;
   /** Пояснение, почему цифре нельзя верить как есть. */
   warn?: string;
+  /** Что это за метрика — почти одинаковые подписи «в час» требуют слов. */
+  tip?: string;
 }) {
+  const caption = tip ? <Tip tip={tip}>{label}</Tip> : label;
   return (
     <div className={`tile ${live ? 'tile-live' : ''} ${warn ? 'tile-warn' : ''}`}>
       <div className="tile-label">
-        {label}
+        {caption}
         {warn && (
           <span className="tile-warn-mark" title={warn}>
             !
@@ -748,12 +844,10 @@ function CurrentRun({ snapshot, now }: { snapshot: Snapshot; now: number }) {
   if (!run) {
     const previous = snapshot.recent[0];
     if (!previous) {
-      return (
-        <section className="card current empty">
-          <h2>Текущий забег</h2>
-          <p className="muted">{snapshot.hint ?? 'Ждём вход на карту.'}</p>
-        </section>
-      );
+      // Совсем без данных — это первый запуск: человеку нужны шаги,
+      // а не констатация «ждём карту».
+      if (snapshot.status === 'searching') return <GameNotFound />;
+      return <Onboarding snapshot={snapshot} />;
     }
     return <FinishedRun run={previous} />;
   }
@@ -789,6 +883,60 @@ function CurrentRun({ snapshot, now }: { snapshot: Snapshot; now: number }) {
       </div>
 
       <DropList drops={run.drops} />
+    </section>
+  );
+}
+
+/**
+ * «Игра не найдена» — раньше это был тупик без единого действия.
+ * Автопоиск повторяется сам, а кнопка спасает не-Steam установки.
+ */
+function GameNotFound() {
+  const [note, setNote] = useState<string | null>(null);
+  return (
+    <section className="card current empty onboarding">
+      <h2>Игра не найдена</h2>
+      <p className="muted">
+        Steam-установка находится сама, поиск повторяется автоматически. Если игра
+        стоит в другом месте или у вас не-Steam версия — укажите её папку.
+      </p>
+      <div className="set-actions">
+        <button
+          className="set-btn"
+          onClick={() => {
+            void window.gorn?.settings.chooseLogDir().then((r) => {
+              if (r.status === 'invalid') {
+                setNote('В выбранной папке нет логов игры — нужен корень установки или …\\Saved\\Logs.');
+              } else {
+                setNote(null);
+              }
+            });
+          }}
+        >
+          Указать папку с игрой…
+        </button>
+      </div>
+      {note && <p className="note warn">{note}</p>}
+    </section>
+  );
+}
+
+/** Первый запуск без истории: три шага вместо пустого «ждём карту». */
+function Onboarding({ snapshot }: { snapshot: Snapshot }) {
+  return (
+    <section className="card current empty onboarding">
+      <h2>Всё готово к первому забегу</h2>
+      <ol className="steps">
+        <li>Запустите Torchlight: Infinite</li>
+        <li>Зайдите на любую карту</li>
+        <li>Дальше я сам: посчитаю добычу, вложения и честный темп</li>
+      </ol>
+      {snapshot.hint && <p className="muted small">{snapshot.hint}</p>}
+      {snapshot.logDir && <p className="muted small set-path">Лог найден: {snapshot.logDir}</p>}
+      <p className="muted small">
+        Оверлей поверх игры — кнопка в шапке или Ctrl+Alt+G. Игре нужен безрамочный
+        или оконный полноэкранный режим: эксклюзивный полный экран перекрыть нельзя.
+      </p>
     </section>
   );
 }
@@ -918,7 +1066,11 @@ function RecentRuns({ runs, median }: { runs: RunView[]; median: number }) {
               Чистыми <FeIcon />
             </th>
             <th className="r">В час</th>
-            <th className="r">К норме</th>
+            <th className="r">
+              <Tip tip="Отклонение темпа забега от «нормы» — медианы последних забегов.">
+                К норме
+              </Tip>
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -968,7 +1120,6 @@ function Strategies({ snapshot }: { snapshot: Snapshot }) {
       <h2>Стратегии</h2>
       <div className="strategies">
         {strategies.map((s) => {
-          const conf = CONFIDENCE[s.rate.confidence];
           return (
             <div
               key={s.key}
@@ -993,7 +1144,7 @@ function Strategies({ snapshot }: { snapshot: Snapshot }) {
               </div>
 
               <div className="strategy-meta">
-                <span className={`badge badge-${conf.tone}`}>{conf.label}</span>
+                <ConfidenceBadge level={s.rate.confidence} />
                 <span className="muted">{pluralize(s.runs, RUN)}</span>
                 <span className="muted">
                   разброс {num(s.rate.p25)}–{num(s.rate.p75)}
@@ -1054,9 +1205,25 @@ function MissingPrices({ snapshot }: { snapshot: Snapshot }) {
  * Самодиагностика. Формат лога меняется каждый сезон, и трекер должен
  * говорить, что ослеп, а не показывать нули как ни в чём не бывало.
  */
-function Diagnostics({ snapshot }: { snapshot: Snapshot }) {
-  const { unknownProtos, pricedItems, communityPrices, communityEnabled } =
-    snapshot.diagnostics;
+function Diagnostics({ snapshot, now }: { snapshot: Snapshot; now: number }) {
+  const {
+    unknownProtos,
+    pricedItems,
+    communityPrices,
+    communityEnabled,
+    communityFetchedAt,
+    communityStale,
+  } = snapshot.diagnostics;
+
+  // Свежесть цен: счётчик «2 154 цены» ничего не говорит о том, не лежат ли
+  // они в кэше третий день без сети.
+  const freshness = !communityEnabled
+    ? null
+    : communityStale
+      ? ` · нет сети — кэш${communityFetchedAt ? ` от ${cacheDate(communityFetchedAt)}` : ''}`
+      : communityFetchedAt
+        ? ` · обновлены ${ago(Math.max(0, now - communityFetchedAt))}`
+        : null;
 
   return (
     <section className="card diag">
@@ -1076,6 +1243,7 @@ function Diagnostics({ snapshot }: { snapshot: Snapshot }) {
           {communityEnabled
             ? `Цен из базы сообщества: ${num(communityPrices)}`
             : 'Цены сообщества выключены — только свои пробивки.'}
+          {freshness && <span className="muted">{freshness}</span>}
         </span>
       </div>
       {unknownProtos.length > 0 && (

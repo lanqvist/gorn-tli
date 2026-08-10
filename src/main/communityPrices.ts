@@ -72,6 +72,10 @@ export class CommunityPriceFeed {
   private cachePath: string;
   private timer: NodeJS.Timeout | null = null;
   private listeners: Array<(prices: Map<ConfigBaseId, CommunityPrice>) => void> = [];
+  /** Когда цены последний раз успешно сверялись с сетью. */
+  private fetchedAt: number | null = null;
+  /** Последняя попытка провалилась — живём на кэше. */
+  private refreshFailed = false;
 
   constructor(cacheDir: string) {
     this.cachePath = join(cacheDir, 'community-prices.json');
@@ -83,6 +87,16 @@ export class CommunityPriceFeed {
 
   get size(): number {
     return this.prices.size;
+  }
+
+  /** Для самодиагностики: когда цены сверялись с сетью в последний раз. */
+  get fetchedAtMs(): number | null {
+    return this.fetchedAt;
+  }
+
+  /** Для самодиагностики: сеть недоступна, показываем данные из кэша. */
+  get stale(): boolean {
+    return this.refreshFailed;
   }
 
   priceOf(configBaseId: ConfigBaseId): CommunityPrice | null {
@@ -126,6 +140,8 @@ export class CommunityPriceFeed {
       if (raw.seasonId !== seasonId || !Array.isArray(raw.prices)) return;
       for (const p of raw.prices) this.prices.set(p.configBaseId, p);
       this.cursor = raw.cursor;
+      const parsed = Date.parse(raw.fetchedAt);
+      if (Number.isFinite(parsed)) this.fetchedAt = parsed;
     } catch {
       // Битый кэш — не повод падать, просто сходим за полной выборкой.
       this.cursor = null;
@@ -215,13 +231,20 @@ export class CommunityPriceFeed {
         offset += PAGE_SIZE;
       }
 
+      // Успешная сверка — свежесть, даже если новых цен не пришло.
+      this.fetchedAt = Date.now();
+      this.refreshFailed = false;
       if (changed > 0) {
         this.saveCache();
-        this.notify();
       }
+      // Слушатели узнают и про «без изменений»: самодиагностика показывает
+      // время сверки, и оно должно обновляться.
+      this.notify();
       return changed;
     } catch {
       // Живём на том, что есть: кэш или пусто. Это дополнение, а не база.
+      this.refreshFailed = true;
+      this.notify();
       return 0;
     }
   }

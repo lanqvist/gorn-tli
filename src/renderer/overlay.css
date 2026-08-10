@@ -77,6 +77,14 @@ body {
   color: #fff;
 }
 
+/* Шпаргалка в откреплённом состоянии — единственный момент обучения. */
+.ov-hint {
+  font-size: 10.5px;
+  line-height: 1.35;
+  color: #9aa1b4;
+  margin-top: -2px;
+}
+
 .ov-line {
   display: flex;
   align-items: baseline;
