@@ -1,0 +1,121 @@
+import { createReadStream } from 'node:fs';
+import { createInterface } from 'node:readline';
+
+import { EventParser } from './eventParser.js';
+import { InventoryTracker } from './inventory.js';
+import { RunSegmenter } from './runSegmenter.js';
+import type { ConfigBaseId, Diagnostics, PriceObservationEvent, Run } from './types.js';
+
+export interface AnalysisResult {
+  runs: Run[];
+  prices: PriceObservationEvent[];
+  inventory: Map<ConfigBaseId, number>;
+  diagnostics: Diagnostics;
+  seasonId: number | null;
+  firstTs: number | null;
+  lastTs: number | null;
+}
+
+function emptyDiagnostics(): Diagnostics {
+  return {
+    linesTotal: 0,
+    linesMatched: 0,
+    unknownProtos: new Map(),
+    unknownItemIds: new Map(),
+    slotRebases: 0,
+  };
+}
+
+/**
+ * Прогоняет файл лога целиком и собирает забеги, дельты и наблюдения цен.
+ *
+ * Используется и для ретро-скана уже накопленных логов (мгновенная история
+ * при первом запуске), и как эталон для тестов на реальных фикстурах.
+ */
+export async function analyzeLogFile(path: string): Promise<AnalysisResult> {
+  const diagnostics = emptyDiagnostics();
+  const parser = new EventParser();
+  const inventory = new InventoryTracker(diagnostics);
+  const segmenter = new RunSegmenter();
+  const prices: PriceObservationEvent[] = [];
+
+  let seasonId: number | null = null;
+  let firstTs: number | null = null;
+  let lastTs: number | null = null;
+
+  const rl = createInterface({
+    input: createReadStream(path, { encoding: 'utf8' }),
+    crlfDelay: Infinity,
+  });
+
+  for await (const raw of rl) {
+    diagnostics.linesTotal++;
+
+    // SeasonId приходит внутри сокет-дампа профиля игрока.
+    if (seasonId === null) {
+      const m = /\+SeasonId \[(\d+)\]/.exec(raw);
+      if (m) seasonId = Number(m[1]);
+    }
+
+    const ev = parser.parse(raw);
+    if (!ev) continue;
+    diagnostics.linesMatched++;
+
+    if ('ts' in ev && ev.ts > 0) {
+      firstTs ??= ev.ts;
+      lastTs = ev.ts;
+    }
+
+    switch (ev.kind) {
+      case 'itemChange':
+        if (ev.phase === 'start') inventory.beginTransaction(ev.proto);
+        else inventory.endTransaction();
+        break;
+
+      case 'bagInit':
+        inventory.applyInit(ev);
+        break;
+
+      case 'bagRemove':
+        inventory.applyRemove(ev);
+        break;
+
+      case 'bagModify': {
+        const delta = inventory.applyModify(ev);
+        if (delta) segmenter.addDelta(delta);
+        break;
+      }
+
+      case 'levelPath':
+        segmenter.noteAsset(ev.asset);
+        break;
+
+      case 'levelIds':
+        segmenter.noteLevelType(ev.levelType);
+        break;
+
+      case 'enterLevel':
+        segmenter.enterLevel(ev);
+        break;
+
+      case 'priceObservation':
+        prices.push(ev);
+        break;
+
+      default:
+        break;
+    }
+  }
+
+  const runs = segmenter.finish(lastTs ?? 0);
+
+  return {
+    runs,
+    prices,
+    inventory: inventory.snapshot(),
+    diagnostics,
+    seasonId,
+    firstTs,
+    lastTs,
+  };
+}
