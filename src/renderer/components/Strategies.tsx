@@ -1,3 +1,4 @@
+import { tr } from '../../core/i18n.js';
 import { RUN, pluralize } from '../../core/plural.js';
 import type { Snapshot } from '../../main/engine.js';
 import { num } from '../format.js';
@@ -24,7 +25,7 @@ export function Strategies({ snapshot }: { snapshot: Snapshot }) {
 
   return (
     <section className="card">
-      <h2>Стратегии</h2>
+      <h2>{tr('Стратегии', 'Strategies')}</h2>
       <StrategyBars strategies={strategies} best={best} />
       <div className="strategies">
         {strategies.map((s) => {
@@ -48,20 +49,21 @@ export function Strategies({ snapshot }: { snapshot: Snapshot }) {
 
               <div className="strategy-rate">
                 <Fe value={s.rate.median} />
-                <span className="muted small">в час</span>
+                <span className="muted small">{tr('в час', 'per hour')}</span>
               </div>
 
               <div className="strategy-meta">
                 <ConfidenceBadge level={s.rate.confidence} />
                 <span className="muted">{pluralize(s.runs, RUN)}</span>
                 <span className="muted">
-                  разброс {num(s.rate.p25)}–{num(s.rate.p75)}
+                  {tr('разброс', 'range')} {num(s.rate.p25)}–{num(s.rate.p75)}
                 </span>
               </div>
 
               <div className="strategy-money">
                 <span>
-                  вложено <Fe value={s.costPerRun} /> · чистыми <Fe value={s.netPerRun} />
+                  {tr('вложено', 'invested')} <Fe value={s.costPerRun} /> ·{' '}
+                  {tr('чистыми', 'net')} <Fe value={s.netPerRun} />
                 </span>
               </div>
             </div>
@@ -70,8 +72,14 @@ export function Strategies({ snapshot }: { snapshot: Snapshot }) {
       </div>
       <p className="muted small">
         {best === null
-          ? 'Стратегия определяется автоматически по тому, чем открыта карта. Пока ни по одной не набралось данных для сравнения — нужно хотя бы 15 забегов.'
-          : 'Стратегия определяется автоматически по тому, чем открыта карта. Сравнивайте только при сопоставимом числе забегов.'}
+          ? tr(
+              'Стратегия определяется автоматически по тому, чем открыта карта. Пока ни по одной не набралось данных для сравнения — нужно хотя бы 15 забегов.',
+              'The strategy is detected automatically from what opened the map. None has enough data to compare yet — it takes at least 15 runs.',
+            )
+          : tr(
+              'Стратегия определяется автоматически по тому, чем открыта карта. Сравнивайте только при сопоставимом числе забегов.',
+              'The strategy is detected automatically from what opened the map. Only compare strategies with a similar number of runs.',
+            )}
       </p>
     </section>
   );

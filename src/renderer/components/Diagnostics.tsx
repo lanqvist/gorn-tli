@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 
+import { tr } from '../../core/i18n.js';
 import type { Snapshot } from '../../main/engine.js';
 import { ago, cacheDate, copyText, num } from '../format.js';
 
@@ -22,19 +23,27 @@ export function Diagnostics({ snapshot, now }: { snapshot: Snapshot; now: number
   const freshness = !communityEnabled
     ? null
     : communityStale
-      ? ` · нет сети — кэш${communityFetchedAt ? ` от ${cacheDate(communityFetchedAt)}` : ''}`
+      ? tr(
+          ` · нет сети — кэш${communityFetchedAt ? ` от ${cacheDate(communityFetchedAt)}` : ''}`,
+          ` · offline — cache${communityFetchedAt ? ` from ${cacheDate(communityFetchedAt)}` : ''}`,
+        )
       : communityFetchedAt
-        ? ` · обновлены ${ago(Math.max(0, now - communityFetchedAt))}`
+        ? tr(
+            ` · обновлены ${ago(Math.max(0, now - communityFetchedAt))}`,
+            ` · updated ${ago(Math.max(0, now - communityFetchedAt))}`,
+          )
         : null;
 
   return (
     <section className="card diag">
-      <h2>Самодиагностика</h2>
+      <h2>{tr('Самодиагностика', 'Self-check')}</h2>
       {/* Маркер относится к своей строке, а не к общему состоянию:
           иначе справочная строка выглядит как проблема. */}
       <div className="diag-row">
         <span className="ok">✓</span>
-        <span>Своих пробивок: {num(pricedItems)}</span>
+        <span>
+          {tr(`Своих пробивок: ${num(pricedItems)}`, `Own price checks: ${num(pricedItems)}`)}
+        </span>
       </div>
       {/* Только факты: ручка включения живёт в настройках. */}
       <div className="diag-row">
@@ -43,8 +52,14 @@ export function Diagnostics({ snapshot, now }: { snapshot: Snapshot; now: number
         </span>
         <span>
           {communityEnabled
-            ? `Цен из базы сообщества: ${num(communityPrices)}`
-            : 'Цены сообщества выключены — только свои пробивки.'}
+            ? tr(
+                `Цен из базы сообщества: ${num(communityPrices)}`,
+                `Community prices: ${num(communityPrices)}`,
+              )
+            : tr(
+                'Цены сообщества выключены — только свои пробивки.',
+                'Community prices are off — own price checks only.',
+              )}
           {freshness && <span className="muted">{freshness}</span>}
         </span>
       </div>
@@ -52,16 +67,17 @@ export function Diagnostics({ snapshot, now }: { snapshot: Snapshot; now: number
         <div className="diag-row">
           <span className="warn">!</span>
           <span>
-            Незнакомые операции: {unknownProtos.map(([p, n]) => `${p} ×${n}`).join(', ')}.
-            Возможно, игра обновилась —{' '}
+            {tr('Незнакомые операции', 'Unknown operations')}:{' '}
+            {unknownProtos.map(([p, n]) => `${p} ×${n}`).join(', ')}.{' '}
+            {tr('Возможно, игра обновилась —', 'The game may have been updated —')}{' '}
             <a
               href="https://github.com/lanqvist/gorn-tli/issues"
               target="_blank"
               rel="noreferrer"
             >
-              сообщите
+              {tr('сообщите', 'report them')}
             </a>
-            , чтобы я их учёл.
+            {tr(', чтобы я их учёл.', ' so I can handle them.')}
           </span>
           <CopyProtosReport snapshot={snapshot} />
         </div>
@@ -91,10 +107,10 @@ function CopyProtosReport({ snapshot }: { snapshot: Snapshot }) {
   return (
     <button
       className="diag-toggle"
-      title="Скопировать список для баг-репорта"
+      title={tr('Скопировать список для баг-репорта', 'Copy the list for a bug report')}
       onClick={() => void copyText(report).then(() => setCopied(true))}
     >
-      {copied ? 'скопировано ✓' : 'скопировать отчёт'}
+      {copied ? tr('скопировано ✓', 'copied ✓') : tr('скопировать отчёт', 'copy report')}
     </button>
   );
 }

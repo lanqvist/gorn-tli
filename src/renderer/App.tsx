@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 
+import { tr } from '../core/i18n.js';
 import { RUN, pluralize } from '../core/plural.js';
 import type { RetroScanProgress } from '../core/retroScan.js';
 import type { Snapshot } from '../main/engine.js';
@@ -52,14 +53,20 @@ export function App() {
     return (
       <div className="boot">
         <div className="boot-spark" />
-        <p>Разбираю логи…</p>
+        <p>{tr('Разбираю логи…', 'Reading logs…')}</p>
         {/* На большой пачке логов без живой цифры заглушка неотличима
             от зависания. */}
         {scanProgress && (
           <p className="muted small">
-            Файл {scanProgress.index + 1} из {scanProgress.total}
+            {tr(
+              `Файл ${scanProgress.index + 1} из ${scanProgress.total}`,
+              `File ${scanProgress.index + 1} of ${scanProgress.total}`,
+            )}
             {scanProgress.runsFound > 0 && (
-              <> · найдено {pluralize(scanProgress.runsFound, RUN)}</>
+              <>
+                {' '}
+                · {tr('найдено', 'found')} {pluralize(scanProgress.runsFound, RUN)}
+              </>
             )}
           </p>
         )}

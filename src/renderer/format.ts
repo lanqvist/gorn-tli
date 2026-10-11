@@ -1,3 +1,5 @@
+import { tr, uiLocale } from '../core/i18n.js';
+
 /**
  * Неразрывный пробел — escape-последовательностью, а не символом:
  * в редакторе он неотличим от обычного, и подмена ломала числа
@@ -6,7 +8,7 @@
 export const NBSP = '\u00a0';
 
 export const num = (v: number, digits = 0) =>
-  new Intl.NumberFormat('ru-RU', {
+  new Intl.NumberFormat(uiLocale(), {
     minimumFractionDigits: digits,
     maximumFractionDigits: digits,
   })
@@ -18,9 +20,11 @@ export function duration(ms: number): string {
   const h = Math.floor(total / 3600);
   const m = Math.floor((total % 3600) / 60);
   const s = total % 60;
-  if (h > 0) return m > 0 ? `${h}${NBSP}ч ${m}${NBSP}м` : `${h}${NBSP}ч`;
-  if (m > 0) return s > 0 ? `${m}${NBSP}м ${s}${NBSP}с` : `${m}${NBSP}м`;
-  return `${s}${NBSP}с`;
+  // По-английски единица пишется слитно: «41 m» читается как метры.
+  const [hu, mu, su] = [tr(`${NBSP}ч`, 'h'), tr(`${NBSP}м`, 'm'), tr(`${NBSP}с`, 's')];
+  if (h > 0) return m > 0 ? `${h}${hu} ${m}${mu}` : `${h}${hu}`;
+  if (m > 0) return s > 0 ? `${m}${mu} ${s}${su}` : `${m}${mu}`;
+  return `${s}${su}`;
 }
 
 export function clock(ms: number): string {
@@ -29,35 +33,45 @@ export function clock(ms: number): string {
 }
 
 export const time = (ts: number) =>
-  new Intl.DateTimeFormat('ru-RU', { hour: '2-digit', minute: '2-digit' }).format(new Date(ts));
+  new Intl.DateTimeFormat(uiLocale(), { hour: '2-digit', minute: '2-digit' }).format(new Date(ts));
 
 export const cacheDate = (ts: number) =>
-  new Intl.DateTimeFormat('ru-RU', {
+  new Intl.DateTimeFormat(uiLocale(), {
     day: 'numeric',
     month: 'long',
     hour: '2-digit',
     minute: '2-digit',
   }).format(new Date(ts));
 
-/** Короткая подпись дня: «12 окт». */
+/** Дата и время коротко: «11 окт., 19:38» / «Oct 11, 7:38 PM» — для узких таблиц. */
+export const shortDate = (ts: number) =>
+  new Intl.DateTimeFormat(uiLocale(), {
+    day: 'numeric',
+    month: 'short',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(new Date(ts));
+
+/** Короткая подпись дня: «12 окт» / «Oct 12». */
 export const dayLabel = (ts: number) =>
-  new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'short' })
+  new Intl.DateTimeFormat(uiLocale(), { day: 'numeric', month: 'short' })
     .format(new Date(ts))
     .replace('.', '');
 
-/** Полная подпись дня: «пн, 12 октября». */
+/** Полная подпись дня: «пн, 12 октября» / «Mon, October 12». */
 export const dayFull = (ts: number) =>
-  new Intl.DateTimeFormat('ru-RU', { weekday: 'short', day: 'numeric', month: 'long' }).format(
+  new Intl.DateTimeFormat(uiLocale(), { weekday: 'short', day: 'numeric', month: 'long' }).format(
     new Date(ts),
   );
 
 /** Возраст события человеческим языком. */
-
 export function ago(ms: number): string {
-  if (ms < 8_000) return 'только что';
-  if (ms < 60_000) return `${Math.round(ms / 1000)} с назад`;
-  if (ms < 3_600_000) return `${Math.round(ms / 60_000)} мин назад`;
-  return `${Math.round(ms / 3_600_000)} ч назад`;
+  if (ms < 8_000) return tr('только что', 'just now');
+  if (ms < 60_000) return tr(`${Math.round(ms / 1000)} с назад`, `${Math.round(ms / 1000)}s ago`);
+  if (ms < 3_600_000) {
+    return tr(`${Math.round(ms / 60_000)} мин назад`, `${Math.round(ms / 60_000)} min ago`);
+  }
+  return tr(`${Math.round(ms / 3_600_000)} ч назад`, `${Math.round(ms / 3_600_000)}h ago`);
 }
 
 /**

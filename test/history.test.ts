@@ -133,4 +133,9 @@ describe('CSV для Excel', () => {
       '',
     ]);
   });
+
+  it('английский диалект: запятая между полями, точка в дробях', () => {
+    const csv = toCsv(['Map', 'FE'], [['Voidlands, Timemark 8', 12.345]], 'en');
+    expect(csv.slice(1).split('\r\n')).toEqual(['Map,FE', '"Voidlands, Timemark 8",12.35', '']);
+  });
 });

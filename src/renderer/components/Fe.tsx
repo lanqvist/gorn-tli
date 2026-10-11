@@ -1,5 +1,6 @@
 import { useState } from 'react';
 
+import { tr } from '../../core/i18n.js';
 import feIcon from '../assets/fe.webp';
 import { num } from '../format.js';
 
@@ -62,7 +63,7 @@ export function FeIcon() {
   if (failed) {
     // Искра вместо голого текста «ФЕ».
     return (
-      <svg viewBox="0 0 24 24" className="fe-icon" aria-label="ФЕ">
+      <svg viewBox="0 0 24 24" className="fe-icon" aria-label={tr('ФЕ', 'FE')}>
         <path
           d="M12 2c1.2 3.6 4.8 5.2 4.8 9.2A4.8 4.8 0 0 1 12 16a4.8 4.8 0 0 1-4.8-4.8C7.2 7.2 10.8 5.6 12 2Z"
           fill="currentColor"
@@ -75,8 +76,8 @@ export function FeIcon() {
     <img
       className="fe-icon"
       src={feIcon}
-      alt="ФЕ"
-      title="Элементиевое пламя (Flame Elementium)"
+      alt={tr('ФЕ', 'FE')}
+      title={tr('Элементиевое пламя (Flame Elementium)', 'Flame Elementium')}
       draggable={false}
       onError={() => setFailed(true)}
     />

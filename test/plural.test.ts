@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
+import { setUiLanguage } from '../src/core/i18n.js';
 import { FIND, plural, pluralize, RUN } from '../src/core/plural.js';
 
 describe('русские склонения после числительных', () => {
@@ -29,5 +30,17 @@ describe('русские склонения после числительных'
 
   it('дробные берут форму родительного единственного', () => {
     expect(plural(1.5, RUN)).toBe('забега');
+  });
+});
+
+describe('английские формы', () => {
+  afterEach(() => setUiLanguage('ru'));
+
+  it('единственное только для единицы', () => {
+    setUiLanguage('en');
+    expect(pluralize(1, RUN)).toBe('1 run');
+    expect(pluralize(0, RUN)).toBe('0 runs');
+    expect(pluralize(21, RUN)).toBe('21 runs');
+    expect(pluralize(1.5, RUN)).toBe('1.5 runs');
   });
 });

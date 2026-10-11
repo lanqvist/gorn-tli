@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import type { PriceRow, Snapshot } from '../../main/engine.js';
+import { tr } from '../../core/i18n.js';
 import { ago, num } from '../format.js';
 import { Fe } from './Fe.js';
 import { CopyName, ItemIcon, Tip } from './ui.js';
@@ -17,7 +18,9 @@ function PriceSpark({ row }: { row: PriceRow }) {
   if (pts.length < 2) {
     return (
       <span className="price-spark-empty muted small">
-        {pts.length === 0 ? 'своих пробивок нет' : 'одна пробивка'}
+        {pts.length === 0
+          ? tr('своих пробивок нет', 'no price checks')
+          : tr('одна пробивка', 'one price check')}
       </span>
     );
   }
@@ -39,9 +42,17 @@ function PriceSpark({ row }: { row: PriceRow }) {
       height={h}
       className="price-spark"
       role="img"
-      aria-label={`${pts.length} пробивок за месяц: от ${num(lo, 2)} до ${num(hi, 2)} ФЕ`}
+      aria-label={tr(
+        `${pts.length} пробивок за месяц: от ${num(lo, 2)} до ${num(hi, 2)} ФЕ`,
+        `${pts.length} price checks this month: ${num(lo, 2)} to ${num(hi, 2)} FE`,
+      )}
     >
-      <title>{`${pts.length} пробивок за месяц: ${num(lo, 2)}–${num(hi, 2)} ФЕ`}</title>
+      <title>
+        {tr(
+          `${pts.length} пробивок за месяц: ${num(lo, 2)}–${num(hi, 2)} ФЕ`,
+          `${pts.length} price checks this month: ${num(lo, 2)}–${num(hi, 2)} FE`,
+        )}
+      </title>
       <path d={d} className="price-spark-line" />
       <circle cx={x(last.t)} cy={y(last.fe)} r={2.5} className="price-spark-dot" />
     </svg>
@@ -60,15 +71,28 @@ function Change({ change }: { change: number | null }) {
 }
 
 function Source({ row }: { row: PriceRow }) {
-  if (row.source === 'excluded') return <span className="muted">не учитывается</span>;
+  if (row.source === 'excluded') {
+    return <span className="muted">{tr('не учитывается', 'ignored')}</span>;
+  }
   if (row.source === 'community') {
     return (
-      <Tip tip="Цена из базы сообщества (titrack.ninja): своей пробивки нет или она старше трёх дней и сообщество знает новее.">
-        <span className="price-community">сообщество</span>
+      <Tip
+        tip={tr(
+          'Цена из базы сообщества (titrack.ninja): своей пробивки нет или она старше трёх дней и сообщество знает новее.',
+          'Community price (titrack.ninja): you have no price check of your own, or yours is over three days old and the community has a newer one.',
+        )}
+      >
+        <span className="price-community">{tr('сообщество', 'community')}</span>
       </Tip>
     );
   }
-  if (row.ownObservedAt !== null) return <span className="muted">своя · {ago(Date.now() - row.ownObservedAt)}</span>;
+  if (row.ownObservedAt !== null) {
+    return (
+      <span className="muted">
+        {tr('своя', 'own')} · {ago(Date.now() - row.ownObservedAt)}
+      </span>
+    );
+  }
   return <span className="muted">—</span>;
 }
 
@@ -118,33 +142,38 @@ export function Prices({ snapshot }: { snapshot: Snapshot }) {
   return (
     <section className="card">
       <div className="runs-head">
-        <h2>Цены</h2>
+        <h2>{tr('Цены', 'Prices')}</h2>
         <div className="runs-tools">
           <input
             type="search"
             className="runs-search"
-            placeholder="Найти предмет…"
+            placeholder={tr('Найти предмет…', 'Find an item…')}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            aria-label="Поиск цены по справочнику"
+            aria-label={tr('Поиск цены по справочнику', 'Search prices across all items')}
           />
         </div>
       </div>
       {rows.length === 0 ? (
-        <p className="muted">Ничего не нашлось.</p>
+        <p className="muted">{tr('Ничего не нашлось.', 'Nothing found.')}</p>
       ) : (
         <table className="runs prices">
           <thead>
             <tr>
-              <th>Предмет</th>
-              <th className="r">Цена</th>
+              <th>{tr('Предмет', 'Item')}</th>
+              <th className="r">{tr('Цена', 'Price')}</th>
               <th>
-                <Tip tip="Свои пробивки за месяц и изменение к самой ранней пробивке в пределах недели.">
-                  Тренд
+                <Tip
+                  tip={tr(
+                    'Свои пробивки за месяц и изменение к самой ранней пробивке в пределах недели.',
+                    'Your own price checks this month and the change since your earliest check within the past week.',
+                  )}
+                >
+                  {tr('Тренд', 'Trend')}
                 </Tip>
               </th>
-              <th>Источник</th>
-              <th className="r">Встречалось</th>
+              <th>{tr('Источник', 'Source')}</th>
+              <th className="r">{tr('Встречалось', 'Seen')}</th>
               <th />
             </tr>
           </thead>
@@ -161,7 +190,7 @@ export function Prices({ snapshot }: { snapshot: Snapshot }) {
                   {row.source === 'excluded' ? (
                     <span className="muted">—</span>
                   ) : row.fe === null ? (
-                    <span className="muted">нет цены</span>
+                    <span className="muted">{tr('нет цены', 'no price')}</span>
                   ) : (
                     <Fe value={row.fe} />
                   )}
@@ -182,12 +211,20 @@ export function Prices({ snapshot }: { snapshot: Snapshot }) {
                     disabled={!window.gorn}
                     title={
                       row.source === 'excluded'
-                        ? 'Снова считать предмет по его цене.'
-                        : 'Считать предмет бесплатным во всех цифрах: для того, что не продаётся.'
+                        ? tr(
+                            'Снова считать предмет по его цене.',
+                            'Count the item at its price again.',
+                          )
+                        : tr(
+                            'Считать предмет бесплатным во всех цифрах: для того, что не продаётся.',
+                            "Count the item as free in all numbers: for things that don't sell.",
+                          )
                     }
                     onClick={() => void toggle(row)}
                   >
-                    {row.source === 'excluded' ? 'вернуть' : 'не учитывать'}
+                    {row.source === 'excluded'
+                      ? tr('вернуть', 'restore')
+                      : tr('не учитывать', 'ignore')}
                   </button>
                 </td>
               </tr>
@@ -197,7 +234,9 @@ export function Prices({ snapshot }: { snapshot: Snapshot }) {
       )}
       {rows.length > VISIBLE && (
         <button className="link-button prices-more" onClick={() => setAll(!all)}>
-          {all ? 'свернуть' : `показать все ${rows.length}`}
+          {all
+            ? tr('свернуть', 'collapse')
+            : tr(`показать все ${rows.length}`, `show all ${rows.length}`)}
         </button>
       )}
     </section>

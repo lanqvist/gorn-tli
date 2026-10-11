@@ -3,6 +3,8 @@ import { app } from 'electron';
 
 import electronUpdater from 'electron-updater';
 
+import { tr } from '../core/i18n.js';
+
 // electron-updater — пакет CommonJS, а main собирается в ESM.
 // Именованный импорт из такого пакета не работает, поэтому берём default.
 const { autoUpdater } = electronUpdater;
@@ -44,10 +46,17 @@ function shortReason(err: Error): string {
   const first = raw.split(/\r?\n|\\n/)[0] ?? '';
 
   if (/net::|ENOTFOUND|EAI_AGAIN|ETIMEDOUT|ECONNREFUSED/i.test(first)) {
-    return 'нет связи с сервером обновлений';
+    return tr('нет связи с сервером обновлений', 'cannot reach the update server');
   }
-  if (/404/.test(first)) return 'в последнем релизе нет файла обновления';
-  if (/403|rate limit/i.test(first)) return 'сервер обновлений временно ограничил запросы';
+  if (/404/.test(first)) {
+    return tr('в последнем релизе нет файла обновления', 'the latest release has no update file');
+  }
+  if (/403|rate limit/i.test(first)) {
+    return tr(
+      'сервер обновлений временно ограничил запросы',
+      'the update server is rate-limiting requests',
+    );
+  }
 
   return first.length > 120 ? `${first.slice(0, 117)}…` : first;
 }

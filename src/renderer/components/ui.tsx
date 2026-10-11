@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 
+import { tr } from '../../core/i18n.js';
 import { copyText } from '../format.js';
 
 /**
@@ -17,22 +18,40 @@ export function Tip({ tip, children }: { tip: string; children: React.ReactNode 
   );
 }
 
-const CONFIDENCE = {
-  insufficient: {
-    label: 'данных мало',
-    tone: 'weak',
-    tip: 'Меньше 15 забегов — цифра ещё гуляет от каждой находки.',
-  },
-  emerging: {
-    label: 'есть картина',
-    tone: 'mid',
-    tip: 'От 15 забегов — картина складывается, но редкие дорогие находки ещё недооценены.',
-  },
-  solid: { label: 'надёжно', tone: 'good', tip: 'От 50 забегов — медиане можно верить.' },
-} as const;
+type ConfidenceLevel = 'insufficient' | 'emerging' | 'solid';
 
-export function ConfidenceBadge({ level }: { level: keyof typeof CONFIDENCE }) {
-  const conf = CONFIDENCE[level];
+/** Функция, а не константа: подписи зависят от языка, а он ставится после импорта. */
+function confidence(level: ConfidenceLevel): { label: string; tone: string; tip: string } {
+  switch (level) {
+    case 'insufficient':
+      return {
+        label: tr('данных мало', 'not enough data'),
+        tone: 'weak',
+        tip: tr(
+          'Меньше 15 забегов — цифра ещё гуляет от каждой находки.',
+          'Fewer than 15 runs — every drop still swings the number.',
+        ),
+      };
+    case 'emerging':
+      return {
+        label: tr('есть картина', 'taking shape'),
+        tone: 'mid',
+        tip: tr(
+          'От 15 забегов — картина складывается, но редкие дорогие находки ещё недооценены.',
+          '15+ runs — the picture is taking shape, but rare expensive drops are still underweighted.',
+        ),
+      };
+    case 'solid':
+      return {
+        label: tr('надёжно', 'reliable'),
+        tone: 'good',
+        tip: tr('От 50 забегов — медиане можно верить.', '50+ runs — the median can be trusted.'),
+      };
+  }
+}
+
+export function ConfidenceBadge({ level }: { level: ConfidenceLevel }) {
+  const conf = confidence(level);
   return (
     <Tip tip={conf.tip}>
       <span className={`badge badge-${conf.tone}`}>{conf.label}</span>
@@ -57,10 +76,10 @@ export function CopyName({ name }: { name: string }) {
   return (
     <button
       className={`drop-name copy-name ${copied ? 'copied' : ''}`}
-      title="Скопировать название"
+      title={tr('Скопировать название', 'Copy name')}
       onClick={() => void copyText(name).then(() => setCopied(true))}
     >
-      {copied ? 'Скопировано ✓' : name}
+      {copied ? tr('Скопировано ✓', 'Copied ✓') : name}
     </button>
   );
 }

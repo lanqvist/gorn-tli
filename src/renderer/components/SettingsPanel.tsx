@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import type { UpdateState } from '../../main/updater.js';
+import { tr, uiLanguage, type UiLanguage } from '../../core/i18n.js';
 import { num } from '../format.js';
 import { playTest } from '../overlay/sound.js';
 
@@ -19,13 +20,21 @@ function NameLanguageSwitch() {
   }, []);
 
   const options: Array<[NameLanguage, string, string]> = [
-    ['ru', 'Рус', 'Русские названия предметов'],
-    ['en', 'Eng', 'Английские названия — как в гайдах и на бирже'],
-    ['both', 'Оба', 'Русское и английское рядом'],
+    ['ru', tr('Рус', 'Rus'), tr('Русские названия предметов', 'Russian item names')],
+    [
+      'en',
+      'Eng',
+      tr('Английские названия — как в гайдах и на бирже', 'English names, as in guides and on the Exchange'),
+    ],
+    ['both', tr('Оба', 'Both'), tr('Русское и английское рядом', 'Russian and English side by side')],
   ];
 
   return (
-    <div className="lang-switch" role="group" aria-label="Язык названий предметов">
+    <div
+      className="lang-switch"
+      role="group"
+      aria-label={tr('Язык названий предметов', 'Item name language')}
+    >
       {options.map(([value, label, hint]) => (
         <button
           key={value}
@@ -35,6 +44,37 @@ function NameLanguageSwitch() {
             if (!window.gorn) return setLanguage(value);
             void window.gorn.setItemNames(value).then(setLanguage);
           }}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Язык интерфейса. Каждый вариант назван на самом себе — игрок должен
+ * найти свой язык, даже если интерфейс сейчас на чужом. Окно после смены
+ * перезагружается само, поэтому своё состояние кнопкам не нужно.
+ */
+function UiLanguageSwitch() {
+  const current = uiLanguage();
+  const options: Array<[UiLanguage, string]> = [
+    ['ru', 'Русский'],
+    ['en', 'English'],
+  ];
+
+  return (
+    <div
+      className="lang-switch"
+      role="group"
+      aria-label={tr('Язык интерфейса', 'Interface language')}
+    >
+      {options.map(([value, label]) => (
+        <button
+          key={value}
+          className={current === value ? 'on' : ''}
+          onClick={() => void window.gorn?.setUiLanguage(value)}
         >
           {label}
         </button>
@@ -122,7 +162,12 @@ export function SettingsPanel({
   const chooseDir = () => {
     void window.gorn?.settings.chooseLogDir().then((r) => {
       if (r.status === 'invalid') {
-        setLogDirNote('В выбранной папке нет логов игры — нужна …\\Saved\\Logs или корень установки.');
+        setLogDirNote(
+          tr(
+            'В выбранной папке нет логов игры — нужна …\\Saved\\Logs или корень установки.',
+            'No game logs in this folder. Pick …\\Saved\\Logs or the game install folder.',
+          ),
+        );
         return;
       }
       setLogDirNote(null);
@@ -142,43 +187,53 @@ export function SettingsPanel({
   const updateNote = !updChecked
     ? null
     : updState === null || updState.status === 'checking'
-      ? 'проверяю…'
+      ? tr('проверяю…', 'checking…')
       : updState.status === 'idle'
-        ? 'у вас последняя версия'
+        ? tr('у вас последняя версия', 'you have the latest version')
         : updState.status === 'error'
-          ? `не получилось: ${updState.error ?? 'ошибка'}`
-          : 'вышла новая версия — смотрите полосу сверху';
+          ? tr(
+              `не получилось: ${updState.error ?? 'ошибка'}`,
+              `check failed: ${updState.error ?? 'error'}`,
+            )
+          : tr('вышла новая версия — смотрите полосу сверху', 'new version out — see the bar at the top');
 
   return (
     <>
       <div className="settings-backdrop" onClick={onClose} />
-      <aside className="settings-panel" role="dialog" aria-label="Настройки">
+      <aside className="settings-panel" role="dialog" aria-label={tr('Настройки', 'Settings')}>
         <div className="settings-head">
-          <h2>Настройки</h2>
-          <button className="update-close" title="Закрыть" onClick={onClose}>
+          <h2>{tr('Настройки', 'Settings')}</h2>
+          <button className="update-close" title={tr('Закрыть', 'Close')} onClick={onClose}>
             ✕
           </button>
         </div>
 
         <section className="set-section">
-          <h3>Звук</h3>
-          <div className="lang-switch set-seg" role="group" aria-label="Режим звука">
+          <h3>{tr('Звук', 'Sound')}</h3>
+          <div
+            className="lang-switch set-seg"
+            role="group"
+            aria-label={tr('Режим звука', 'Sound mode')}
+          >
             <button className={soundMode === 'all' ? 'on' : ''} onClick={() => setSoundMode('all')}>
-              Все находки
+              {tr('Все находки', 'All drops')}
             </button>
             <button
               className={soundMode === 'important' ? 'on' : ''}
-              title="Удар молота на золотую находку и итог карты; обычные подборы молчат"
+              title={tr(
+                'Удар молота на золотую находку и итог карты; обычные подборы молчат',
+                'Hammer strike on a golden drop and the map total; regular pickups stay silent',
+              )}
               onClick={() => setSoundMode('important')}
             >
-              Только важное
+              {tr('Только важное', 'Important only')}
             </button>
             <button className={soundMode === 'off' ? 'on' : ''} onClick={() => setSoundMode('off')}>
-              Без звука
+              {tr('Без звука', 'Muted')}
             </button>
           </div>
           <label className={`set-row ${prefs.sound ? '' : 'set-disabled'}`}>
-            <span>Громкость</span>
+            <span>{tr('Громкость', 'Volume')}</span>
             <input
               type="range"
               min={0}
@@ -192,9 +247,9 @@ export function SettingsPanel({
         </section>
 
         <section className="set-section">
-          <h3>Плашки поверх игры</h3>
+          <h3>{tr('Плашки поверх игры', 'In-game popups')}</h3>
           <label className="set-row">
-            <span>Всплывающий доход у центра экрана</span>
+            <span>{tr('Всплывающий доход у центра экрана', 'Income popups near screen center')}</span>
             <input
               type="checkbox"
               checked={prefs.popups}
@@ -202,26 +257,30 @@ export function SettingsPanel({
             />
           </label>
           <label className="set-row">
-            <span>Золотая плашка и удар молота</span>
+            <span>{tr('Золотая плашка и удар молота', 'Golden popup and hammer strike')}</span>
             <select
               value={String(prefs.jackpotFe)}
               onChange={(e) => patch({ jackpotFe: Number(e.target.value) })}
             >
-              <option value="0">авто — дорогое для сезона</option>
-              <option value="10">от 10 ФЕ — почти на всё</option>
-              <option value="50">от 50 ФЕ</option>
-              <option value="200">от 200 ФЕ — только дорогое</option>
+              <option value="0">
+                {tr('авто — дорогое для сезона', 'auto — pricey for the season')}
+              </option>
+              <option value="10">{tr('от 10 ФЕ — почти на всё', '10+ FE — almost everything')}</option>
+              <option value="50">{tr('от 50 ФЕ', '50+ FE')}</option>
+              <option value="200">{tr('от 200 ФЕ — только дорогое', '200+ FE — pricey only')}</option>
               {![0, 10, 50, 200].includes(prefs.jackpotFe) && (
-                <option value={String(prefs.jackpotFe)}>от {prefs.jackpotFe} ФЕ</option>
+                <option value={String(prefs.jackpotFe)}>
+                  {tr(`от ${prefs.jackpotFe} ФЕ`, `${prefs.jackpotFe}+ FE`)}
+                </option>
               )}
             </select>
           </label>
         </section>
 
         <section className="set-section">
-          <h3>Оверлей</h3>
+          <h3>{tr('Оверлей', 'Overlay')}</h3>
           <label className="set-row">
-            <span>Прозрачность</span>
+            <span>{tr('Прозрачность', 'Opacity')}</span>
             <input
               type="range"
               min={25}
@@ -231,7 +290,7 @@ export function SettingsPanel({
             />
           </label>
           <label className="set-row">
-            <span>Масштаб</span>
+            <span>{tr('Масштаб', 'Scale')}</span>
             <input
               type="range"
               min={80}
@@ -242,8 +301,13 @@ export function SettingsPanel({
             />
           </label>
           <label className="set-row">
-            <span title="Оверлей покажет полосу прогресса и оценку, сколько ещё фармить при текущем темпе. 0 — выключено.">
-              Цель сессии, ФЕ
+            <span
+              title={tr(
+                'Оверлей покажет полосу прогресса и оценку, сколько ещё фармить при текущем темпе. 0 — выключено.',
+                'The overlay shows a progress bar and how much longer to farm at the current pace. 0 turns it off.',
+              )}
+            >
+              {tr('Цель сессии, ФЕ', 'Session goal, FE')}
             </span>
             <input
               type="number"
@@ -255,29 +319,46 @@ export function SettingsPanel({
             />
           </label>
           <p className="muted small">
-            Ctrl+Alt+G — показать · Ctrl+Alt+L — закрепить · Ctrl+Alt+M — режим
+            {tr(
+              'Ctrl+Alt+G — показать · Ctrl+Alt+L — закрепить · Ctrl+Alt+M — режим',
+              'Ctrl+Alt+G — show · Ctrl+Alt+L — pin · Ctrl+Alt+M — mode',
+            )}
           </p>
           {sys && sys.busyHotkeys.length > 0 && (
             <p className="note warn">
-              {sys.busyHotkeys.join(', ')} — занято другой программой, сочетание
-              не сработает. Управляйте оверлеем кнопками из этого окна.
+              {sys.busyHotkeys.join(', ')}{' '}
+              {tr(
+                '— занято другой программой, сочетание не сработает. Управляйте оверлеем кнопками из этого окна.',
+                '— taken by another program, so the shortcut won’t work. Control the overlay with the buttons in this window.',
+              )}
             </p>
           )}
           <p className="muted small">
-            Не видно оверлея в игре? Переключите её в безрамочный режим —
-            эксклюзивный полный экран перекрыть нельзя.
+            {tr(
+              'Не видно оверлея в игре? Переключите её в безрамочный режим — эксклюзивный полный экран перекрыть нельзя.',
+              'Overlay not showing in game? Switch the game to borderless mode — nothing can draw over exclusive fullscreen.',
+            )}
           </p>
         </section>
 
         <section className="set-section">
-          <h3>Названия предметов</h3>
+          <h3>{tr('Язык', 'Language')}</h3>
           <div className="set-row">
-            <span>Язык</span>
+            <span>{tr('Интерфейс', 'Interface')}</span>
+            <UiLanguageSwitch />
+          </div>
+          <div className="set-row">
+            <span>{tr('Названия предметов', 'Item names')}</span>
             <NameLanguageSwitch />
           </div>
           <label className="set-row">
-            <span title="Первичные цены из базы сообщества TITrack (titrack.ninja). Свои пробивки всегда в приоритете.">
-              Цены сообщества
+            <span
+              title={tr(
+                'Первичные цены из базы сообщества TITrack (titrack.ninja). Свои пробивки всегда в приоритете.',
+                'Baseline prices from TITrack community prices (titrack.ninja). Your own price checks always win.',
+              )}
+            >
+              {tr('Цены сообщества', 'Community prices')}
             </span>
             <input
               type="checkbox"
@@ -289,60 +370,67 @@ export function SettingsPanel({
             />
           </label>
           <label className="set-row">
-            <span title="Строки дешевле порога в списках добычи сворачиваются в одну строку «мелочь». На подсчёт дохода не влияет.">
-              Сворачивать мелочь
+            <span
+              title={tr(
+                'Строки дешевле порога в списках добычи сворачиваются в одну строку «мелочь». На подсчёт дохода не влияет.',
+                'Loot rows below the threshold collapse into one “small stuff” row. Income totals are not affected.',
+              )}
+            >
+              {tr('Сворачивать мелочь', 'Collapse small stuff')}
             </span>
             <select
               value={String(minDropFe)}
               onChange={(e) => void window.gorn?.setMinDropFe(Number(e.target.value))}
             >
-              <option value="0">не сворачивать</option>
-              <option value="0.1">дешевле 0,1 ФЕ</option>
-              <option value="1">дешевле 1 ФЕ</option>
-              <option value="5">дешевле 5 ФЕ</option>
+              <option value="0">{tr('не сворачивать', 'don’t collapse')}</option>
+              <option value="0.1">{tr('дешевле 0,1 ФЕ', 'under 0.1 FE')}</option>
+              <option value="1">{tr('дешевле 1 ФЕ', 'under 1 FE')}</option>
+              <option value="5">{tr('дешевле 5 ФЕ', 'under 5 FE')}</option>
               {![0, 0.1, 1, 5].includes(minDropFe) && (
-                <option value={String(minDropFe)}>дешевле {minDropFe} ФЕ</option>
+                <option value={String(minDropFe)}>
+                  {tr(`дешевле ${minDropFe} ФЕ`, `under ${minDropFe} FE`)}
+                </option>
               )}
             </select>
           </label>
         </section>
 
         <section className="set-section">
-          <h3>Данные</h3>
+          <h3>{tr('Данные', 'Data')}</h3>
           <div className="set-dir">
-            <span className="muted small">Папка логов:</span>
+            <span className="muted small">{tr('Папка логов:', 'Log folder:')}</span>
             <span className="set-path" title={sys?.resolvedLogDir ?? undefined}>
-              {sys?.logDir ?? sys?.resolvedLogDir ?? 'не найдена'}
+              {sys?.logDir ?? sys?.resolvedLogDir ?? tr('не найдена', 'not found')}
               {!sys?.logDir && sys?.resolvedLogDir && (
-                <span className="muted"> · найдена автоматически</span>
+                <span className="muted"> · {tr('найдена автоматически', 'found automatically')}</span>
               )}
             </span>
           </div>
           <div className="set-actions">
             <button className="set-btn" onClick={chooseDir}>
-              Указать папку…
+              {tr('Указать папку…', 'Choose folder…')}
             </button>
             {sys?.logDir && (
               <button className="set-btn" onClick={resetDir}>
-                Вернуть автопоиск
+                {tr('Вернуть автопоиск', 'Back to auto-detect')}
               </button>
             )}
           </div>
           {logDirNote && <p className="note warn">{logDirNote}</p>}
           {needsRestart && (
             <p className="note warn">
-              Папка сменится после перезапуска.{' '}
+              {tr('Папка сменится после перезапуска.', 'The folder will change after a restart.')}{' '}
               <button className="set-btn" onClick={() => window.gorn?.settings.relaunch()}>
-                Перезапустить сейчас
+                {tr('Перезапустить сейчас', 'Restart now')}
               </button>
             </p>
           )}
         </section>
 
         <section className="set-section">
-          <h3>Система</h3>
+          <h3>{tr('Система', 'System')}</h3>
           <label className="set-row">
-            <span>Запускать вместе с Windows</span>
+            <span>{tr('Запускать вместе с Windows', 'Start with Windows')}</span>
             <input
               type="checkbox"
               checked={sys?.autoStart ?? false}
@@ -352,8 +440,13 @@ export function SettingsPanel({
             />
           </label>
           <label className="set-row">
-            <span title="Закрытие окна сворачивает трекер в трей — оверлей и подсчёт продолжают работать">
-              Закрывать в трей
+            <span
+              title={tr(
+                'Закрытие окна сворачивает трекер в трей — оверлей и подсчёт продолжают работать',
+                'Closing the window sends the tracker to the tray — the overlay and tracking keep running',
+              )}
+            >
+              {tr('Закрывать в трей', 'Close to tray')}
             </span>
             <input
               type="checkbox"
@@ -364,7 +457,9 @@ export function SettingsPanel({
             />
           </label>
           <div className="set-row">
-            <span className="muted">Горн {sys?.version ? `v${sys.version}` : ''}</span>
+            <span className="muted">
+              {tr('Горн', 'Gorn')} {sys?.version ? `v${sys.version}` : ''}
+            </span>
             <span className="set-update">
               {updateNote && <span className="muted small">{updateNote}</span>}
               <button
@@ -374,7 +469,7 @@ export function SettingsPanel({
                   void window.gorn?.update.check();
                 }}
               >
-                Проверить обновления
+                {tr('Проверить обновления', 'Check for updates')}
               </button>
             </span>
           </div>

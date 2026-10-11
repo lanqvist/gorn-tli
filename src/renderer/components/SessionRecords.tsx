@@ -1,3 +1,4 @@
+import { tr } from '../../core/i18n.js';
 import { RUN, pluralize } from '../../core/plural.js';
 import type { Snapshot } from '../../main/engine.js';
 import { num } from '../format.js';
@@ -34,19 +35,19 @@ export function SessionRecords({ snapshot }: { snapshot: Snapshot }) {
   return (
     <div className="records">
       <span className="records-item">
-        <span className="records-label">лучший забег</span>
-        {num(best.perHour)} ФЕ/час · {best.name}
+        <span className="records-label">{tr('лучший забег', 'best run')}</span>
+        {num(best.perHour)} {tr('ФЕ/час', 'FE/h')} · {best.name}
       </span>
       {find && (
         <span className="records-item">
-          <span className="records-label">дорогая находка</span>
+          <span className="records-label">{tr('дорогая находка', 'top drop')}</span>
           {find.name} · <Fe value={find.fe} />
         </span>
       )}
       {streak >= 2 && (
         <span className="records-item records-streak">
-          <span className="records-label">стрик выше нормы</span>
-          {pluralize(streak, RUN)} подряд
+          <span className="records-label">{tr('стрик выше нормы', 'streak above norm')}</span>
+          {pluralize(streak, RUN)} {tr('подряд', 'in a row')}
         </span>
       )}
     </div>

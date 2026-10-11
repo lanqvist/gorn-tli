@@ -43,6 +43,15 @@ contextBridge.exposeInMainWorld('gorn', {
   /** Порог «мелочи» в списках добычи, ФЕ. */
   setMinDropFe: (value: number) => ipcRenderer.invoke('settings:setMinDropFe', value),
 
+  /** Язык интерфейса. При смене окна перезагружаются сами. */
+  getUiLanguage: () => ipcRenderer.invoke('settings:uiLanguage'),
+  setUiLanguage: (language: string) => ipcRenderer.invoke('settings:setUiLanguage', language),
+  onUiLanguage: (callback: (language: string) => void) => {
+    const handler = (_e: unknown, language: string) => callback(language);
+    ipcRenderer.on('ui:language', handler);
+    return () => ipcRenderer.removeListener('ui:language', handler);
+  },
+
   /** Фильтр по персонажу: null — все. Выбор запоминается. */
   setPlayerFilter: (playerId: string | null) =>
     ipcRenderer.invoke('settings:setPlayerFilter', playerId),

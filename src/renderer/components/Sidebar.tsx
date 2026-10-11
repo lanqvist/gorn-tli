@@ -1,3 +1,4 @@
+import { tr } from '../../core/i18n.js';
 import { ITEM, pluralize } from '../../core/plural.js';
 import type { Snapshot } from '../../main/engine.js';
 import { num } from '../format.js';
@@ -10,16 +11,16 @@ export function Sidebar({ snapshot }: { snapshot: Snapshot }) {
 
   return (
     <aside className="card side">
-      <h2>Торговый дом</h2>
+      <h2>{tr('Торговый дом', 'Exchange')}</h2>
       {/* Обе строки про одно и то же — про выставленный товар. Ставить сюда
           оценку всей добычи нельзя: это несравнимая величина, а рядом
           она читается как отношение. */}
       <div className="side-row">
-        <span>Выставлено на сумму</span>
+        <span>{tr('Выставлено на сумму', 'Listed value')}</span>
         <Fe value={listedPaperFe} />
       </div>
       <div className="side-row">
-        <span>Реально пришло</span>
+        <span>{tr('Реально пришло', 'Actually received')}</span>
         <Fe value={realizedFe} />
       </div>
 
@@ -28,9 +29,10 @@ export function Sidebar({ snapshot }: { snapshot: Snapshot }) {
           как она, поэтому объясняем прямо. */}
       {realizationRatio !== null && realizationRatio > 1.2 && (
         <p className="muted small">
-          Пришло больше, чем оценено выставленное: часть выплат — за лоты,
-          выставленные до начала наблюдения. Коэффициент станет осмысленным
-          после нескольких полных сделок.
+          {tr(
+            'Пришло больше, чем оценено выставленное: часть выплат — за лоты, выставленные до начала наблюдения. Коэффициент станет осмысленным после нескольких полных сделок.',
+            'More came in than the listings were valued at: some payouts are for listings made before tracking started. The ratio will mean something after a few complete sales.',
+          )}
         </p>
       )}
 
@@ -43,15 +45,19 @@ export function Sidebar({ snapshot }: { snapshot: Snapshot }) {
             <div className="ratio-value">{Math.round(realizationRatio * 100)}%</div>
           </div>
           <p className="muted small">
-            Столько реально дошло до кармана от того, во что оценивался выставленный товар.
-            Разницу съедают комиссия биржи и продажа ниже референсной цены.
+            {tr(
+              'Столько реально дошло до кармана от того, во что оценивался выставленный товар. Разницу съедают комиссия биржи и продажа ниже референсной цены.',
+              'This much of the listed value actually reached your pocket. The gap is the Exchange fee and selling below the reference price.',
+            )}
           </p>
         </>
       )}
       {realizationRatio === null && (
         <p className="muted small">
-          Выстави что-нибудь на биржу и забери выручку — посчитаю, сколько реально доходит
-          от бумажной оценки.
+          {tr(
+            'Выстави что-нибудь на биржу и забери выручку — посчитаю, сколько реально доходит от бумажной оценки.',
+            'List something on the Exchange and collect the proceeds — I’ll work out how much of the paper value actually comes through.',
+          )}
         </p>
       )}
       <Bag snapshot={snapshot} />
@@ -70,16 +76,21 @@ function Bag({ snapshot }: { snapshot: Snapshot }) {
   return (
     <div className="bag">
       <h2>
-        <Tip tip="Всё, что сейчас лежит в сумке, по тем же ценам, что и добыча. Сумка известна с последнего входа в игру.">
-          Сумка
+        <Tip
+          tip={tr(
+            'Всё, что сейчас лежит в сумке, по тем же ценам, что и добыча. Сумка известна с последнего входа в игру.',
+            'Everything in your bag right now, at the same prices as loot. The bag is known since your last login.',
+          )}
+        >
+          {tr('Сумка', 'Bag')}
         </Tip>
       </h2>
       <div className="side-row">
-        <span>Всё по ценам</span>
+        <span>{tr('Всё по ценам', 'Total value')}</span>
         <Fe value={bag.valueFe} />
       </div>
       <div className="side-row">
-        <span>Из них ФЕ на руках</span>
+        <span>{tr('Из них ФЕ на руках', 'Of which FE in hand')}</span>
         <Fe value={bag.feCash} />
       </div>
       {bag.top.length > 0 && (
@@ -98,7 +109,10 @@ function Bag({ snapshot }: { snapshot: Snapshot }) {
       )}
       {bag.unpriced > 0 && (
         <p className="muted small">
-          Без цены {pluralize(bag.unpriced, ITEM)} — оценка занижена на их стоимость.
+          {tr(
+            `Без цены ${pluralize(bag.unpriced, ITEM)} — оценка занижена на их стоимость.`,
+            `${pluralize(bag.unpriced, ITEM)} without a price — the estimate is low by their value.`,
+          )}
         </p>
       )}
     </div>

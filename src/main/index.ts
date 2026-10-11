@@ -13,6 +13,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
+import { isUiLanguage, setUiLanguage, tr, type UiLanguage } from '../core/i18n.js';
 import { resolveLogDirectory } from '../core/locate.js';
 import { DebugSink } from './debug.js';
 import { Engine, type Snapshot } from './engine.js';
@@ -157,15 +158,15 @@ function trayIconPath(): string {
 function syncTray(): void {
   if (settings?.closeToTray && !tray) {
     tray = new Tray(nativeImage.createFromPath(trayIconPath()));
-    tray.setToolTip('Горн');
+    tray.setToolTip(tr('Горн', 'Gorn'));
     tray.on('click', showMainWindow);
     tray.setContextMenu(
       Menu.buildFromTemplate([
-        { label: 'Показать', click: showMainWindow },
-        { label: 'Оверлей', click: () => overlay?.toggle() },
+        { label: tr('Показать', 'Show'), click: showMainWindow },
+        { label: tr('Оверлей', 'Overlay'), click: () => overlay?.toggle() },
         { type: 'separator' },
         {
-          label: 'Выход',
+          label: tr('Выход', 'Quit'),
           click: () => {
             quitting = true;
             app.quit();
@@ -203,7 +204,8 @@ app.whenReady().then(async () => {
 
   createWindow();
 
-  settings = new SettingsStore(app.getPath('userData'));
+  settings = new SettingsStore(app.getPath('userData'), app.getLocale());
+  setUiLanguage(settings.uiLanguage);
   overlay = new Overlay(settings);
   toastLayer = new ToastLayer(settings);
   engine = new Engine(app.getPath('userData'), items, settings.itemNames, {
@@ -266,12 +268,12 @@ app.whenReady().then(async () => {
     const d = new Date();
     const pad = (n: number) => String(n).padStart(2, '0');
     const res = await dialog.showSaveDialog(window, {
-      title: 'Экспорт забегов',
+      title: tr('Экспорт забегов', 'Export runs'),
       defaultPath: join(
         app.getPath('documents'),
         `gorn-${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}.csv`,
       ),
-      filters: [{ name: 'CSV для Excel', extensions: ['csv'] }],
+      filters: [{ name: tr('CSV для Excel', 'CSV for Excel'), extensions: ['csv'] }],
     });
     if (res.canceled || !res.filePath) return { status: 'cancelled' as const };
     try {
@@ -313,6 +315,25 @@ app.whenReady().then(async () => {
   ipcMain.handle('update:get', () => updater?.current ?? null);
   ipcMain.handle('update:download', () => updater?.download());
   ipcMain.on('update:install', () => updater?.install());
+
+  // Язык интерфейса. Main переключается на лету, окна перезагружаются:
+  // строки в них вычисляются при рендере, и перезагрузка проще и надёжнее,
+  // чем протаскивать язык через состояние каждого компонента.
+  ipcMain.handle('settings:uiLanguage', () => settings?.uiLanguage ?? 'ru');
+  ipcMain.handle('settings:setUiLanguage', (_e, language: UiLanguage) => {
+    if (!isUiLanguage(language)) return settings?.uiLanguage ?? 'ru';
+    settings?.setUiLanguage(language);
+    setUiLanguage(language);
+    // Меню трея собирается один раз — пересобираем.
+    tray?.destroy();
+    tray = null;
+    syncTray();
+    engine?.refresh();
+    for (const w of BrowserWindow.getAllWindows()) {
+      if (!w.isDestroyed()) w.webContents.send('ui:language', language);
+    }
+    return language;
+  });
 
   ipcMain.handle('settings:itemNames', () => settings?.itemNames ?? 'ru');
   ipcMain.handle('settings:setItemNames', (_e, language: NameLanguage) => {
@@ -390,7 +411,7 @@ app.whenReady().then(async () => {
   ipcMain.handle('app:chooseLogDir', async () => {
     if (!window) return { status: 'cancelled' as const };
     const res = await dialog.showOpenDialog(window, {
-      title: 'Папка с логами Torchlight: Infinite',
+      title: tr('Папка с логами Torchlight: Infinite', 'Torchlight: Infinite log folder'),
       properties: ['openDirectory'],
     });
     const picked = res.filePaths[0];

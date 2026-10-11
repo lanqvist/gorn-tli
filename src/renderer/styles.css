@@ -990,6 +990,11 @@ button {
   font-size: 12px;
 }
 
+.sessions th,
+.sessions td.r {
+  white-space: nowrap;
+}
+
 .session-current td:first-child {
   color: var(--text);
 }

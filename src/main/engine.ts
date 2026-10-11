@@ -37,6 +37,7 @@ import {
   type PriceTrend,
 } from '../core/priceStore.js';
 import { heroName } from '../core/heroes.js';
+import { tr, uiLanguage } from '../core/i18n.js';
 import { retroScan, runCost, runValue } from '../core/retroScan.js';
 import { RunSegmenter } from '../core/runSegmenter.js';
 import { percentile, perHour, summarize, type RateSummary } from '../core/stats.js';
@@ -343,6 +344,11 @@ export class Engine extends EventEmitter {
     this.emit('snapshot', this.buildSnapshot());
   }
 
+  /** Пересобрать срез: сменился язык интерфейса, и подписи в нём тоже. */
+  refresh(): void {
+    this.emit('snapshot', this.buildSnapshot());
+  }
+
   /**
    * Название предмета для показа.
    *
@@ -380,7 +386,7 @@ export class Engine extends EventEmitter {
     if (this.booted) return;
     this.logDir = logDirOverride ?? findLogDirectory();
     if (!this.logDir) {
-      this.emit('snapshot', this.snapshot('searching', 'Не нашёл установленную игру'));
+      this.emit('snapshot', this.snapshot('searching', tr('Не нашёл установленную игру', 'Game installation not found')));
       return;
     }
     this.booted = true;
@@ -668,7 +674,7 @@ export class Engine extends EventEmitter {
    * маяк сокращается до плана и метки.
    */
   private strategyTitle(costItems: ConfigBaseId[]): string {
-    if (costItems.length === 0) return 'Без вложений';
+    if (costItems.length === 0) return tr('Без вложений', 'No map costs');
     return costItems
       .map((id) => {
         const info = this.items.get(id);
@@ -768,7 +774,8 @@ export class Engine extends EventEmitter {
       parts.push(info.name);
       if (info.nameRu) parts.push(info.nameRu);
     }
-    if (run.costs.length === 0) parts.push('без вложений');
+    // Обе формулировки: поиск понимает запрос на любом языке интерфейса.
+    if (run.costs.length === 0) parts.push('без вложений', 'no map costs');
     return parts.join('\n').toLocaleLowerCase('ru');
   }
 
@@ -793,18 +800,18 @@ export class Engine extends EventEmitter {
 
     return toCsv(
       [
-        'Начало',
-        'Персонаж',
-        'Карта',
-        'Стратегия',
-        'В карте, мин',
-        'Добыча, ФЕ',
-        'Вложено, ФЕ',
-        'Чистыми, ФЕ',
-        'Чистыми в час, ФЕ',
-        'Валюта ФЕ',
-        'Выпало',
-        'Потрачено',
+        tr('Начало', 'Started'),
+        tr('Персонаж', 'Character'),
+        tr('Карта', 'Map'),
+        tr('Стратегия', 'Strategy'),
+        tr('В карте, мин', 'In map, min'),
+        tr('Добыча, ФЕ', 'Loot, FE'),
+        tr('Вложено, ФЕ', 'Invested, FE'),
+        tr('Чистыми, ФЕ', 'Net, FE'),
+        tr('Чистыми в час, ФЕ', 'Net per hour, FE'),
+        tr('Валюта ФЕ', 'FE currency'),
+        tr('Выпало', 'Dropped'),
+        tr('Потрачено', 'Spent'),
       ],
       farming.map((r) => {
         const active = activeDuration(r);
@@ -814,7 +821,7 @@ export class Engine extends EventEmitter {
         return [
           stamp(r.startedAt),
           view
-            ? [view.heroName ?? view.name, view.level !== null ? `${view.level} ур.` : null]
+            ? [view.heroName ?? view.name, view.level !== null ? tr(`${view.level} ур.`, `lvl ${view.level}`) : null]
                 .filter(Boolean)
                 .join(' ')
             : null,
@@ -830,6 +837,9 @@ export class Engine extends EventEmitter {
           items(r.costs),
         ];
       }),
+      // Excel берёт разделители из региональных настроек системы — по ним
+      // же выбран язык интерфейса.
+      uiLanguage(),
     );
   }
 
@@ -1186,13 +1196,19 @@ export class Engine extends EventEmitter {
     // не удалось достать. Раньше подсказка опиралась на счётчик живого
     // дочитывания и врала «лог не читается» при полной истории на экране.
     if (this.history.length === 0 && this.diagnostics.linesMatched === 0) {
-      return 'Лог не читается. В игре: Настройки → Другое → Включить лог, затем перезайти персонажем.';
+      return tr(
+        'Лог не читается. В игре: Настройки → Другое → Включить лог, затем перезайти персонажем.',
+        'The log is not readable. In game: Settings → Other → Enable log, then re-enter with your character.',
+      );
     }
-    if (this.lastActivityAt === 0) return 'Игра не запущена.';
+    if (this.lastActivityAt === 0) return tr('Игра не запущена.', 'The game is not running.');
     if (Date.now() - this.lastActivityAt > 120_000) {
-      return 'Игра давно ничего не пишет в лог — похоже, закрыта.';
+      return tr(
+        'Игра давно ничего не пишет в лог — похоже, закрыта.',
+        'The game has not written to the log for a while — it seems to be closed.',
+      );
     }
-    return 'Ждём вход на карту.';
+    return tr('Ждём вход на карту.', 'Waiting for you to enter a map.');
   }
 
   snapshot(status: Snapshot['status'], hint: string): Snapshot {
@@ -1236,13 +1252,13 @@ function toPlayerView(p: PlayerProfile): PlayerView {
  * Сами формулировки взяты из словаря, а не придуманы: раньше здесь было
  * «Пустоши бездны» вместо «Пустотные земли».
  */
-const PLANES: Array<[RegExp, string]> = [
-  [/Ледяной бездны|Glacial Abyss/i, 'Ледяная бездна'],
-  [/Кипящей лавы|Blistering Lava/i, 'Кипящая лава'],
-  [/Стальной кузницы|Steel Forge/i, 'Стальная кузница'],
-  [/Громовых пустошей|Thunder Waste/i, 'Громовые пустоши'],
-  [/Пустотных земель|Voidlands/i, 'Пустотные земли'],
-  [/Дальний космос|Deep Space/i, 'Дальний космос'],
+const PLANES: Array<[RegExp, string, string]> = [
+  [/Ледяной бездны|Glacial Abyss/i, 'Ледяная бездна', 'Glacial Abyss'],
+  [/Кипящей лавы|Blistering Lava/i, 'Кипящая лава', 'Blistering Lava Sea'],
+  [/Стальной кузницы|Steel Forge/i, 'Стальная кузница', 'Steel Forge'],
+  [/Громовых пустошей|Thunder Waste/i, 'Громовые пустоши', 'Thunder Wastes'],
+  [/Пустотных земель|Voidlands/i, 'Пустотные земли', 'Voidlands'],
+  [/Дальний космос|Deep Space/i, 'Дальний космос', 'Deep Space'],
 ];
 
 /**
@@ -1256,7 +1272,9 @@ function planeName(itemName: string): string | null {
   if (!plane) return null;
   const mark = /метка времени\s*(\d+)|Timemark\s*(\d+)/i.exec(itemName);
   const number = mark?.[1] ?? mark?.[2];
-  return number ? `${plane[1]} · метка ${number}` : plane[1];
+  // Английские названия — из справочника предметов, а не перевод.
+  const name = tr(plane[1], plane[2]);
+  return number ? tr(`${name} · метка ${number}`, `${name} · Timemark ${number}`) : name;
 }
 
 /**
@@ -1267,7 +1285,7 @@ function planeName(itemName: string): string | null {
  * а не «зона 5348».
  */
 function mapName(asset: string | null, areaId: number): string {
-  if (!asset) return `Зона ${areaId}`;
+  if (!asset) return tr(`Зона ${areaId}`, `Zone ${areaId}`);
   const cleaned = asset
     // Префикс папки бывает любой длины: XZ_, SD_, JH_, KD_.
     .replace(/^[A-Z]{2,4}_/, '')
@@ -1276,5 +1294,5 @@ function mapName(asset: string | null, areaId: number): string {
     // После снятия номера может остаться висящий разделитель:
     // JH_YWMD_00001 превращался в «YWMD_».
     .replace(/[_\s-]+$/, '');
-  return cleaned || `Зона ${areaId}`;
+  return cleaned || tr(`Зона ${areaId}`, `Zone ${areaId}`);
 }

@@ -5,15 +5,21 @@
  * Наивное «одна форма или множественное число» даёт «2 забегов» — сразу видно,
  * что интерфейс переведён механически.
  */
+import { uiLanguage } from './i18n.js';
+
 const rules = new Intl.PluralRules('ru-RU');
 
 export interface PluralForms {
   one: string;
   few: string;
   many: string;
+  /** Английские формы: единственное и множественное. */
+  en: readonly [string, string];
 }
 
 export function plural(count: number, forms: PluralForms): string {
+  // В английском две формы, и «1» — единственная, где нужно единственное.
+  if (uiLanguage() === 'en') return count === 1 ? forms.en[0] : forms.en[1];
   switch (rules.select(count)) {
     case 'one':
       return forms.one;
@@ -25,15 +31,20 @@ export function plural(count: number, forms: PluralForms): string {
   }
 }
 
-export const RUN = { one: 'забег', few: 'забега', many: 'забегов' } as const;
+export const RUN = { one: 'забег', few: 'забега', many: 'забегов', en: ['run', 'runs'] } as const;
 /**
  * Предложный падеж: «в 1 забеге», «в 2 забегах», «в 5 забегах».
  * Родительные формы после предлога «в» дают «в 5 забегов» — заметная калька.
  */
-export const RUN_IN = { one: 'забеге', few: 'забегах', many: 'забегах' } as const;
-export const ITEM = { one: 'предмет', few: 'предмета', many: 'предметов' } as const;
-export const FIND = { one: 'находка', few: 'находки', many: 'находок' } as const;
-export const LOT = { one: 'лот', few: 'лота', many: 'лотов' } as const;
+export const RUN_IN = { one: 'забеге', few: 'забегах', many: 'забегах', en: ['run', 'runs'] } as const;
+export const ITEM = {
+  one: 'предмет',
+  few: 'предмета',
+  many: 'предметов',
+  en: ['item', 'items'],
+} as const;
+export const FIND = { one: 'находка', few: 'находки', many: 'находок', en: ['find', 'finds'] } as const;
+export const LOT = { one: 'лот', few: 'лота', many: 'лотов', en: ['listing', 'listings'] } as const;
 
 /** «47 забегов» — число и правильная форма слова. */
 export function pluralize(count: number, forms: PluralForms): string {

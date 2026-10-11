@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 
+import { tr } from '../../core/i18n.js';
 import type { Snapshot } from '../../main/engine.js';
 import { Fe, FeIcon } from '../components/Fe.js';
 import { clock } from '../format.js';
@@ -286,7 +287,9 @@ export function ToastList({ toasts }: { toasts: Toast[] }) {
             <div className="ov-runend">
               <div className="ov-runend-head">
                 <span className={`ov-toast-label ${t.record ? 'ov-record-label' : ''}`}>
-                  {t.record ? 'рекорд сессии!' : 'карта закрыта'}
+                  {t.record
+                    ? tr('рекорд сессии!', 'session record!')
+                    : tr('карта закрыта', 'map closed')}
                 </span>
                 <Fe value={t.fe} signed className="ov-toast-fe" />
                 {t.durationMs !== undefined && (
@@ -295,7 +298,7 @@ export function ToastList({ toasts }: { toasts: Toast[] }) {
                 {t.deltaPct != null && t.deltaPct !== 0 && (
                   <span className={`ov-runend-delta ${t.deltaPct > 0 ? 'up' : 'down'}`}>
                     {t.deltaPct > 0 ? '+' : '−'}
-                    {Math.abs(t.deltaPct)}% к норме
+                    {Math.abs(t.deltaPct)}% {tr('к норме', 'vs norm')}
                   </span>
                 )}
               </div>

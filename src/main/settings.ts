@@ -1,6 +1,8 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
+import { isUiLanguage, languageForLocale, type UiLanguage } from '../core/i18n.js';
+
 /** Режимы оверлея — от самого компактного к подробному. */
 export type OverlayMode = 'minimal' | 'compact' | 'full';
 
@@ -15,6 +17,8 @@ export interface OverlayPlacement {
 export type NameLanguage = 'ru' | 'en' | 'both';
 
 export interface Settings {
+  /** Язык интерфейса. Не путать с itemNames — языком названий предметов. */
+  uiLanguage: UiLanguage;
   /** Русские названия покрывают 96% справочника, поэтому это разумное умолчание.
    *  Часть игроков привыкла к английским — отсюда переключатель. */
   itemNames: NameLanguage;
@@ -72,6 +76,7 @@ export interface Settings {
 }
 
 const DEFAULTS: Settings = {
+  uiLanguage: 'ru',
   itemNames: 'ru',
   communityPrices: true,
   logDir: null,
@@ -109,20 +114,35 @@ export class SettingsStore {
   private path: string;
   private data: Settings;
 
-  constructor(userDataDir: string) {
+  /**
+   * @param systemLocale локаль системы — по ней выбирается язык новой
+   *   установки. Существующие настройки без поля языка остаются русскими:
+   *   до появления переключателя интерфейс был только русским.
+   */
+  constructor(userDataDir: string, systemLocale: string | null = null) {
     this.path = join(userDataDir, 'settings.json');
+    this.systemLocale = systemLocale;
     this.data = this.load();
   }
 
+  private readonly systemLocale: string | null;
+
+  /** Умолчания новой установки: язык и названия предметов — по системе. */
+  private fresh(): Settings {
+    const uiLanguage = languageForLocale(this.systemLocale);
+    return { ...structuredClone(DEFAULTS), uiLanguage, itemNames: uiLanguage === 'en' ? 'en' : 'ru' };
+  }
+
   private load(): Settings {
-    if (!existsSync(this.path)) return structuredClone(DEFAULTS);
+    if (!existsSync(this.path)) return this.fresh();
     try {
       const raw = JSON.parse(readFileSync(this.path, 'utf8')) as {
         version?: number;
         settings?: Partial<Settings>;
       };
-      if (raw.version !== SCHEMA_VERSION || !raw.settings) return structuredClone(DEFAULTS);
+      if (raw.version !== SCHEMA_VERSION || !raw.settings) return this.fresh();
       return {
+        uiLanguage: isUiLanguage(raw.settings.uiLanguage) ? raw.settings.uiLanguage : 'ru',
         itemNames: raw.settings.itemNames ?? DEFAULTS.itemNames,
         communityPrices: raw.settings.communityPrices ?? DEFAULTS.communityPrices,
         logDir: raw.settings.logDir ?? DEFAULTS.logDir,
@@ -140,12 +160,21 @@ export class SettingsStore {
       };
     } catch {
       // Битый файл не должен мешать запуску.
-      return structuredClone(DEFAULTS);
+      return this.fresh();
     }
   }
 
   get overlay(): Settings['overlay'] {
     return this.data.overlay;
+  }
+
+  get uiLanguage(): UiLanguage {
+    return this.data.uiLanguage;
+  }
+
+  setUiLanguage(language: UiLanguage): void {
+    this.data.uiLanguage = language;
+    this.save();
   }
 
   get itemNames(): NameLanguage {

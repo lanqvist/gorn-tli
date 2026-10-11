@@ -1,8 +1,9 @@
 import { useState } from 'react';
 
+import { tr } from '../../core/i18n.js';
 import { RUN, pluralize } from '../../core/plural.js';
 import type { Snapshot } from '../../main/engine.js';
-import { cacheDate, dayFull, dayLabel, duration, num } from '../format.js';
+import { dayFull, dayLabel, duration, num, shortDate } from '../format.js';
 import { Fe, FeIcon } from './Fe.js';
 
 type Day = Snapshot['days'][number];
@@ -50,7 +51,7 @@ function DaysChart({ days }: { days: Day[] }) {
         viewBox={`0 0 ${w} ${h}`}
         className="days-svg"
         role="img"
-        aria-label="Чистыми по дням за две недели"
+        aria-label={tr('Чистыми по дням за две недели', 'Net by day, last two weeks')}
         onMouseLeave={() => setHover(null)}
       >
         <line x1={0} x2={w} y1={zeroY} y2={zeroY} className="days-zero" />
@@ -74,7 +75,10 @@ function DaysChart({ days }: { days: Day[] }) {
                 height={h}
                 className="days-hit"
                 tabIndex={0}
-                aria-label={`${dayFull(d.day)}: ${num(d.netFe)} ФЕ, ${pluralize(d.runs, RUN)}`}
+                aria-label={tr(
+                  `${dayFull(d.day)}: ${num(d.netFe)} ФЕ, ${pluralize(d.runs, RUN)}`,
+                  `${dayFull(d.day)}: ${num(d.netFe)} FE, ${pluralize(d.runs, RUN)}`,
+                )}
                 onMouseEnter={() => setHover(i)}
                 onFocus={() => setHover(i)}
                 onBlur={() => setHover(null)}
@@ -86,7 +90,7 @@ function DaysChart({ days }: { days: Day[] }) {
                   textAnchor="middle"
                   className={`days-label ${i === today ? 'days-label-today' : ''}`}
                 >
-                  {i === today ? 'сегодня' : dayLabel(d.day)}
+                  {i === today ? tr('сегодня', 'today') : dayLabel(d.day)}
                 </text>
               )}
             </g>
@@ -97,17 +101,20 @@ function DaysChart({ days }: { days: Day[] }) {
         {active ? (
           active.runs === 0 ? (
             <>
-              <b>{dayFull(active.day)}</b> · не играл
+              <b>{dayFull(active.day)}</b> · {tr('не играл', "didn't play")}
             </>
           ) : (
             <>
               <b>{dayFull(active.day)}</b> · <Fe value={active.netFe} signed /> ·{' '}
-              {pluralize(active.runs, RUN)} · {duration(active.inMapMs)} в картах ·{' '}
-              {num(rateOf(active.netFe, active.inMapMs))}/час
+              {pluralize(active.runs, RUN)} · {duration(active.inMapMs)}{' '}
+              {tr('в картах', 'in maps')} ·{' '}
+              {num(rateOf(active.netFe, active.inMapMs))}/{tr('час', 'h')}
             </>
           )
         ) : (
-          <span className="muted">Наведи на день, чтобы увидеть подробности.</span>
+          <span className="muted">
+            {tr('Наведи на день, чтобы увидеть подробности.', 'Hover over a day to see details.')}
+          </span>
         )}
       </div>
     </div>
@@ -128,20 +135,27 @@ export function History({ snapshot }: { snapshot: Snapshot }) {
 
   return (
     <section className="card">
-      <h2>История</h2>
+      <h2>{tr('История', 'History')}</h2>
       <div className="history-grid">
         {/* Ряд пустых столбиков и «+0 ФЕ» после перерыва выглядели бы
             поломкой, а не паузой. */}
         {played.length === 0 ? (
           <p className="muted history-sum">
-            За последние две недели забегов нет — график появится с первым.
+            {tr(
+              'За последние две недели забегов нет — график появится с первым.',
+              'No runs in the last two weeks: the chart will appear with your first one.',
+            )}
           </p>
         ) : (
           <div>
             <p className="history-sum">
-              За две недели: <Fe value={total} signed /> · {duration(totalMs)} в картах ·{' '}
-              {num(rateOf(total, totalMs))}/час
-              <span className="muted"> · дней с игрой: {played.length}</span>
+              {tr('За две недели:', 'Last two weeks:')} <Fe value={total} signed /> ·{' '}
+              {duration(totalMs)}{' '}
+              {tr('в картах', 'in maps')} · {num(rateOf(total, totalMs))}/{tr('час', 'h')}
+              <span className="muted">
+                {' · '}
+                {tr(`дней с игрой: ${played.length}`, `days played: ${played.length}`)}
+              </span>
             </p>
             <DaysChart days={days} />
           </div>
@@ -150,21 +164,25 @@ export function History({ snapshot }: { snapshot: Snapshot }) {
           <table className="runs sessions">
             <thead>
               <tr>
-                <th>Сессия</th>
-                <th className="r">Забегов</th>
-                <th className="r">В картах</th>
+                <th>{tr('Сессия', 'Session')}</th>
+                <th className="r">{tr('Забегов', 'Runs')}</th>
+                <th className="r">{tr('В картах', 'In maps')}</th>
                 <th className="r">
-                  Чистыми <FeIcon />
+                  {tr('Чистыми', 'Net')} <FeIcon />
                 </th>
-                <th className="r">В час</th>
+                <th className="r">{tr('В час', 'Per hour')}</th>
               </tr>
             </thead>
             <tbody>
               {sessions.map((s) => (
                 <tr key={s.startedAt} className={s.endedAt === null ? 'session-current' : ''}>
                   <td>
-                    {s.startedAt === 0 ? 'до первого сброса' : `с ${cacheDate(s.startedAt)}`}
-                    {s.endedAt === null && <span className="muted"> · текущая</span>}
+                    {s.startedAt === 0
+                      ? tr('до первого сброса', 'before the first reset')
+                      : tr(`с ${shortDate(s.startedAt)}`, `since ${shortDate(s.startedAt)}`)}
+                    {s.endedAt === null && (
+                      <span className="muted"> · {tr('текущая', 'current')}</span>
+                    )}
                   </td>
                   <td className="r muted">{s.runs}</td>
                   <td className="r muted">{duration(s.inMapMs)}</td>

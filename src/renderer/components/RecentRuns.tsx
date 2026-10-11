@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 
+import { tr } from '../../core/i18n.js';
 import { RUN, pluralize } from '../../core/plural.js';
 import type { RunQueryResult, RunView, Snapshot } from '../../main/engine.js';
 import { cacheDate, duration, num, time } from '../format.js';
@@ -42,7 +43,7 @@ function RateHistogram({ snapshot }: { snapshot: Snapshot }) {
       height={h}
       className="hist"
       role="img"
-      aria-label="Распределение темпа по забегам"
+      aria-label={tr('Распределение темпа по забегам', 'Rate distribution across runs')}
     >
       {bins.map((count, i) => {
         const barH = count === 0 ? 0 : Math.max(3, (count / top) * (h - 4));
@@ -60,7 +61,12 @@ function RateHistogram({ snapshot }: { snapshot: Snapshot }) {
               highlightBest && i === bestBin && count > 0 ? 'hist-bar hist-bar-top' : 'hist-bar'
             }
           >
-            <title>{`${num(lo)}–${num(hi)} ФЕ/час: ${pluralize(count, RUN)}`}</title>
+            <title>
+              {tr(
+                `${num(lo)}–${num(hi)} ФЕ/час: ${pluralize(count, RUN)}`,
+                `${num(lo)}–${num(hi)} FE/h: ${pluralize(count, RUN)}`,
+              )}
+            </title>
           </rect>
         );
       })}
@@ -71,7 +77,12 @@ function RateHistogram({ snapshot }: { snapshot: Snapshot }) {
         y2={h}
         className="hist-median"
       >
-        <title>{`медиана ${num(snapshot.rate.median)} ФЕ/час`}</title>
+        <title>
+          {tr(
+            `медиана ${num(snapshot.rate.median)} ФЕ/час`,
+            `median ${num(snapshot.rate.median)} FE/h`,
+          )}
+        </title>
       </line>
     </svg>
   );
@@ -144,29 +155,34 @@ export function RecentRuns({ snapshot }: { snapshot: Snapshot }) {
   const exportCsv = async () => {
     if (!window.gorn) return;
     const res = await window.gorn.runs.exportCsv();
-    if (res.status === 'saved') setExportNote(`Сохранено: ${res.path}`);
-    else if (res.status === 'error') setExportNote(`Не удалось сохранить: ${res.message}`);
+    if (res.status === 'saved') setExportNote(tr(`Сохранено: ${res.path}`, `Saved: ${res.path}`));
+    else if (res.status === 'error') {
+      setExportNote(tr(`Не удалось сохранить: ${res.message}`, `Couldn't save: ${res.message}`));
+    }
     else setExportNote(null);
   };
 
   return (
     <section className="card">
       <div className="runs-head">
-        <h2>Забеги</h2>
+        <h2>{tr('Забеги', 'Runs')}</h2>
         <div className="runs-tools">
           <input
             type="search"
             className="runs-search"
-            placeholder="Поиск: карта, предмет, компас…"
+            placeholder={tr('Поиск: карта, предмет, компас…', 'Search: map, item, compass…')}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            aria-label="Поиск по всем забегам"
+            aria-label={tr('Поиск по всем забегам', 'Search all runs')}
           />
           <button
             className="session-reset"
             onClick={() => void exportCsv()}
             disabled={!window.gorn}
-            title="Все забеги в CSV для Excel: время, карта, стратегия, добыча, вложения, чистыми. С учётом фильтра по персонажу."
+            title={tr(
+              'Все забеги в CSV для Excel: время, карта, стратегия, добыча, вложения, чистыми. С учётом фильтра по персонажу.',
+              'All runs to CSV for Excel: time, map, strategy, loot, map costs, net. Respects the character filter.',
+            )}
           >
             ⤓ CSV
           </button>
@@ -177,13 +193,21 @@ export function RecentRuns({ snapshot }: { snapshot: Snapshot }) {
       {searching && found && (
         <p className="runs-summary">
           {found.total === 0 ? (
-            'Ничего не нашлось.'
+            tr('Ничего не нашлось.', 'Nothing found.')
           ) : (
             <>
-              {pluralize(found.total, RUN)} · чистыми <Fe value={found.netFe} signed /> · медиана{' '}
-              {num(found.rate.median)}/час · {duration(found.inMapMs)} в картах
+              {pluralize(found.total, RUN)} · {tr('чистыми', 'net')}{' '}
+              <Fe value={found.netFe} signed /> ·{' '}
+              {tr('медиана', 'median')} {num(found.rate.median)}/{tr('час', 'h')} ·{' '}
+              {duration(found.inMapMs)} {tr('в картах', 'in maps')}
               {found.total > found.runs.length && (
-                <span className="muted"> · показаны последние {found.runs.length}</span>
+                <span className="muted">
+                  {' · '}
+                  {tr(
+                    `показаны последние ${found.runs.length}`,
+                    `showing the latest ${found.runs.length}`,
+                  )}
+                </span>
               )}
             </>
           )}
@@ -193,16 +217,21 @@ export function RecentRuns({ snapshot }: { snapshot: Snapshot }) {
         <table className="runs">
           <thead>
             <tr>
-              <th>Время</th>
-              <th>Карта</th>
-              <th className="r">Длительность</th>
+              <th>{tr('Время', 'Time')}</th>
+              <th>{tr('Карта', 'Map')}</th>
+              <th className="r">{tr('Длительность', 'Duration')}</th>
               <th className="r">
-                Чистыми <FeIcon />
+                {tr('Чистыми', 'Net')} <FeIcon />
               </th>
-              <th className="r">В час</th>
+              <th className="r">{tr('В час', 'Per hour')}</th>
               <th className="r">
-                <Tip tip="Отклонение темпа забега от «нормы» — медианы последних забегов.">
-                  К норме
+                <Tip
+                  tip={tr(
+                    'Отклонение темпа забега от «нормы» — медианы последних забегов.',
+                    "How far the run's rate is from the “norm”: the median of recent runs.",
+                  )}
+                >
+                  {tr('К норме', 'Vs norm')}
                 </Tip>
               </th>
             </tr>
@@ -253,15 +282,18 @@ export function RecentRuns({ snapshot }: { snapshot: Snapshot }) {
                       <div className="run-detail-grid">
                         <div>
                           <h3>
-                            Выпало · <Fe value={r.valueFe} />
+                            {tr('Выпало', 'Loot')} · <Fe value={r.valueFe} />
                           </h3>
                           <DropList drops={r.drops} minFe={snapshot.minDropFe} />
                         </div>
                         <div>
                           <h3>
-                            Вложено · <Fe value={r.costFe} />
+                            {tr('Вложено', 'Invested')} · <Fe value={r.costFe} />
                           </h3>
-                          <DropList drops={r.costs} empty="Без вложений." />
+                          <DropList
+                            drops={r.costs}
+                            empty={tr('Без вложений.', 'No map costs.')}
+                          />
                         </div>
                       </div>
                     </td>

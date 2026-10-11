@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 
+import { tr } from '../../core/i18n.js';
 import type { UpdateState } from '../../main/updater.js';
 
 /**
@@ -35,9 +36,16 @@ export function UpdateBanner() {
     return (
       <div className="update update-quiet">
         <span title={state.error ?? undefined}>
-          Обновления не проверились — нет сети? Приложение работает как обычно.
+          {tr(
+            'Обновления не проверились — нет сети? Приложение работает как обычно.',
+            'Couldn’t check for updates — no network? The app works as usual.',
+          )}
         </span>
-        <button className="update-close" title="Скрыть" onClick={() => setDismissed(true)}>
+        <button
+          className="update-close"
+          title={tr('Скрыть', 'Dismiss')}
+          onClick={() => setDismissed(true)}
+        >
           ✕
         </button>
       </div>
@@ -47,7 +55,9 @@ export function UpdateBanner() {
   if (state.status === 'downloading') {
     return (
       <div className="update">
-        <span>Загружаю версию {state.version}…</span>
+        <span>
+          {tr(`Загружаю версию ${state.version}…`, `Downloading version ${state.version}…`)}
+        </span>
         <div className="update-bar">
           <i style={{ width: `${Math.round(state.progress * 100)}%` }} />
         </div>
@@ -59,9 +69,19 @@ export function UpdateBanner() {
   if (state.status === 'ready') {
     return (
       <div className="update">
-        <span>Версия {state.version} готова к установке.</span>
-        <button onClick={() => window.gorn.update.install()}>Перезапустить</button>
-        <span className="muted small">Или просто закройте приложение — обновится само.</span>
+        <span>
+          {tr(
+            `Версия ${state.version} готова к установке.`,
+            `Version ${state.version} is ready to install.`,
+          )}
+        </span>
+        <button onClick={() => window.gorn.update.install()}>{tr('Перезапустить', 'Restart')}</button>
+        <span className="muted small">
+          {tr(
+            'Или просто закройте приложение — обновится само.',
+            'Or just close the app — it will update on its own.',
+          )}
+        </span>
       </div>
     );
   }
@@ -69,24 +89,30 @@ export function UpdateBanner() {
   // available
   return (
     <div className="update">
-      <span>Вышла версия {state.version}.</span>
+      <span>{tr(`Вышла версия ${state.version}.`, `Version ${state.version} is out.`)}</span>
       {state.supported ? (
-        <button onClick={() => void window.gorn.update.download()}>Загрузить</button>
+        <button onClick={() => void window.gorn.update.download()}>
+          {tr('Загрузить', 'Download')}
+        </button>
       ) : (
         <>
           <span className="muted small">
-            Портативная версия не обновляется сама —{' '}
+            {tr('Портативная версия не обновляется сама —', 'The portable version doesn’t self-update —')}{' '}
             <a
               href="https://github.com/lanqvist/gorn-tli/releases/latest"
               target="_blank"
               rel="noreferrer"
             >
-              скачайте новую с GitHub
+              {tr('скачайте новую с GitHub', 'download the new one from GitHub')}
             </a>
             .
           </span>
           {/* Внутри приложения с этой новостью сделать нечего — полосе нужен способ уйти. */}
-          <button className="update-close" title="Скрыть" onClick={() => setDismissed(true)}>
+          <button
+            className="update-close"
+            title={tr('Скрыть', 'Dismiss')}
+            onClick={() => setDismissed(true)}
+          >
             ✕
           </button>
         </>

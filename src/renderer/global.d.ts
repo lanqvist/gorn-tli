@@ -1,3 +1,4 @@
+import type { UiLanguage } from '../core/i18n.js';
 import type { RetroScanProgress } from '../core/retroScan.js';
 import type { PriceRow, RunQueryResult, Snapshot } from '../main/engine.js';
 import type { OverlayMode } from '../main/settings.js';
@@ -66,6 +67,9 @@ declare global {
       setExcluded: (configBaseId: number, excluded: boolean) => Promise<number[]>;
     };
     setMinDropFe: (value: number) => Promise<number>;
+    getUiLanguage: () => Promise<UiLanguage>;
+    setUiLanguage: (language: UiLanguage) => Promise<UiLanguage>;
+    onUiLanguage: (cb: (language: UiLanguage) => void) => () => void;
     runs: {
       query: (query: string) => Promise<RunQueryResult | null>;
       exportCsv: () => Promise<

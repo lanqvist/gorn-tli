@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
+import { tr } from '../core/i18n.js';
+import { RUN, pluralize } from '../core/plural.js';
 import type { Snapshot } from '../main/engine.js';
 import type { OverlayMode } from '../main/settings.js';
 import { Fe, FeIcon } from './components/Fe.js';
@@ -10,10 +12,12 @@ type Mode = OverlayMode;
 /** Оценка «ещё столько-то» для цели сессии — грубая, поэтому округлённая. */
 const roughEta = (ms: number) => {
   const m = Math.max(1, Math.round(ms / 60_000));
-  if (m < 60) return `${m}${NBSP}м`;
+  if (m < 60) return tr(`${m}${NBSP}м`, `${m}m`);
   const h = Math.floor(m / 60);
   const rest = m % 60;
-  return rest > 0 ? `${h}${NBSP}ч ${rest}${NBSP}м` : `${h}${NBSP}ч`;
+  return rest > 0
+    ? tr(`${h}${NBSP}ч ${rest}${NBSP}м`, `${h}h${NBSP}${rest}m`)
+    : tr(`${h}${NBSP}ч`, `${h}h`);
 };
 
 /** Порог, до которого темп забега не показывается: знаменатель слишком мал. */
@@ -169,29 +173,40 @@ export function OverlayApp() {
           в заблокированном клики всё равно уходят в игру. */}
       {!locked && (
         <div className="ov-grip">
-          <span>Горн</span>
+          <span>{tr('Горн', 'Gorn')}</span>
           <div className="ov-actions">
             <button
               onClick={() => window.gorn?.overlay.setPrefs({ popups: !prefs.popups })}
-              title={prefs.popups ? 'Выключить всплывашки' : 'Включить всплывашки'}
+              title={
+                prefs.popups
+                  ? tr('Выключить всплывашки', 'Turn off popups')
+                  : tr('Включить всплывашки', 'Turn on popups')
+              }
               className={prefs.popups ? '' : 'ov-off'}
             >
               ✦
             </button>
             <button
               onClick={() => window.gorn?.overlay.setPrefs({ sound: !prefs.sound })}
-              title={prefs.sound ? 'Выключить звук' : 'Включить звук'}
+              title={
+                prefs.sound
+                  ? tr('Выключить звук', 'Mute sound')
+                  : tr('Включить звук', 'Unmute sound')
+              }
               className={prefs.sound ? '' : 'ov-off'}
             >
               ♪
             </button>
-            <button onClick={() => window.gorn?.overlay.cycleMode()} title="Режим">
+            <button onClick={() => window.gorn?.overlay.cycleMode()} title={tr('Режим', 'Mode')}>
               ⇱
             </button>
-            <button onClick={() => window.gorn?.overlay.toggleLock()} title="Закрепить">
+            <button
+              onClick={() => window.gorn?.overlay.toggleLock()}
+              title={tr('Закрепить', 'Lock')}
+            >
               ⌖
             </button>
-            <button onClick={() => window.gorn?.overlay.close()} title="Закрыть">
+            <button onClick={() => window.gorn?.overlay.close()} title={tr('Закрыть', 'Close')}>
               ✕
             </button>
           </div>
@@ -201,19 +216,22 @@ export function OverlayApp() {
       {/* Шпаргалка видна ровно тогда, когда оверлей настраивают. */}
       {!locked && (
         <div className="ov-hint">
-          перетащите за полоску · ⌖ или Ctrl+Alt+L — закрепить · Ctrl+Alt+M — режим
+          {tr(
+            'перетащите за полоску · ⌖ или Ctrl+Alt+L — закрепить · Ctrl+Alt+M — режим',
+            'drag by the strip · ⌖ or Ctrl+Alt+L — lock · Ctrl+Alt+M — mode',
+          )}
         </div>
       )}
 
       <div className="ov-line">
         <span className="ov-rate">
           <Fe value={median} />
-          <em>/час</em>
+          <em>{tr('/час', '/h')}</em>
         </span>
         {run ? (
           <span className="ov-timer">{clock(elapsed)}</span>
         ) : (
-          <span className="ov-timer ov-idle">не на карте</span>
+          <span className="ov-timer ov-idle">{tr('не на карте', 'not in a map')}</span>
         )}
       </div>
 
@@ -231,9 +249,12 @@ export function OverlayApp() {
               {ghost !== null && (
                 <em
                   className="ov-ghost"
-                  title="Прошлый забег к этой же секунде — грубо, по его среднему темпу"
+                  title={tr(
+                    'Прошлый забег к этой же секунде — грубо, по его среднему темпу',
+                    'The previous run at this same second — rough, based on its average pace',
+                  )}
                 >
-                  тень ~{num(ghost)}
+                  {tr('тень', 'ghost')} ~{num(ghost)}
                 </em>
               )}
               <Fe value={shown.netFe} />
@@ -267,7 +288,8 @@ export function OverlayApp() {
       {mode === 'full' && snapshot && (
         <div className="ov-footer">
           <span>
-            {snapshot.totals.runs} забегов · <FeIcon />
+            {pluralize(snapshot.totals.runs, RUN)}{' '}
+            · <FeIcon />
             {NBSP}
             {num(snapshot.totals.valueFe - snapshot.totals.costFe)}
           </span>
@@ -292,8 +314,12 @@ function GoalProgress({ goalFe, snapshot }: { goalFe: number; snapshot: Snapshot
       </div>
       <span className={`ov-goal-text ${remaining <= 0 ? 'up' : ''}`}>
         {remaining <= 0
-          ? 'цель взята ✓'
-          : `${num(net)} / ${num(goalFe)}${etaMs !== null ? ` · ещё ~${roughEta(etaMs)}` : ''}`}
+          ? tr('цель взята ✓', 'goal reached ✓')
+          : `${num(net)} / ${num(goalFe)}${
+              etaMs !== null
+                ? tr(` · ещё ~${roughEta(etaMs)}`, ` · ~${roughEta(etaMs)} left`)
+                : ''
+            }`}
       </span>
     </div>
   );
@@ -302,10 +328,10 @@ function GoalProgress({ goalFe, snapshot }: { goalFe: number; snapshot: Snapshot
 function confidence(snapshot: Snapshot): string {
   switch (snapshot.rate.confidence) {
     case 'insufficient':
-      return 'данных мало';
+      return tr('данных мало', 'not enough data');
     case 'emerging':
-      return 'есть картина';
+      return tr('есть картина', 'taking shape');
     default:
-      return 'надёжно';
+      return tr('надёжно', 'reliable');
   }
 }

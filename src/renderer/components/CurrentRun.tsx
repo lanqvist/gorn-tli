@@ -1,5 +1,6 @@
 import { useState } from 'react';
 
+import { tr } from '../../core/i18n.js';
 import type { RunView, Snapshot } from '../../main/engine.js';
 import { clock, duration, num } from '../format.js';
 import { DropList } from './DropList.js';
@@ -52,10 +53,11 @@ export function CurrentRun({ snapshot, now }: { snapshot: Snapshot; now: number 
         {median > 0 &&
           (warm ? (
             <span className={`delta ${delta >= 0 ? 'up' : 'down'}`}>
-              {delta >= 0 ? '↑' : '↓'} {Math.abs(pct)}% к обычному темпу
+              {delta >= 0 ? '↑' : '↓'}{' '}
+              {tr(`${Math.abs(pct)}% к обычному темпу`, `${Math.abs(pct)}% vs usual pace`)}
             </span>
           ) : (
-            <span className="delta muted">темп считается…</span>
+            <span className="delta muted">{tr('темп считается…', 'calculating pace…')}</span>
           ))}
       </div>
 
@@ -72,10 +74,12 @@ function GameNotFound() {
   const [note, setNote] = useState<string | null>(null);
   return (
     <section className="card current empty onboarding">
-      <h2>Игра не найдена</h2>
+      <h2>{tr('Игра не найдена', 'Game not found')}</h2>
       <p className="muted">
-        Steam-установка находится сама, поиск повторяется автоматически. Если игра
-        стоит в другом месте или у вас не-Steam версия — укажите её папку.
+        {tr(
+          'Steam-установка находится сама, поиск повторяется автоматически. Если игра стоит в другом месте или у вас не-Steam версия — укажите её папку.',
+          'A Steam install is found automatically, and the search keeps retrying. If the game is installed elsewhere or you have a non-Steam version, point to its folder.',
+        )}
       </p>
       <div className="set-actions">
         <button
@@ -83,14 +87,19 @@ function GameNotFound() {
           onClick={() => {
             void window.gorn?.settings.chooseLogDir().then((r) => {
               if (r.status === 'invalid') {
-                setNote('В выбранной папке нет логов игры — нужен корень установки или …\\Saved\\Logs.');
+                setNote(
+                  tr(
+                    'В выбранной папке нет логов игры — нужен корень установки или …\\Saved\\Logs.',
+                    'No game logs in that folder — pick the install root or …\\Saved\\Logs.',
+                  ),
+                );
               } else {
                 setNote(null);
               }
             });
           }}
         >
-          Указать папку с игрой…
+          {tr('Указать папку с игрой…', 'Choose game folder…')}
         </button>
       </div>
       {note && <p className="note warn">{note}</p>}
@@ -102,17 +111,28 @@ function GameNotFound() {
 function Onboarding({ snapshot }: { snapshot: Snapshot }) {
   return (
     <section className="card current empty onboarding">
-      <h2>Всё готово к первому забегу</h2>
+      <h2>{tr('Всё готово к первому забегу', 'Ready for your first run')}</h2>
       <ol className="steps">
-        <li>Запустите Torchlight: Infinite</li>
-        <li>Зайдите на любую карту</li>
-        <li>Дальше я сам: посчитаю добычу, вложения и честный темп</li>
+        <li>{tr('Запустите Torchlight: Infinite', 'Launch Torchlight: Infinite')}</li>
+        <li>{tr('Зайдите на любую карту', 'Enter any map')}</li>
+        <li>
+          {tr(
+            'Дальше я сам: посчитаю добычу, вложения и честный темп',
+            'I’ll take it from there: loot, map costs and your honest pace',
+          )}
+        </li>
       </ol>
       {snapshot.hint && <p className="muted small">{snapshot.hint}</p>}
-      {snapshot.logDir && <p className="muted small set-path">Лог найден: {snapshot.logDir}</p>}
+      {snapshot.logDir && (
+        <p className="muted small set-path">
+          {tr('Лог найден:', 'Log found:')} {snapshot.logDir}
+        </p>
+      )}
       <p className="muted small">
-        Оверлей поверх игры — кнопка в шапке или Ctrl+Alt+G. Игре нужен безрамочный
-        или оконный полноэкранный режим: эксклюзивный полный экран перекрыть нельзя.
+        {tr(
+          'Оверлей поверх игры — кнопка в шапке или Ctrl+Alt+G. Игре нужен безрамочный или оконный полноэкранный режим: эксклюзивный полный экран перекрыть нельзя.',
+          'Overlay on top of the game: the button in the header or Ctrl+Alt+G. The game needs borderless or windowed fullscreen — exclusive fullscreen can’t be drawn over.',
+        )}
       </p>
     </section>
   );
@@ -124,14 +144,16 @@ function FinishedRun({ run, minFe }: { run: RunView; minFe: number }) {
     <section className="card current">
       <div className="current-head">
         <h2>
-          {run.name} <span className="muted small">· прошлый забег</span>
+          {run.name} <span className="muted small">· {tr('прошлый забег', 'last run')}</span>
         </h2>
         <span className="timer">{duration(run.durationMs ?? 0)}</span>
       </div>
 
       <div className="current-value">
         <Fe value={run.netFe} />
-        <span className="delta muted">{num(run.perHour)} в час</span>
+        <span className="delta muted">
+          {tr(`${num(run.perHour)} в час`, `${num(run.perHour)}/h`)}
+        </span>
       </div>
 
       <DropList drops={run.drops} minFe={minFe} />
