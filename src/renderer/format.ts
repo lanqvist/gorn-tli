@@ -39,6 +39,18 @@ export const cacheDate = (ts: number) =>
     minute: '2-digit',
   }).format(new Date(ts));
 
+/** Короткая подпись дня: «12 окт». */
+export const dayLabel = (ts: number) =>
+  new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'short' })
+    .format(new Date(ts))
+    .replace('.', '');
+
+/** Полная подпись дня: «пн, 12 октября». */
+export const dayFull = (ts: number) =>
+  new Intl.DateTimeFormat('ru-RU', { weekday: 'short', day: 'numeric', month: 'long' }).format(
+    new Date(ts),
+  );
+
 /** Возраст события человеческим языком. */
 
 export function ago(ms: number): string {

@@ -3,8 +3,14 @@ import { num } from '../format.js';
 import { Fe } from './Fe.js';
 import { CopyName, ItemIcon } from './ui.js';
 
-export function DropList({ drops }: { drops: RunView['drops'] }) {
-  if (drops.length === 0) return <p className="muted">Ничего не выпало.</p>;
+export function DropList({
+  drops,
+  empty = 'Ничего не выпало.',
+}: {
+  drops: RunView['drops'];
+  empty?: string;
+}) {
+  if (drops.length === 0) return <p className="muted">{empty}</p>;
   return (
     <ul className="drops">
       {drops.slice(0, 12).map((d) => (
@@ -23,7 +29,7 @@ export function DropList({ drops }: { drops: RunView['drops'] }) {
                   ? {
                       className: 'price-community',
                       title:
-                        'Цена из базы сообщества (titrack.ninja). Пробей предмет сам — своя пробивка точнее и заменит её.',
+                        'Цена из базы сообщества (titrack.ninja): своей пробивки нет или ей больше трёх дней. Пробей предмет сам — свежая своя пробивка точнее и заменит её.',
                     }
                   : {})}
               >

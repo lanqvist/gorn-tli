@@ -27,6 +27,12 @@ contextBridge.exposeInMainWorld('gorn', {
     reset: () => ipcRenderer.invoke('session:reset'),
   },
 
+  /** История забегов: поиск и выгрузка — по запросу, не в каждом срезе. */
+  runs: {
+    query: (query: string) => ipcRenderer.invoke('runs:query', query),
+    exportCsv: () => ipcRenderer.invoke('runs:exportCsv'),
+  },
+
   /** Фильтр по персонажу: null — все. Выбор запоминается. */
   setPlayerFilter: (playerId: string | null) =>
     ipcRenderer.invoke('settings:setPlayerFilter', playerId),

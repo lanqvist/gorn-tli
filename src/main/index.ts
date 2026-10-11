@@ -253,6 +253,33 @@ app.whenReady().then(async () => {
   // Новая сессия: счётчики обнуляются, история остаётся в базе.
   ipcMain.handle('session:reset', () => engine?.resetSession());
 
+  // Поиск по всей истории забегов: в срез она не влезает и не нужна там.
+  ipcMain.handle('runs:query', (_e, query: string) =>
+    engine ? engine.queryRuns(String(query ?? '')) : null,
+  );
+
+  // Экспорт забегов в CSV: путь выбирает игрок, файл пишет main.
+  ipcMain.handle('runs:exportCsv', async () => {
+    if (!window || !engine) return { status: 'cancelled' as const };
+    const d = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const res = await dialog.showSaveDialog(window, {
+      title: 'Экспорт забегов',
+      defaultPath: join(
+        app.getPath('documents'),
+        `gorn-${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}.csv`,
+      ),
+      filters: [{ name: 'CSV для Excel', extensions: ['csv'] }],
+    });
+    if (res.canceled || !res.filePath) return { status: 'cancelled' as const };
+    try {
+      writeFileSync(res.filePath, engine.exportRunsCsv(), 'utf8');
+      return { status: 'saved' as const, path: res.filePath };
+    } catch (err) {
+      return { status: 'error' as const, message: (err as Error).message };
+    }
+  });
+
   // Фильтр по персонажу. null — показывать всех.
   ipcMain.handle('settings:setPlayerFilter', (_e, playerId: string | null) => {
     settings?.setPlayerFilter(playerId);

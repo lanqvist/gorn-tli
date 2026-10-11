@@ -35,6 +35,42 @@ export function isBoundName(name: string | null | undefined): boolean {
   return /^Bound\s/i.test(name) || name.startsWith('绑定') || /^Связанн/i.test(name);
 }
 
+/**
+ * Сколько своя пробивка считается свежей. Цены на бирже TLI плавают
+ * за дни: месячная пробивка тихо разводила оценку добычи с рынком,
+ * хотя рядом лежала свежая цена сообщества.
+ */
+export const OWN_PRICE_TTL_MS = 3 * 24 * 3_600_000;
+
+export type PriceSource = 'own' | 'community';
+
+/**
+ * Какую цену брать. Своя пробивка — с сервера игрока, поэтому побеждает,
+ * пока свежая. Устаревшая уступает цене сообщества, только если та новее,
+ * и остаётся в силе, если сообщество про предмет ничего не знает:
+ * старая цена лучше никакой.
+ *
+ * Время сообщества приходит функцией: строку даты разбираем лишь
+ * на редком пути «своя устарела», а не на каждом предмете каждого среза.
+ */
+export function choosePrice(
+  own: { fe: number; observedAt: number } | null,
+  community: { fe: number; updatedAtMs: () => number } | null,
+  now: number,
+  ttlMs = OWN_PRICE_TTL_MS,
+): { fe: number; source: PriceSource } | null {
+  if (own && (!community || now - own.observedAt < ttlMs)) {
+    return { fe: own.fe, source: 'own' };
+  }
+  if (own && community) {
+    const updatedAt = community.updatedAtMs();
+    if (!Number.isFinite(updatedAt) || updatedAt <= own.observedAt) {
+      return { fe: own.fe, source: 'own' };
+    }
+  }
+  return community ? { fe: community.fe, source: 'community' } : null;
+}
+
 export function referencePrice(unitPrices: number[]): number {
   const sorted = [...unitPrices].filter((p) => p > 0).sort((a, b) => a - b);
   if (sorted.length === 0) return 0;
@@ -96,6 +132,14 @@ export class PriceStore {
     if (configBaseId === FE_ID) return 1;
     if (this.isBound(configBaseId)) return 0;
     return this.prices.get(configBaseId)?.fe ?? null;
+  }
+
+  /**
+   * Цена задана правилом, а не рынком: ФЕ стоит сам себя, связанное — ноль.
+   * Такие цены не стареют и ценой сообщества не перекрываются.
+   */
+  isFixed(configBaseId: ConfigBaseId): boolean {
+    return configBaseId === FE_ID || this.isBound(configBaseId);
   }
 
   private isBound(configBaseId: ConfigBaseId): boolean {

@@ -165,6 +165,17 @@ describe('хранилище', () => {
     expect(db.previousSession()).toEqual({ startedAt: 5000, endedAt: 9000 });
   });
 
+  it('список сессий — все границы по порядку, активная открыта', () => {
+    db.activeSessionStart();
+    db.resetSession(5000);
+    db.resetSession(9000);
+    expect(db.listSessions()).toEqual([
+      { startedAt: 0, endedAt: 5000 },
+      { startedAt: 5000, endedAt: 9000 },
+      { startedAt: 9000, endedAt: null },
+    ]);
+  });
+
   it('сброс сессии не трогает забеги', () => {
     db.saveRuns([run(1000, 5348, [[100300, 44]])], 1501);
     db.resetSession(5000);

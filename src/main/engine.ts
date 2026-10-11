@@ -8,14 +8,26 @@ import {
   mergeRuns,
   missingPrices,
   rollingNorm,
+  runEnd,
   runFe,
+  runKey,
   runNet,
   type StrategyStats,
 } from '../core/analysis.js';
 import { EventParser } from '../core/eventParser.js';
 import { InventoryTracker } from '../core/inventory.js';
 import { findLogDirectory } from '../core/locate.js';
-import { isBoundName, PriceStore } from '../core/priceStore.js';
+import { toCsv } from '../core/csv.js';
+import {
+  dailyTotals,
+  groupByMap,
+  sessionTotals,
+  type DayTotals,
+  type MapStats,
+  type SessionBounds,
+  type SessionTotals,
+} from '../core/history.js';
+import { choosePrice, isBoundName, PriceStore, type PriceSource } from '../core/priceStore.js';
 import { heroName } from '../core/heroes.js';
 import { retroScan, runCost, runValue } from '../core/retroScan.js';
 import { RunSegmenter } from '../core/runSegmenter.js';
@@ -45,6 +57,8 @@ export interface DropView {
 }
 
 export interface RunView {
+  /** Ключ забега: стабилен между срезами, годится для React key. */
+  key: string;
   areaId: number;
   name: string;
   startedAt: number;
@@ -55,7 +69,23 @@ export interface RunView {
   netFe: number;
   perHour: number;
   drops: DropView[];
+  /** Чем открывалась карта. */
+  costs: DropView[];
 }
+
+/** Результат поиска по всей истории забегов. */
+export interface RunQueryResult {
+  /** Сколько забегов подошло всего — показанных бывает меньше. */
+  total: number;
+  netFe: number;
+  inMapMs: number;
+  rate: RateSummary;
+  /** Свежие сверху, не больше RUN_QUERY_LIMIT. */
+  runs: RunView[];
+}
+
+/** Сколько забегов поиск отдаёт в интерфейс: итоги считаются по всем. */
+export const RUN_QUERY_LIMIT = 100;
 
 /** Персонаж для показа в интерфейсе. */
 export interface PlayerView {
@@ -128,6 +158,12 @@ export interface Snapshot {
    */
   jackpotAutoFe: number;
   strategies: StrategyView[];
+  /** Доходность по картам — «куда идти», в отличие от стратегий «чем открывать». */
+  maps: MapStats[];
+  /** Итоги по дням за последние две недели, старые слева. */
+  days: DayTotals[];
+  /** Сессии с итогами, свежие сверху. */
+  sessions: SessionTotals[];
   /** Предметы без цены, по влиянию на оценку. */
   missing: MissingPriceView[];
   diagnostics: {
@@ -208,6 +244,8 @@ export class Engine extends EventEmitter {
   private sessionStartedAt = 0;
   /** Границы последней закрытой сессии — для итоговой строки. */
   private previousSession: { startedAt: number; endedAt: number } | null = null;
+  /** Все сессии из базы — для истории. */
+  private sessions: SessionBounds[] = [];
   private lastActivityAt = 0;
   /** Метка времени последнего разобранного события — по часам лога. */
   private lastEventTs = 0;
@@ -292,6 +330,7 @@ export class Engine extends EventEmitter {
 
     this.sessionStartedAt = this.storage.activeSessionStart();
     this.previousSession = this.storage.previousSession();
+    this.sessions = this.storage.listSessions();
 
     // Сначала поднимаем сохранённое: логи ротируются и удаляются игрой,
     // поэтому база — единственный источник истории старше пары часов.
@@ -571,9 +610,9 @@ export class Engine extends EventEmitter {
    * Voidlands Beacon (Timemark 8)» обрезается на полуслове), поэтому
    * маяк сокращается до плана и метки.
    */
-  private strategyTitle(stats: StrategyStats): string {
-    if (stats.costItems.length === 0) return 'Без вложений';
-    return stats.costItems
+  private strategyTitle(costItems: ConfigBaseId[]): string {
+    if (costItems.length === 0) return 'Без вложений';
+    return costItems
       .map((id) => {
         const info = this.items.get(id);
         if (!info) return `id ${id}`;
@@ -583,20 +622,24 @@ export class Engine extends EventEmitter {
   }
 
   /**
-   * Цена предмета: сначала собственные пробивки игрока, затем база
-   * сообщества. Свои данные в приоритете: они с ЕГО сервера и свежее.
+   * Цена предмета: собственная пробивка, пока свежая, иначе база
+   * сообщества, если она новее (правило — в choosePrice).
    */
-  private priceOf = (id: ConfigBaseId): number | null => {
-    const own = this.prices.priceOf(id);
-    if (own !== null) return own;
-    if (!this.communityEnabled) return null;
-    return this.community.priceOf(id)?.fe ?? null;
-  };
+  private pickPrice(id: ConfigBaseId): { fe: number; source: PriceSource } | null {
+    if (this.prices.isFixed(id)) return { fe: this.prices.priceOf(id) ?? 0, source: 'own' };
+    const own = this.prices.get(id) ?? null;
+    const community = this.communityEnabled ? this.community.priceOf(id) : null;
+    return choosePrice(
+      own,
+      community && { fe: community.fe, updatedAtMs: () => Date.parse(community.updatedAt) },
+      Date.now(),
+    );
+  }
 
-  private priceSourceOf(id: ConfigBaseId): 'own' | 'community' | null {
-    if (this.prices.priceOf(id) !== null) return 'own';
-    if (this.communityEnabled && this.community.priceOf(id) !== null) return 'community';
-    return null;
+  private priceOf = (id: ConfigBaseId): number | null => this.pickPrice(id)?.fe ?? null;
+
+  private priceSourceOf(id: ConfigBaseId): PriceSource | null {
+    return this.pickPrice(id)?.source ?? null;
   }
 
   /**
@@ -619,7 +662,117 @@ export class Engine extends EventEmitter {
   resetSession(): void {
     this.sessionStartedAt = this.storage.resetSession(Date.now());
     this.previousSession = this.storage.previousSession();
+    this.sessions = this.storage.listSessions();
     this.emit('snapshot', this.buildSnapshot());
+  }
+
+  /**
+   * Поиск по всей истории забегов под текущим фильтром персонажа:
+   * по карте, плану, выпавшему и потраченному — на русском и английском.
+   * Итоги считаются по всем совпадениям, а не по показанным: вопрос
+   * «сколько я заработал на картах с компасом» — про сумму.
+   */
+  queryRuns(query: string): RunQueryResult {
+    const needle = query.trim().toLocaleLowerCase('ru');
+    const { farming } = this.visibleRuns();
+    const matched =
+      needle === '' ? farming : farming.filter((r) => this.searchText(r).includes(needle));
+
+    let netFe = 0;
+    let inMapMs = 0;
+    const rates: number[] = [];
+    for (const run of matched) {
+      const net = runNet(run, this.priceOf);
+      const active = activeDuration(run);
+      netFe += net;
+      inMapMs += active;
+      rates.push(perHour(net, active));
+    }
+
+    return {
+      total: matched.length,
+      netFe,
+      inMapMs,
+      rate: summarize(rates),
+      runs: matched
+        .slice(-RUN_QUERY_LIMIT)
+        .reverse()
+        .map((r) => this.toView(r)),
+    };
+  }
+
+  /** Всё, по чему забег находится поиском, одной строкой в нижнем регистре. */
+  private searchText(run: Run): string {
+    const parts = [this.runName(run), mapName(run.asset, run.areaId)];
+    for (const d of [...run.drops, ...run.costs]) {
+      const info = this.items.get(d.configBaseId);
+      if (!info) continue;
+      parts.push(info.name);
+      if (info.nameRu) parts.push(info.nameRu);
+    }
+    if (run.costs.length === 0) parts.push('без вложений');
+    return parts.join('\n').toLocaleLowerCase('ru');
+  }
+
+  /**
+   * Все видимые забеги в CSV для Excel: хронологически, по строке
+   * на забег. Фильтр персонажа учитывается — выгружается то, что на экране.
+   */
+  exportRunsCsv(): string {
+    const { farming } = this.visibleRuns();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const stamp = (ts: number) => {
+      const d = new Date(ts);
+      return (
+        `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ` +
+        `${pad(d.getHours())}:${pad(d.getMinutes())}`
+      );
+    };
+    const items = (deltas: Run['drops']) =>
+      this.itemViews(deltas)
+        .map((v) => `${v.name} ×${v.qty}`)
+        .join(', ');
+
+    return toCsv(
+      [
+        'Начало',
+        'Персонаж',
+        'Карта',
+        'Стратегия',
+        'В карте, мин',
+        'Добыча, ФЕ',
+        'Вложено, ФЕ',
+        'Чистыми, ФЕ',
+        'Чистыми в час, ФЕ',
+        'Валюта ФЕ',
+        'Выпало',
+        'Потрачено',
+      ],
+      farming.map((r) => {
+        const active = activeDuration(r);
+        const net = runNet(r, this.priceOf);
+        const player = r.playerId === null ? null : this.knownPlayers.get(r.playerId);
+        const view = player ? toPlayerView(player) : null;
+        return [
+          stamp(r.startedAt),
+          view
+            ? [view.heroName ?? view.name, view.level !== null ? `${view.level} ур.` : null]
+                .filter(Boolean)
+                .join(' ')
+            : null,
+          this.runName(r),
+          this.strategyTitle([...new Set(r.costs.map((c) => c.configBaseId))].sort((a, b) => a - b)),
+          active / 60_000,
+          runValue(r, this.priceOf),
+          runCost(r, this.priceOf),
+          net,
+          perHour(net, active),
+          runFe(r),
+          items(r.drops),
+          items(r.costs),
+        ];
+      }),
+    );
   }
 
   /** Включение и отключение цен сообщества на лету. */
@@ -640,12 +793,32 @@ export class Engine extends EventEmitter {
     const costFe = runCost(run, this.priceOf);
     const netFe = valueFe - costFe;
 
+    const duration = run.durationMs ?? (run.endedAt === null ? Date.now() - run.startedAt : 0);
+
+    return {
+      key: runKey(run),
+      areaId: run.areaId,
+      name: this.runName(run),
+      startedAt: run.startedAt,
+      durationMs: run.durationMs,
+      feGained,
+      valueFe,
+      costFe,
+      netFe,
+      perHour: perHour(netFe, duration),
+      drops: this.itemViews(run.drops),
+      costs: this.itemViews(run.costs),
+    };
+  }
+
+  /** Строки предметов: одинаковые сложены, дорогие сверху. */
+  private itemViews(deltas: Run['drops']): DropView[] {
     const byItem = new Map<ConfigBaseId, number>();
-    for (const d of run.drops) {
+    for (const d of deltas) {
       byItem.set(d.configBaseId, (byItem.get(d.configBaseId) ?? 0) + d.qty);
     }
 
-    const drops: DropView[] = [...byItem.entries()]
+    return [...byItem.entries()]
       .map(([configBaseId, qty]) => {
         const info = this.items.get(configBaseId);
         const unitFe = this.priceOf(configBaseId);
@@ -662,24 +835,18 @@ export class Engine extends EventEmitter {
         };
       })
       .sort((a, b) => (b.totalFe ?? -1) - (a.totalFe ?? -1));
-
-    const duration = run.durationMs ?? (run.endedAt === null ? Date.now() - run.startedAt : 0);
-
-    return {
-      areaId: run.areaId,
-      name: this.runName(run),
-      startedAt: run.startedAt,
-      durationMs: run.durationMs,
-      feGained,
-      valueFe,
-      costFe,
-      netFe,
-      perHour: perHour(netFe, duration),
-      drops,
-    };
   }
 
-  private buildSnapshot(): Snapshot {
+  /**
+   * Забеги, которые видит интерфейс: история плюс завершённые живые,
+   * под фильтром персонажа. Общая основа среза, поиска и экспорта.
+   */
+  private visibleRuns(): {
+    allRuns: Run[];
+    liveOpen: Run | null;
+    open: Run | null;
+    farming: Run[];
+  } {
     const live = this.segmenter.all;
     const liveOpen = live.find((r) => r.endedAt === null) ?? null;
 
@@ -701,6 +868,11 @@ export class Engine extends EventEmitter {
         ? liveOpen
         : null;
     const farming = visible.filter(isFarmingRun);
+    return { allRuns, liveOpen, open, farming };
+  }
+
+  private buildSnapshot(): Snapshot {
+    const { allRuns, liveOpen, open, farming } = this.visibleRuns();
 
     // Время считаем активное, а не по часам: простой внутри карты
     // раздувает знаменатель и тихо занижает любую цифру «в час».
@@ -763,13 +935,16 @@ export class Engine extends EventEmitter {
         .slice(0, 6)
         .map((s) => ({
           ...s,
-          title: this.strategyTitle(s),
+          title: this.strategyTitle(s.costItems),
           costItems: s.costItems.map((id) => ({
             configBaseId: id,
             name: this.displayName(id),
             icon: this.items.get(id)?.icon ? iconUrl(id) : null,
           })),
         })),
+      maps: groupByMap(farming, (r) => mapName(r.asset, r.areaId), this.priceOf).slice(0, 8),
+      days: dailyTotals(farming, this.priceOf, 14, Date.now()),
+      sessions: sessionTotals(this.sessions, farming, this.priceOf).slice(0, 10),
       missing: missingPrices(counted, this.priceOf)
         .slice(0, 8)
         .map((m) => ({
@@ -897,11 +1072,6 @@ export class Engine extends EventEmitter {
   }
 }
 
-/** Когда забег закончился — по этой границе он относится к сессии. */
-function runEnd(run: Run): number {
-  return run.endedAt ?? run.startedAt;
-}
-
 /** Профиль → вид для интерфейса. */
 function toPlayerView(p: PlayerProfile): PlayerView {
   return {
@@ -913,13 +1083,6 @@ function toPlayerView(p: PlayerProfile): PlayerView {
   };
 }
 
-/**
- * Человекочитаемое имя карты.
- *
- * Ассеты называются пиньинем (YL_MaNeiLaYuLin100). Русские названия появятся,
- * когда будет готов глоссарий; пока показываем очищенный ассет,
- * а не «зона 5348».
- */
 /**
  * Названия планов Инобытия в именительном падеже.
  *
@@ -952,6 +1115,13 @@ function planeName(itemName: string): string | null {
   return number ? `${plane[1]} · метка ${number}` : plane[1];
 }
 
+/**
+ * Человекочитаемое имя карты.
+ *
+ * Ассеты называются пиньинем (YL_MaNeiLaYuLin100). Русские названия появятся,
+ * когда будет готов глоссарий; пока показываем очищенный ассет,
+ * а не «зона 5348».
+ */
 function mapName(asset: string | null, areaId: number): string {
   if (!asset) return `Зона ${areaId}`;
   const cleaned = asset

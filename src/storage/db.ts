@@ -565,6 +565,14 @@ export class Storage {
     return now;
   }
 
+  /** Все сессии в порядке создания. Активная — с endedAt = null. */
+  listSessions(): Array<{ startedAt: number; endedAt: number | null }> {
+    const rows = this.db
+      .prepare('SELECT started_at, ended_at FROM session ORDER BY id')
+      .all() as Array<{ started_at: number; ended_at: number | null }>;
+    return rows.map((r) => ({ startedAt: r.started_at, endedAt: r.ended_at }));
+  }
+
   /** Границы последней закрытой сессии — для строки «прошлая сессия». */
   previousSession(): { startedAt: number; endedAt: number } | null {
     const row = this.db

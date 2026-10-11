@@ -7,6 +7,8 @@ import { CurrentRun } from './components/CurrentRun.js';
 import { Diagnostics } from './components/Diagnostics.js';
 import { Header } from './components/Header.js';
 import { Hero } from './components/Hero.js';
+import { History } from './components/History.js';
+import { Maps } from './components/Maps.js';
 import { MissingPrices } from './components/MissingPrices.js';
 import { RecentRuns } from './components/RecentRuns.js';
 import { SessionRecords } from './components/SessionRecords.js';
@@ -76,7 +78,9 @@ export function App() {
         <Sidebar snapshot={snapshot} />
       </div>
       <Strategies snapshot={snapshot} />
+      <Maps snapshot={snapshot} />
       <RecentRuns snapshot={snapshot} />
+      <History snapshot={snapshot} />
       <MissingPrices snapshot={snapshot} />
       <Diagnostics snapshot={snapshot} now={now} />
     </div>

@@ -1,6 +1,9 @@
+import { useEffect, useState } from 'react';
+
 import { RUN, pluralize } from '../../core/plural.js';
-import type { Snapshot } from '../../main/engine.js';
-import { duration, num, time } from '../format.js';
+import type { RunQueryResult, RunView, Snapshot } from '../../main/engine.js';
+import { cacheDate, duration, num, time } from '../format.js';
+import { DropList } from './DropList.js';
 import { Fe, FeIcon } from './Fe.js';
 import { Tip } from './ui.js';
 
@@ -74,54 +77,201 @@ function RateHistogram({ snapshot }: { snapshot: Snapshot }) {
   );
 }
 
+/**
+ * Поиск в браузерном демо: main-процесса нет, ищем по забегам из среза.
+ * В приложении поиск идёт по всей истории в main.
+ */
+function localQuery(runs: RunView[], query: string): RunQueryResult {
+  const needle = query.toLocaleLowerCase('ru');
+  const matched = runs.filter((r) =>
+    [r.name, ...r.drops.map((d) => d.name), ...r.costs.map((c) => c.name)]
+      .join(' | ')
+      .toLocaleLowerCase('ru')
+      .includes(needle),
+  );
+  const rates = matched.map((r) => r.perHour).sort((a, b) => a - b);
+  const median = rates.length > 0 ? rates[Math.floor(rates.length / 2)]! : 0;
+  return {
+    total: matched.length,
+    netFe: matched.reduce((a, r) => a + r.netFe, 0),
+    inMapMs: matched.reduce((a, r) => a + (r.durationMs ?? 0), 0),
+    rate: {
+      median,
+      mean: median,
+      p25: median,
+      p75: median,
+      sampleSize: rates.length,
+      confidence: 'insufficient',
+      topShare: 0,
+    },
+    runs: matched,
+  };
+}
+
+/**
+ * Забеги: последние на экране, остальная история — поиском.
+ *
+ * Строка раскрывается в состав: что выпало и чем открывали. Раньше
+ * добыча прошлого забега лежала в базе, но посмотреть её было негде.
+ */
 export function RecentRuns({ snapshot }: { snapshot: Snapshot }) {
-  const runs = snapshot.recent;
+  const [query, setQuery] = useState('');
+  const [found, setFound] = useState<RunQueryResult | null>(null);
+  const [openKey, setOpenKey] = useState<string | null>(null);
+  const [exportNote, setExportNote] = useState<string | null>(null);
+
+  // Новый забег в срезе — повод пересчитать найденное, иначе итоги
+  // поиска застывали на моменте ввода.
+  const latestKey = snapshot.recent[0]?.key ?? '';
+  useEffect(() => {
+    const q = query.trim();
+    if (q === '') {
+      setFound(null);
+      return;
+    }
+    const timer = setTimeout(() => {
+      if (window.gorn) void window.gorn.runs.query(q).then(setFound);
+      else setFound(localQuery(snapshot.recent, q));
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [query, latestKey, snapshot.playerFilter]);
+
+  const searching = query.trim() !== '';
+  const runs = searching ? (found?.runs ?? []) : snapshot.recent;
   const median = snapshot.norm;
-  if (runs.length === 0) return null;
+  if (snapshot.recent.length === 0 && !searching) return null;
+
+  const exportCsv = async () => {
+    if (!window.gorn) return;
+    const res = await window.gorn.runs.exportCsv();
+    if (res.status === 'saved') setExportNote(`Сохранено: ${res.path}`);
+    else if (res.status === 'error') setExportNote(`Не удалось сохранить: ${res.message}`);
+    else setExportNote(null);
+  };
 
   return (
     <section className="card">
       <div className="runs-head">
         <h2>Забеги</h2>
-        <RateHistogram snapshot={snapshot} />
+        <div className="runs-tools">
+          <input
+            type="search"
+            className="runs-search"
+            placeholder="Поиск: карта, предмет, компас…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            aria-label="Поиск по всем забегам"
+          />
+          <button
+            className="session-reset"
+            onClick={() => void exportCsv()}
+            disabled={!window.gorn}
+            title="Все забеги в CSV для Excel: время, карта, стратегия, добыча, вложения, чистыми. С учётом фильтра по персонажу."
+          >
+            ⤓ CSV
+          </button>
+        </div>
+        {!searching && <RateHistogram snapshot={snapshot} />}
       </div>
-      <table className="runs">
-        <thead>
-          <tr>
-            <th>Время</th>
-            <th>Карта</th>
-            <th className="r">Длительность</th>
-            <th className="r">
-              Чистыми <FeIcon />
-            </th>
-            <th className="r">В час</th>
-            <th className="r">
-              <Tip tip="Отклонение темпа забега от «нормы» — медианы последних забегов.">
-                К норме
-              </Tip>
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {runs.map((r) => {
-            const delta = median > 0 ? Math.round(((r.perHour - median) / median) * 100) : 0;
-            return (
-              <tr key={`${r.startedAt}-${r.areaId}`}>
-                <td className="muted">{time(r.startedAt)}</td>
-                <td>{r.name}</td>
-                <td className="r muted">{duration(r.durationMs ?? 0)}</td>
-                <td className="r">
-                  <Fe value={r.netFe} />
-                </td>
-                <td className="r muted">{num(r.perHour)}</td>
-                <td className={`r ${delta >= 0 ? 'up' : 'down'}`}>
-                  {median > 0 ? `${delta >= 0 ? '+' : '−'}${Math.abs(delta)}%` : '—'}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+      {exportNote && <p className="muted small runs-note">{exportNote}</p>}
+      {searching && found && (
+        <p className="runs-summary">
+          {found.total === 0 ? (
+            'Ничего не нашлось.'
+          ) : (
+            <>
+              {pluralize(found.total, RUN)} · чистыми <Fe value={found.netFe} signed /> · медиана{' '}
+              {num(found.rate.median)}/час · {duration(found.inMapMs)} в картах
+              {found.total > found.runs.length && (
+                <span className="muted"> · показаны последние {found.runs.length}</span>
+              )}
+            </>
+          )}
+        </p>
+      )}
+      {runs.length > 0 && (
+        <table className="runs">
+          <thead>
+            <tr>
+              <th>Время</th>
+              <th>Карта</th>
+              <th className="r">Длительность</th>
+              <th className="r">
+                Чистыми <FeIcon />
+              </th>
+              <th className="r">В час</th>
+              <th className="r">
+                <Tip tip="Отклонение темпа забега от «нормы» — медианы последних забегов.">
+                  К норме
+                </Tip>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {runs.map((r) => {
+              const delta = median > 0 ? Math.round(((r.perHour - median) / median) * 100) : 0;
+              const isOpen = openKey === r.key;
+              const toggle = () => setOpenKey(isOpen ? null : r.key);
+              // Поиск достаёт и старые забеги — им нужна дата, не только время.
+              const when =
+                new Date(r.startedAt).toDateString() === new Date().toDateString()
+                  ? time(r.startedAt)
+                  : cacheDate(r.startedAt);
+              return [
+                <tr
+                  key={r.key}
+                  className={`run-row ${isOpen ? 'run-row-open' : ''}`}
+                  tabIndex={0}
+                  aria-expanded={isOpen}
+                  onClick={toggle}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      toggle();
+                    }
+                  }}
+                >
+                  <td className="muted">{when}</td>
+                  <td>
+                    <span className="run-chevron" aria-hidden>
+                      {isOpen ? '▾' : '▸'}
+                    </span>
+                    {r.name}
+                  </td>
+                  <td className="r muted">{duration(r.durationMs ?? 0)}</td>
+                  <td className="r">
+                    <Fe value={r.netFe} />
+                  </td>
+                  <td className="r muted">{num(r.perHour)}</td>
+                  <td className={`r ${delta >= 0 ? 'up' : 'down'}`}>
+                    {median > 0 ? `${delta >= 0 ? '+' : '−'}${Math.abs(delta)}%` : '—'}
+                  </td>
+                </tr>,
+                isOpen && (
+                  <tr key={`${r.key}-detail`} className="run-detail">
+                    <td colSpan={6}>
+                      <div className="run-detail-grid">
+                        <div>
+                          <h3>
+                            Выпало · <Fe value={r.valueFe} />
+                          </h3>
+                          <DropList drops={r.drops} />
+                        </div>
+                        <div>
+                          <h3>
+                            Вложено · <Fe value={r.costFe} />
+                          </h3>
+                          <DropList drops={r.costs} empty="Без вложений." />
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                ),
+              ];
+            })}
+          </tbody>
+        </table>
+      )}
     </section>
   );
 }

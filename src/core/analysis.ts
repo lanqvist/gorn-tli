@@ -18,6 +18,11 @@ export function runFe(run: Run): number {
   return fe;
 }
 
+/** Когда забег закончился — по этой границе он относится к сессии и дню. */
+export function runEnd(run: Run): number {
+  return run.endedAt ?? run.startedAt;
+}
+
 /** Ключ забега для дедупликации: один и тот же лог может разбираться дважды. */
 export function runKey(run: Run): string {
   return `${run.startedAt}:${run.areaId}`;

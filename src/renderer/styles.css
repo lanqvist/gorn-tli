@@ -780,6 +780,231 @@ button {
   justify-content: flex-end;
 }
 
+/* ── поиск и раскрытие забегов ──────────────────────────────────── */
+
+.runs-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.runs-search {
+  width: 240px;
+  max-width: 40vw;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--text);
+  padding: 5px 10px;
+  font: inherit;
+  font-size: 13px;
+}
+
+.runs-search:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.session-reset:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.runs-summary {
+  margin: 0 0 10px;
+  font-size: 13px;
+}
+
+.runs-note {
+  margin: 0 0 8px;
+  word-break: break-all;
+}
+
+.run-row {
+  cursor: pointer;
+}
+
+.run-row:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: -1px;
+}
+
+.run-row-open {
+  background: rgb(255 255 255 / 3.5%);
+}
+
+.run-chevron {
+  display: inline-block;
+  width: 14px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.run-detail td {
+  padding: 4px 10px 14px 34px;
+  background: rgb(255 255 255 / 2%);
+}
+
+.run-detail-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 24px;
+}
+
+.run-detail h3 {
+  margin: 6px 0 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+/* ── карты ──────────────────────────────────────────────────────── */
+
+.maps {
+  margin-bottom: 10px;
+}
+
+.map-weak td {
+  color: var(--muted);
+}
+
+.map-best {
+  margin-left: 8px;
+  font-size: 11px;
+  padding: 1px 7px;
+}
+
+.map-rate {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 200px;
+}
+
+.map-rate-value {
+  width: 48px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.map-track {
+  position: relative;
+  flex: 1;
+  height: 8px;
+  border-radius: 4px;
+  background: rgb(134 141 160 / 12%);
+}
+
+.map-band {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 4px;
+  background: rgb(255 157 60 / 35%);
+}
+
+.map-weak .map-band {
+  background: rgb(134 141 160 / 30%);
+}
+
+.map-median {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: var(--accent);
+}
+
+.map-weak .map-median {
+  background: var(--muted);
+}
+
+/* ── история ────────────────────────────────────────────────────── */
+
+.history-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.history-sum {
+  margin: 0 0 10px;
+  font-size: 13px;
+}
+
+.days-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.days-zero {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+.days-bar {
+  fill: rgb(255 157 60 / 70%);
+}
+
+.days-bar-neg {
+  fill: rgb(224 112 95 / 70%);
+}
+
+.days-bar-hover {
+  fill: var(--accent);
+}
+
+.days-bar-neg.days-bar-hover {
+  fill: var(--down);
+}
+
+.days-hit {
+  fill: transparent;
+  cursor: default;
+  outline: none;
+}
+
+.days-hit:focus-visible {
+  stroke: var(--accent);
+  stroke-width: 1;
+}
+
+.days-label {
+  fill: var(--muted);
+  font-size: 9px;
+}
+
+.days-label-today {
+  fill: var(--text);
+}
+
+.days-tip {
+  min-height: 20px;
+  margin-top: 8px;
+  font-size: 12px;
+}
+
+.session-current td:first-child {
+  color: var(--text);
+}
+
+@media (max-width: 860px) {
+  .history-grid,
+  .run-detail-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .runs-head {
+    flex-wrap: wrap;
+  }
+}
+
 /* ── стратегии ──────────────────────────────────────────────────── */
 
 .stratbars {
