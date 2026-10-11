@@ -209,6 +209,8 @@ app.whenReady().then(async () => {
   engine = new Engine(app.getPath('userData'), items, settings.itemNames, {
     communityPrices: settings.communityPrices,
     playerFilter: settings.playerFilter,
+    excludedItems: settings.excludedItems,
+    minDropFe: settings.minDropFe,
   });
 
   // Кнопка «Оверлей» в шапке обязана отражать реальность и когда оверлей
@@ -278,6 +280,27 @@ app.whenReady().then(async () => {
     } catch (err) {
       return { status: 'error' as const, message: (err as Error).message };
     }
+  });
+
+  // Цены с историей своих пробивок — по запросу, как и поиск забегов.
+  ipcMain.handle('prices:query', (_e, query: string) =>
+    engine ? engine.queryPrices(String(query ?? '')) : [],
+  );
+
+  // Исключение предмета из учёта: запоминается и сразу пересчитывает цифры.
+  ipcMain.handle('items:setExcluded', (_e, configBaseId: number, excluded: boolean) => {
+    if (!Number.isInteger(configBaseId)) return settings?.excludedItems ?? [];
+    const list = settings?.setExcluded(configBaseId, Boolean(excluded)) ?? [];
+    engine?.setExcluded(configBaseId, Boolean(excluded));
+    return list;
+  });
+
+  // Порог «мелочи» в списках добычи.
+  ipcMain.handle('settings:setMinDropFe', (_e, value: number) => {
+    const v = Number.isFinite(value) && value >= 0 ? value : 0;
+    settings?.setMinDropFe(v);
+    engine?.setMinDropFe(v);
+    return v;
   });
 
   // Фильтр по персонажу. null — показывать всех.

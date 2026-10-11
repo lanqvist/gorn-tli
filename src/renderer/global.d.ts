@@ -1,5 +1,5 @@
 import type { RetroScanProgress } from '../core/retroScan.js';
-import type { RunQueryResult, Snapshot } from '../main/engine.js';
+import type { PriceRow, RunQueryResult, Snapshot } from '../main/engine.js';
 import type { OverlayMode } from '../main/settings.js';
 import type { UpdateState } from '../main/updater.js';
 
@@ -61,6 +61,11 @@ declare global {
       reset: () => Promise<void>;
     };
     setPlayerFilter: (playerId: string | null) => Promise<string | null>;
+    prices: {
+      query: (query: string) => Promise<PriceRow[]>;
+      setExcluded: (configBaseId: number, excluded: boolean) => Promise<number[]>;
+    };
+    setMinDropFe: (value: number) => Promise<number>;
     runs: {
       query: (query: string) => Promise<RunQueryResult | null>;
       exportCsv: () => Promise<

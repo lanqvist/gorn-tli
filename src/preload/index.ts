@@ -33,6 +33,16 @@ contextBridge.exposeInMainWorld('gorn', {
     exportCsv: () => ipcRenderer.invoke('runs:exportCsv'),
   },
 
+  /** Цены: история своих пробивок и исключение из учёта. */
+  prices: {
+    query: (query: string) => ipcRenderer.invoke('prices:query', query),
+    setExcluded: (configBaseId: number, excluded: boolean) =>
+      ipcRenderer.invoke('items:setExcluded', configBaseId, excluded),
+  },
+
+  /** Порог «мелочи» в списках добычи, ФЕ. */
+  setMinDropFe: (value: number) => ipcRenderer.invoke('settings:setMinDropFe', value),
+
   /** Фильтр по персонажу: null — все. Выбор запоминается. */
   setPlayerFilter: (playerId: string | null) =>
     ipcRenderer.invoke('settings:setPlayerFilter', playerId),

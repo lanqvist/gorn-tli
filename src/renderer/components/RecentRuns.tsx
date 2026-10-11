@@ -255,7 +255,7 @@ export function RecentRuns({ snapshot }: { snapshot: Snapshot }) {
                           <h3>
                             Выпало · <Fe value={r.valueFe} />
                           </h3>
-                          <DropList drops={r.drops} />
+                          <DropList drops={r.drops} minFe={snapshot.minDropFe} />
                         </div>
                         <div>
                           <h3>

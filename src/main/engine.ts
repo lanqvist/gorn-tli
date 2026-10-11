@@ -17,6 +17,7 @@ import {
 import { EventParser } from '../core/eventParser.js';
 import { InventoryTracker } from '../core/inventory.js';
 import { findLogDirectory } from '../core/locate.js';
+import { bagValue } from '../core/bag.js';
 import { toCsv } from '../core/csv.js';
 import {
   dailyTotals,
@@ -27,13 +28,21 @@ import {
   type SessionBounds,
   type SessionTotals,
 } from '../core/history.js';
-import { choosePrice, isBoundName, PriceStore, type PriceSource } from '../core/priceStore.js';
+import {
+  choosePrice,
+  isBoundName,
+  PriceStore,
+  priceTrend,
+  type PriceSource,
+  type PriceTrend,
+} from '../core/priceStore.js';
 import { heroName } from '../core/heroes.js';
 import { retroScan, runCost, runValue } from '../core/retroScan.js';
 import { RunSegmenter } from '../core/runSegmenter.js';
 import { percentile, perHour, summarize, type RateSummary } from '../core/stats.js';
 import { TradeLedger, mergeByKey } from '../core/trade.js';
 import {
+  FE_ID,
   mergePlayerInfo,
   type ConfigBaseId,
   type Diagnostics,
@@ -52,8 +61,41 @@ export interface DropView {
   qty: number;
   unitFe: number | null;
   totalFe: number | null;
-  /** Откуда цена: своя пробивка или база сообщества. */
-  priceSource: 'own' | 'community' | null;
+  /** Откуда цена: своя пробивка, база сообщества или предмет исключён из учёта. */
+  priceSource: ViewPriceSource | null;
+}
+
+/** Источник цены для интерфейса: исключённый предмет стоит ноль по воле игрока. */
+export type ViewPriceSource = PriceSource | 'excluded';
+
+/** Строка блока «Цены». */
+export interface PriceRow {
+  configBaseId: ConfigBaseId;
+  name: string;
+  icon: string | null;
+  /** Цена, по которой сейчас считается добыча. null — неизвестна. */
+  fe: number | null;
+  source: ViewPriceSource | null;
+  /** Когда пробил сам — по свежей пробивке. null — своих пробивок нет. */
+  ownObservedAt: number | null;
+  /** Тренд по своим пробивкам. */
+  trend: PriceTrend;
+  /** Сколько выпало и ушло на карты в видимых забегах. */
+  seenQty: number;
+}
+
+/** Стоимость сумки для интерфейса. */
+export interface BagView {
+  valueFe: number;
+  feCash: number;
+  unpriced: number;
+  top: Array<{
+    configBaseId: ConfigBaseId;
+    name: string;
+    icon: string | null;
+    qty: number;
+    totalFe: number;
+  }>;
 }
 
 export interface RunView {
@@ -164,6 +206,10 @@ export interface Snapshot {
   days: DayTotals[];
   /** Сессии с итогами, свежие сверху. */
   sessions: SessionTotals[];
+  /** Стоимость сумки по последнему известному состоянию. null — сумку ещё не видели. */
+  bag: BagView | null;
+  /** Порог «мелочи» в списках добычи, ФЕ. 0 — показывать всё. */
+  minDropFe: number;
   /** Предметы без цены, по влиянию на оценку. */
   missing: MissingPriceView[];
   diagnostics: {
@@ -246,6 +292,10 @@ export class Engine extends EventEmitter {
   private previousSession: { startedAt: number; endedAt: number } | null = null;
   /** Все сессии из базы — для истории. */
   private sessions: SessionBounds[] = [];
+  /** Исключённые из учёта предметы: их добыча стоит ноль. */
+  private excluded = new Set<ConfigBaseId>();
+  /** Порог «мелочи» для списков добычи — только отображение. */
+  private minDropFe = 0;
   private lastActivityAt = 0;
   /** Метка времени последнего разобранного события — по часам лога. */
   private lastEventTs = 0;
@@ -256,7 +306,12 @@ export class Engine extends EventEmitter {
     dataDir: string,
     items: Array<{ id: number; name: string; nameRu?: string | null; icon: string | null }>,
     language: NameLanguage = 'ru',
-    options: { communityPrices?: boolean; playerFilter?: string | null } = {},
+    options: {
+      communityPrices?: boolean;
+      playerFilter?: string | null;
+      excludedItems?: number[];
+      minDropFe?: number;
+    } = {},
   ) {
     super();
     this.storage = new Storage(join(dataDir, 'gorn.db'));
@@ -274,6 +329,8 @@ export class Engine extends EventEmitter {
 
     this.communityEnabled = options.communityPrices ?? true;
     this.playerFilter = options.playerFilter ?? null;
+    this.excluded = new Set(options.excludedItems ?? []);
+    this.minDropFe = options.minDropFe ?? 0;
     this.community = new CommunityPriceFeed(dataDir);
     this.community.onUpdate(() => this.emit('snapshot', this.buildSnapshot()));
   }
@@ -373,7 +430,7 @@ export class Engine extends EventEmitter {
     }
 
     this.storage.saveRuns(scan.runs, this.seasonId);
-    this.storage.savePrices(scan.prices.all());
+    this.storage.savePrices(scan.prices.observations());
     this.storage.saveTrade(scan.trade.listings, scan.trade.receipts);
     this.storage.savePlayers(scan.players);
     for (const p of this.storage.loadPlayers()) this.knownPlayers.set(p.playerId, p);
@@ -625,8 +682,9 @@ export class Engine extends EventEmitter {
    * Цена предмета: собственная пробивка, пока свежая, иначе база
    * сообщества, если она новее (правило — в choosePrice).
    */
-  private pickPrice(id: ConfigBaseId): { fe: number; source: PriceSource } | null {
+  private pickPrice(id: ConfigBaseId): { fe: number; source: ViewPriceSource } | null {
     if (this.prices.isFixed(id)) return { fe: this.prices.priceOf(id) ?? 0, source: 'own' };
+    if (this.excluded.has(id)) return { fe: 0, source: 'excluded' };
     const own = this.prices.get(id) ?? null;
     const community = this.communityEnabled ? this.community.priceOf(id) : null;
     return choosePrice(
@@ -638,7 +696,7 @@ export class Engine extends EventEmitter {
 
   private priceOf = (id: ConfigBaseId): number | null => this.pickPrice(id)?.fe ?? null;
 
-  private priceSourceOf(id: ConfigBaseId): PriceSource | null {
+  private priceSourceOf(id: ConfigBaseId): ViewPriceSource | null {
     return this.pickPrice(id)?.source ?? null;
   }
 
@@ -773,6 +831,90 @@ export class Engine extends EventEmitter {
         ];
       }),
     );
+  }
+
+  /**
+   * Исключение предмета из учёта: его добыча стоит ноль во всех цифрах,
+   * и «Пробить цену» про него больше не напоминает.
+   */
+  setExcluded(configBaseId: ConfigBaseId, excluded: boolean): void {
+    if (excluded) this.excluded.add(configBaseId);
+    else this.excluded.delete(configBaseId);
+    this.emit('snapshot', this.buildSnapshot());
+  }
+
+  /** Порог «мелочи» в списках добычи. */
+  setMinDropFe(value: number): void {
+    this.minDropFe = Math.max(0, value);
+    this.emit('snapshot', this.buildSnapshot());
+  }
+
+  /** Сумка по последнему известному состоянию слотов. */
+  private bagView(): BagView | null {
+    const contents = this.inventory.snapshot();
+    if (contents.size === 0) return null;
+    const bag = bagValue(contents, this.priceOf);
+    return {
+      ...bag,
+      top: bag.top.map((item) => ({
+        ...item,
+        name: this.displayName(item.configBaseId),
+        icon: this.items.get(item.configBaseId)?.icon ? iconUrl(item.configBaseId) : null,
+      })),
+    };
+  }
+
+  /**
+   * Цены с историей своих пробивок. Пустой запрос — то, что падает
+   * в видимых забегах, по влиянию на оценку, плюс исключённое: иначе
+   * исключение было бы не вернуть. Запрос — поиск по всему справочнику.
+   */
+  queryPrices(query: string): PriceRow[] {
+    const LIMIT = 40;
+    const needle = query.trim().toLocaleLowerCase('ru');
+
+    const seen = new Map<ConfigBaseId, number>();
+    for (const run of this.visibleRuns().farming) {
+      for (const d of [...run.drops, ...run.costs]) {
+        seen.set(d.configBaseId, (seen.get(d.configBaseId) ?? 0) + d.qty);
+      }
+    }
+
+    let ids: ConfigBaseId[];
+    if (needle === '') {
+      const impact = (id: ConfigBaseId) => (this.priceOf(id) ?? 0) * (seen.get(id) ?? 0);
+      ids = [
+        ...[...this.excluded],
+        ...[...seen.keys()]
+          .filter((id) => id !== FE_ID && !this.excluded.has(id))
+          .sort((a, b) => impact(b) - impact(a) || (seen.get(b) ?? 0) - (seen.get(a) ?? 0)),
+      ];
+    } else {
+      const matches: ConfigBaseId[] = [];
+      for (const [id, info] of this.items) {
+        const text = `${info.name}\n${info.nameRu ?? ''}`.toLocaleLowerCase('ru');
+        if (id !== FE_ID && text.includes(needle)) matches.push(id);
+      }
+      // Сначала знакомое: что падало, затем то, у чего есть цена.
+      const rank = (id: ConfigBaseId) =>
+        (seen.has(id) ? 2 : 0) + (this.priceOf(id) !== null ? 1 : 0);
+      ids = matches.sort((a, b) => rank(b) - rank(a));
+    }
+
+    return ids.slice(0, LIMIT).map((id) => {
+      const picked = this.pickPrice(id);
+      const own = this.prices.get(id);
+      return {
+        configBaseId: id,
+        name: this.displayName(id),
+        icon: this.items.get(id)?.icon ? iconUrl(id) : null,
+        fe: picked?.fe ?? null,
+        source: picked?.source ?? null,
+        ownObservedAt: own?.observedAt ?? null,
+        trend: priceTrend(this.storage.priceHistory(id)),
+        seenQty: seen.get(id) ?? 0,
+      };
+    });
   }
 
   /** Включение и отключение цен сообщества на лету. */
@@ -945,6 +1087,8 @@ export class Engine extends EventEmitter {
       maps: groupByMap(farming, (r) => mapName(r.asset, r.areaId), this.priceOf).slice(0, 8),
       days: dailyTotals(farming, this.priceOf, 14, Date.now()),
       sessions: sessionTotals(this.sessions, farming, this.priceOf).slice(0, 10),
+      bag: this.bagView(),
+      minDropFe: this.minDropFe,
       missing: missingPrices(counted, this.priceOf)
         .slice(0, 8)
         .map((m) => ({

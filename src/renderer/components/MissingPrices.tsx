@@ -19,7 +19,8 @@ export function MissingPrices({ snapshot }: { snapshot: Snapshot }) {
       <h2>Пробить цену</h2>
       <p className="muted small">
         Эти предметы падают, но стоимость неизвестна — на них оценка добычи занижена.
-        Порядок по влиянию: сверху то, чего выпало больше всего.
+        Порядок по влиянию: сверху то, чего выпало больше всего. Мусор, который не продаётся,
+        можно не учитывать — он перестанет сюда попадать.
       </p>
       <ul className="missing">
         {missing.map((m) => (
@@ -28,6 +29,14 @@ export function MissingPrices({ snapshot }: { snapshot: Snapshot }) {
             <CopyName name={m.name} />
             <span className="drop-qty">{num(m.qty)} шт</span>
             <span className="muted small">в {pluralize(m.runs, RUN_IN)}</span>
+            <button
+              className="link-button"
+              disabled={!window.gorn}
+              title="Считать предмет бесплатным во всех цифрах. Вернуть можно в блоке «Цены»."
+              onClick={() => void window.gorn?.prices.setExcluded(m.configBaseId, true)}
+            >
+              не учитывать
+            </button>
           </li>
         ))}
       </ul>

@@ -51,7 +51,14 @@ function NameLanguageSwitch() {
  * а громкость и прозрачность не имели контролов вовсе. Игрок, который
  * хочет «сделать потише», должен находить это за один клик.
  */
-export function SettingsPanel({ onClose }: { onClose: () => void }) {
+export function SettingsPanel({
+  onClose,
+  minDropFe,
+}: {
+  onClose: () => void;
+  /** Порог «мелочи» живёт в срезе: меняется кнопкой и сразу видна в списках. */
+  minDropFe: number;
+}) {
   const [prefs, setPrefs] = useState({
     popups: true,
     sound: true,
@@ -280,6 +287,23 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
                 void window.gorn?.setCommunityPrices(e.target.checked);
               }}
             />
+          </label>
+          <label className="set-row">
+            <span title="Строки дешевле порога в списках добычи сворачиваются в одну строку «мелочь». На подсчёт дохода не влияет.">
+              Сворачивать мелочь
+            </span>
+            <select
+              value={String(minDropFe)}
+              onChange={(e) => void window.gorn?.setMinDropFe(Number(e.target.value))}
+            >
+              <option value="0">не сворачивать</option>
+              <option value="0.1">дешевле 0,1 ФЕ</option>
+              <option value="1">дешевле 1 ФЕ</option>
+              <option value="5">дешевле 5 ФЕ</option>
+              {![0, 0.1, 1, 5].includes(minDropFe) && (
+                <option value={String(minDropFe)}>дешевле {minDropFe} ФЕ</option>
+              )}
+            </select>
           </label>
         </section>
 

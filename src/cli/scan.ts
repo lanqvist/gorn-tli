@@ -164,7 +164,7 @@ async function main(): Promise<void> {
   const storage = new Storage(resolve('data/gorn.db'));
   const seasonId = result.latestSeasonId ?? [...result.seasonIds].pop() ?? null;
   storage.saveRuns(result.runs, seasonId);
-  storage.savePrices(result.prices.all());
+  storage.savePrices(result.prices.observations());
   storage.saveTrade(result.trade.listings, result.trade.receipts);
   storage.savePlayers(result.players);
 

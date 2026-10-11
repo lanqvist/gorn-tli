@@ -505,6 +505,24 @@ export class Storage {
     }));
   }
 
+  /**
+   * Последние `limit` своих пробивок предмета, по времени. Окно берётся
+   * от свежей пробивки, а не от сегодняшнего дня: после перерыва в игре
+   * история иначе выглядела бы пустой.
+   */
+  priceHistory(configBaseId: ConfigBaseId, limit = 60): Array<{ t: number; fe: number }> {
+    return (
+      this.db
+        .prepare(
+          `SELECT observed_at AS t, fe FROM price
+           WHERE config_base_id = ? ORDER BY observed_at DESC LIMIT ?`,
+        )
+        .all(configBaseId, limit) as Array<{ t: number; fe: number }>
+    )
+      .map((r) => ({ t: r.t, fe: r.fe }))
+      .reverse();
+  }
+
   /** Последняя известная цена предмета. */
   latestPrice(configBaseId: ConfigBaseId): number | null {
     const row = this.db

@@ -1,4 +1,4 @@
-import type { Snapshot } from '../main/engine.js';
+import type { PriceRow, Snapshot } from '../main/engine.js';
 
 /**
  * Демонстрационный срез для разработки интерфейса в браузере,
@@ -311,6 +311,18 @@ export const demoSnapshot: Snapshot = {
       inMapMs: 3 * 3_600_000 + 25 * 60_000,
     },
   ],
+  bag: {
+    valueFe: 9_840,
+    feCash: 6_655,
+    unpriced: 4,
+    top: [
+      { configBaseId: 10022, name: 'Soldier Compass', icon: `${CDN}/Compass/128/UI_Compass_MonsterNormal_1_1_Icon_128.webp`, qty: 38, totalFe: 1_292 },
+      { configBaseId: 200028, name: 'Precious Ember', icon: `${CDN}/Ash/128/UI_Ash_20StonelowYOUZHI_Icon_128.webp`, qty: 96, totalFe: 614 },
+      { configBaseId: 5028, name: 'Netherrealm resonance', icon: `${CDN}/Item/128/UI_Item_Echo_01_Icon_128.webp`, qty: 140, totalFe: 434 },
+      { configBaseId: 100200, name: 'Flame Sand', icon: `${CDN}/Item/128/UI_Item_chuhuolingshaV3_Icon_128.webp`, qty: 2_100, totalFe: 252 },
+    ],
+  },
+  minDropFe: 0,
   missing: [
     {
       configBaseId: 400033,
@@ -340,3 +352,46 @@ export const demoSnapshot: Snapshot = {
     communityStale: false,
   },
 };
+
+/** Строки блока «Цены» для браузерного демо: тренды из правдоподобных пробивок. */
+const series = (base: number, steps: number[]) =>
+  steps.map((k, i) => ({ t: now - (steps.length - 1 - i) * 2 * 86_400_000, fe: base * k }));
+
+const priceRow = (
+  configBaseId: number,
+  name: string,
+  fe: number | null,
+  source: PriceRow['source'],
+  steps: number[],
+  seenQty: number,
+  icon: string | null = null,
+): PriceRow => {
+  const points = fe === null ? [] : series(fe / steps.at(-1)!, steps);
+  const ref = points.find((p) => p.t >= now - 7 * 86_400_000);
+  return {
+    configBaseId,
+    name,
+    icon,
+    fe,
+    source,
+    ownObservedAt: source === 'own' && points.length > 0 ? points.at(-1)!.t : null,
+    trend: {
+      points,
+      change: ref && points.length > 1 && ref !== points.at(-1) ? fe! / ref.fe - 1 : null,
+    },
+    seenQty,
+  };
+};
+
+export const demoPrices: PriceRow[] = [
+  priceRow(400033, 'Voidlands Beacon (Timemark 8)', 0, 'excluded', [], 14),
+  priceRow(10022, 'Soldier Compass', 34, 'own', [1.1, 1.05, 1, 0.97, 0.95, 0.92, 0.9, 1], 38,
+    `${CDN}/Compass/128/UI_Compass_MonsterNormal_1_1_Icon_128.webp`),
+  priceRow(200028, 'Precious Ember', 6.4, 'own', [0.8, 0.85, 0.9, 1, 1.05, 1.1, 1.2], 96,
+    `${CDN}/Ash/128/UI_Ash_20StonelowYOUZHI_Icon_128.webp`),
+  priceRow(5028, 'Netherrealm resonance', 3.1, 'community', [1], 140,
+    `${CDN}/Item/128/UI_Item_Echo_01_Icon_128.webp`),
+  priceRow(100200, 'Flame Sand', 0.12, 'own', [1, 1], 2_100,
+    `${CDN}/Item/128/UI_Item_chuhuolingshaV3_Icon_128.webp`),
+  priceRow(261010, 'Неизвестный предмет', null, null, [], 1),
+];

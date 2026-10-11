@@ -71,6 +71,40 @@ export function choosePrice(
   return community ? { fe: community.fe, source: 'community' } : null;
 }
 
+/** Точка истории цены: когда пробили и сколько вышло. */
+export interface PricePoint {
+  t: number;
+  fe: number;
+}
+
+export interface PriceTrend {
+  /** Точки за последние 30 дней от свежей — для спарклайна, старые слева. */
+  points: PricePoint[];
+  /**
+   * Изменение свежей цены к самой ранней пробивке в пределах недели
+   * до неё, долей: 0,12 — подорожал на 12%. null — сравнивать не с чем.
+   */
+  change: number | null;
+}
+
+const WEEK_MS = 7 * 24 * 3_600_000;
+const SPARK_MS = 30 * 24 * 3_600_000;
+
+/**
+ * Тренд по своим пробивкам. Сравнение — внутри недели: пробивка
+ * двухмесячной давности говорит о другом рынке, а не о движении цены.
+ */
+export function priceTrend(history: PricePoint[]): PriceTrend {
+  const sorted = [...history].sort((a, b) => a.t - b.t);
+  const latest = sorted.at(-1);
+  if (!latest) return { points: [], change: null };
+  const points = sorted.filter((p) => p.t >= latest.t - SPARK_MS).slice(-24);
+  const reference = sorted.find((p) => p.t >= latest.t - WEEK_MS && p !== latest);
+  const change =
+    reference && reference.t < latest.t && reference.fe > 0 ? latest.fe / reference.fe - 1 : null;
+  return { points, change };
+}
+
 export function referencePrice(unitPrices: number[]): number {
   const sorted = [...unitPrices].filter((p) => p > 0).sort((a, b) => a - b);
   if (sorted.length === 0) return 0;
@@ -170,6 +204,15 @@ export class PriceStore {
 
   all(): PriceRecord[] {
     return [...this.prices.values()];
+  }
+
+  /**
+   * Все наблюдения, а не только последние по предмету. Ретроскан раньше
+   * сохранял в базу одну свежую пробивку на предмет, и из истории цен
+   * пропадало всё, кроме неё.
+   */
+  observations(): PriceRecord[] {
+    return [...this.history];
   }
 
   historyOf(configBaseId: ConfigBaseId): PriceRecord[] {

@@ -10,6 +10,7 @@ import { Hero } from './components/Hero.js';
 import { History } from './components/History.js';
 import { Maps } from './components/Maps.js';
 import { MissingPrices } from './components/MissingPrices.js';
+import { Prices } from './components/Prices.js';
 import { RecentRuns } from './components/RecentRuns.js';
 import { SessionRecords } from './components/SessionRecords.js';
 import { SettingsPanel } from './components/SettingsPanel.js';
@@ -70,7 +71,9 @@ export function App() {
     <div className="app">
       <UpdateBanner />
       <Header snapshot={snapshot} now={now} onOpenSettings={() => setSettingsOpen(true)} />
-      {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} />}
+      {settingsOpen && (
+        <SettingsPanel minDropFe={snapshot.minDropFe} onClose={() => setSettingsOpen(false)} />
+      )}
       <Hero snapshot={snapshot} />
       <SessionRecords snapshot={snapshot} />
       <div className="columns">
@@ -82,6 +85,7 @@ export function App() {
       <RecentRuns snapshot={snapshot} />
       <History snapshot={snapshot} />
       <MissingPrices snapshot={snapshot} />
+      <Prices snapshot={snapshot} />
       <Diagnostics snapshot={snapshot} now={now} />
     </div>
   );

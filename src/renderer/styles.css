@@ -1005,6 +1005,124 @@ button {
   }
 }
 
+/* ── цены, мелочь, сумка ────────────────────────────────────────── */
+
+/* Цена сообщества отличается от своей пробивки: пунктир — «оценка с чужих слов». */
+.price-community {
+  text-decoration: underline dotted rgb(134 141 160 / 70%);
+  text-underline-offset: 3px;
+  cursor: help;
+}
+
+.link-button {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.link-button:hover:not(:disabled) {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.link-button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.drops-folded {
+  font-size: 12px;
+}
+
+.prices .price-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.prices .price-item img,
+.prices .price-item .no-icon {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  object-fit: contain;
+}
+
+.price-trend {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.price-spark {
+  display: block;
+  overflow: visible;
+}
+
+.price-spark-line {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.price-spark-dot {
+  fill: var(--accent);
+  stroke: var(--surface);
+  stroke-width: 1.5;
+}
+
+.price-spark-empty {
+  display: inline-block;
+  min-width: 72px;
+}
+
+.prices-more {
+  margin-top: 10px;
+}
+
+.bag {
+  margin-top: 22px;
+}
+
+.bag-top {
+  list-style: none;
+  margin: 10px 0 6px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.bag-top li {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.bag-top img,
+.bag-top .no-icon {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
+
+.bag-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* ── стратегии ──────────────────────────────────────────────────── */
 
 .stratbars {
@@ -1151,7 +1269,7 @@ button {
 
 .missing li {
   display: grid;
-  grid-template-columns: 22px minmax(0, 1fr) auto auto;
+  grid-template-columns: 22px minmax(0, 1fr) auto auto auto;
   align-items: center;
   gap: 12px;
   padding: 5px 6px;

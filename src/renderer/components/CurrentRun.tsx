@@ -26,7 +26,7 @@ export function CurrentRun({ snapshot, now }: { snapshot: Snapshot; now: number 
       if (snapshot.status === 'searching') return <GameNotFound />;
       return <Onboarding snapshot={snapshot} />;
     }
-    return <FinishedRun run={previous} />;
+    return <FinishedRun run={previous} minFe={snapshot.minDropFe} />;
   }
 
   const elapsed = now - run.startedAt;
@@ -59,7 +59,7 @@ export function CurrentRun({ snapshot, now }: { snapshot: Snapshot; now: number 
           ))}
       </div>
 
-      <DropList drops={run.drops} />
+      <DropList drops={run.drops} minFe={snapshot.minDropFe} />
     </section>
   );
 }
@@ -99,7 +99,6 @@ function GameNotFound() {
 }
 
 /** Первый запуск без истории: три шага вместо пустого «ждём карту». */
-
 function Onboarding({ snapshot }: { snapshot: Snapshot }) {
   return (
     <section className="card current empty onboarding">
@@ -120,8 +119,7 @@ function Onboarding({ snapshot }: { snapshot: Snapshot }) {
 }
 
 /** Последний завершённый забег: держим его на экране, пока не начнётся новый. */
-
-function FinishedRun({ run }: { run: RunView }) {
+function FinishedRun({ run, minFe }: { run: RunView; minFe: number }) {
   return (
     <section className="card current">
       <div className="current-head">
@@ -136,7 +134,7 @@ function FinishedRun({ run }: { run: RunView }) {
         <span className="delta muted">{num(run.perHour)} в час</span>
       </div>
 
-      <DropList drops={run.drops} />
+      <DropList drops={run.drops} minFe={minFe} />
     </section>
   );
 }

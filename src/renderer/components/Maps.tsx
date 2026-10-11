@@ -56,25 +56,27 @@ export function Maps({ snapshot }: { snapshot: Snapshot }) {
                     m.runs
                   )}
                 </td>
-                <td className="map-rate">
-                  <span className="map-rate-value">{num(m.rate.median)}</span>
-                  <span
-                    className="map-track"
-                    role="img"
-                    aria-label={`разброс ${num(m.rate.p25)}–${num(m.rate.p75)}, медиана ${num(m.rate.median)}`}
-                  >
+                <td>
+                  <div className="map-rate">
+                    <span className="map-rate-value">{num(m.rate.median)}</span>
                     <span
-                      className="map-band"
-                      style={{
-                        left: `${(Math.max(0, m.rate.p25) / top) * 100}%`,
-                        width: `${(Math.max(0, m.rate.p75 - Math.max(0, m.rate.p25)) / top) * 100}%`,
-                      }}
-                    />
-                    <span
-                      className="map-median"
-                      style={{ left: `${(Math.max(0, m.rate.median) / top) * 100}%` }}
-                    />
-                  </span>
+                      className="map-track"
+                      role="img"
+                      aria-label={`разброс ${num(m.rate.p25)}–${num(m.rate.p75)}, медиана ${num(m.rate.median)}`}
+                    >
+                      <span
+                        className="map-band"
+                        style={{
+                          left: `${(Math.max(0, m.rate.p25) / top) * 100}%`,
+                          width: `${(Math.max(0, m.rate.p75 - Math.max(0, m.rate.p25)) / top) * 100}%`,
+                        }}
+                      />
+                      <span
+                        className="map-median"
+                        style={{ left: `${(Math.max(0, m.rate.median) / top) * 100}%` }}
+                      />
+                    </span>
+                  </div>
                 </td>
                 <td className="r">
                   <Fe value={m.netPerRun} />

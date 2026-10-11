@@ -1,6 +1,10 @@
+import { ITEM, pluralize } from '../../core/plural.js';
 import type { Snapshot } from '../../main/engine.js';
+import { num } from '../format.js';
 import { Fe } from './Fe.js';
+import { ItemIcon, Tip } from './ui.js';
 
+/** Блок биржи. Реализованная выручка против бумажной оценки. */
 export function Sidebar({ snapshot }: { snapshot: Snapshot }) {
   const { realizedFe, realizationRatio, listedPaperFe } = snapshot.totals;
 
@@ -50,6 +54,53 @@ export function Sidebar({ snapshot }: { snapshot: Snapshot }) {
           от бумажной оценки.
         </p>
       )}
+      <Bag snapshot={snapshot} />
     </aside>
+  );
+}
+
+/**
+ * Стоимость сумки по ценам — как нетворс у Exilence и TITrack.
+ * ФЕ на руках отдельно: это деньги, а остальное — оценка, которую
+ * ещё предстоит продать (и коэффициент выше говорит, за сколько).
+ */
+function Bag({ snapshot }: { snapshot: Snapshot }) {
+  const bag = snapshot.bag;
+  if (!bag) return null;
+  return (
+    <div className="bag">
+      <h2>
+        <Tip tip="Всё, что сейчас лежит в сумке, по тем же ценам, что и добыча. Сумка известна с последнего входа в игру.">
+          Сумка
+        </Tip>
+      </h2>
+      <div className="side-row">
+        <span>Всё по ценам</span>
+        <Fe value={bag.valueFe} />
+      </div>
+      <div className="side-row">
+        <span>Из них ФЕ на руках</span>
+        <Fe value={bag.feCash} />
+      </div>
+      {bag.top.length > 0 && (
+        <ul className="bag-top">
+          {bag.top.map((item) => (
+            <li key={item.configBaseId}>
+              <ItemIcon src={item.icon} />
+              <span className="bag-name" title={item.name}>
+                {item.name}
+              </span>
+              <span className="muted small">×{num(item.qty)}</span>
+              <Fe value={item.totalFe} />
+            </li>
+          ))}
+        </ul>
+      )}
+      {bag.unpriced > 0 && (
+        <p className="muted small">
+          Без цены {pluralize(bag.unpriced, ITEM)} — оценка занижена на их стоимость.
+        </p>
+      )}
+    </div>
   );
 }

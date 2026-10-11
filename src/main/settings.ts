@@ -34,6 +34,14 @@ export interface Settings {
    * Хранится id строкой: значения не помещаются в double.
    */
   playerFilter: string | null;
+  /**
+   * Предметы, исключённые из учёта: их добыча стоит ноль. Для того, что
+   * формально имеет цену, но не продаётся, — и чтобы «Пробить цену»
+   * перестало напоминать про мусор.
+   */
+  excludedItems: number[];
+  /** Порог «мелочи» в ФЕ: дешевле него строки в списках добычи свёрнуты. 0 — показывать всё. */
+  minDropFe: number;
   /** Закрытие окна сворачивает в трей: трекер живёт фоном часами. */
   closeToTray: boolean;
   /** Запуск вместе с Windows: трекер полезен, только если уже запущен. */
@@ -68,6 +76,8 @@ const DEFAULTS: Settings = {
   communityPrices: true,
   logDir: null,
   playerFilter: null,
+  excludedItems: [],
+  minDropFe: 0,
   closeToTray: false,
   autoStart: false,
   overlay: {
@@ -117,6 +127,13 @@ export class SettingsStore {
         communityPrices: raw.settings.communityPrices ?? DEFAULTS.communityPrices,
         logDir: raw.settings.logDir ?? DEFAULTS.logDir,
         playerFilter: raw.settings.playerFilter ?? DEFAULTS.playerFilter,
+        excludedItems: Array.isArray(raw.settings.excludedItems)
+          ? raw.settings.excludedItems.filter((id) => Number.isInteger(id))
+          : DEFAULTS.excludedItems,
+        minDropFe:
+          typeof raw.settings.minDropFe === 'number' && raw.settings.minDropFe >= 0
+            ? raw.settings.minDropFe
+            : DEFAULTS.minDropFe,
         closeToTray: raw.settings.closeToTray ?? DEFAULTS.closeToTray,
         autoStart: raw.settings.autoStart ?? DEFAULTS.autoStart,
         overlay: { ...DEFAULTS.overlay, ...raw.settings.overlay },
@@ -164,6 +181,28 @@ export class SettingsStore {
 
   setPlayerFilter(playerId: string | null): void {
     this.data.playerFilter = playerId;
+    this.save();
+  }
+
+  get excludedItems(): number[] {
+    return this.data.excludedItems;
+  }
+
+  setExcluded(configBaseId: number, excluded: boolean): number[] {
+    const set = new Set(this.data.excludedItems);
+    if (excluded) set.add(configBaseId);
+    else set.delete(configBaseId);
+    this.data.excludedItems = [...set].sort((a, b) => a - b);
+    this.save();
+    return this.data.excludedItems;
+  }
+
+  get minDropFe(): number {
+    return this.data.minDropFe;
+  }
+
+  setMinDropFe(value: number): void {
+    this.data.minDropFe = Math.max(0, value);
     this.save();
   }
 
