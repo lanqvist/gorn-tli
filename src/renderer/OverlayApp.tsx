@@ -3,17 +3,9 @@ import { useEffect, useRef, useState } from 'react';
 import type { Snapshot } from '../main/engine.js';
 import type { OverlayMode } from '../main/settings.js';
 import { Fe, FeIcon } from './components/Fe.js';
+import { clock, NBSP, num } from './format.js';
 
 type Mode = OverlayMode;
-
-const NBSP = ' ';
-const num = (v: number) =>
-  new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(v).replace(/\s/g, NBSP);
-
-const clock = (ms: number) => {
-  const t = Math.max(0, Math.round(ms / 1000));
-  return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
-};
 
 /** Оценка «ещё столько-то» для цели сессии — грубая, поэтому округлённая. */
 const roughEta = (ms: number) => {

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import type { Snapshot } from '../../main/engine.js';
 import { Fe, FeIcon } from '../components/Fe.js';
+import { clock } from '../format.js';
 import { playCoinRain, playJackpot, playPickup, playRunEnd } from './sound.js';
 
 /**
@@ -244,11 +245,6 @@ export function useIncomeToasts(snapshot: Snapshot | null, opts: ToastOptions): 
 
   return toasts;
 }
-
-const clock = (ms: number) => {
-  const t = Math.max(0, Math.round(ms / 1000));
-  return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
-};
 
 export function ToastList({ toasts }: { toasts: Toast[] }) {
   if (toasts.length === 0) return null;

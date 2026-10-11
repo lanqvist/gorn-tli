@@ -1,4 +1,9 @@
-export const NBSP = ' ';
+/**
+ * Неразрывный пробел — escape-последовательностью, а не символом:
+ * в редакторе он неотличим от обычного, и подмена ломала числа
+ * вроде «12 345» и «3 ч» переносом строки.
+ */
+export const NBSP = '\u00a0';
 
 export const num = (v: number, digits = 0) =>
   new Intl.NumberFormat('ru-RU', {

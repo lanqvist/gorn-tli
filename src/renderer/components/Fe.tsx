@@ -1,6 +1,7 @@
 import { useState } from 'react';
 
 import feIcon from '../assets/fe.webp';
+import { num } from '../format.js';
 
 /**
  * Число в ФЕ вместе с иконкой валюты.
@@ -35,23 +36,12 @@ function digitsFor(value: number): number {
   return 2;
 }
 
-const NBSP = ' ';
-
-function format(value: number, fractionDigits: number): string {
-  return new Intl.NumberFormat('ru-RU', {
-    minimumFractionDigits: fractionDigits,
-    maximumFractionDigits: fractionDigits,
-  })
-    .format(value)
-    .replace(/\s/g, NBSP);
-}
-
 export function Fe({ value, signed = false, fractionDigits, className }: FeProps) {
   const digits = fractionDigits ?? digitsFor(value);
   const rounded = digits === 0 ? Math.round(value) : value;
   const sign = signed && rounded > 0 ? '+' : '';
   const text =
-    rounded < 0 ? `−${format(Math.abs(rounded), digits)}` : format(rounded, digits);
+    rounded < 0 ? `−${num(Math.abs(rounded), digits)}` : num(rounded, digits);
 
   return (
     <span className={`fe ${className ?? ''}`}>
