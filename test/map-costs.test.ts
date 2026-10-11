@@ -41,6 +41,32 @@ function enter(areaId: number, ts: number): EnterLevelEvent {
  *
  * Расход происходит в городе, до входа в карту.
  */
+describe('забеги атрибутируются персонажу', () => {
+  it('смена персонажа посреди файла делит забеги между ними', () => {
+    const seg = new RunSegmenter();
+
+    seg.setPlayer('956082728577617920');
+    seg.noteAsset('YL_MaNeiLaYuLin100');
+    seg.enterLevel(enter(5348, T0));
+
+    // Перезаход другим персонажем: выбор идёт через хаб-сцены.
+    seg.setPlayer('947836609175392256');
+    seg.noteAsset('YL_MaNeiLaYuLin100');
+    seg.enterLevel(enter(5351, T0 + 600_000));
+
+    const runs = seg.finish(T0 + 700_000);
+    expect(runs.find((r) => r.areaId === 5348)!.playerId).toBe('956082728577617920');
+    expect(runs.find((r) => r.areaId === 5351)!.playerId).toBe('947836609175392256');
+  });
+
+  it('до первого входа персонаж неизвестен', () => {
+    const seg = new RunSegmenter();
+    seg.noteAsset('YL_MaNeiLaYuLin100');
+    seg.enterLevel(enter(5348, T0));
+    expect(seg.finish(T0 + 60_000)[0]!.playerId).toBeNull();
+  });
+});
+
 describe('вложения принадлежат карте, а не городу', () => {
   it('маяк, потраченный в городе, приписывается следующей карте', () => {
     const seg = new RunSegmenter();

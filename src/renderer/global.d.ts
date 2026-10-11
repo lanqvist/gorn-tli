@@ -57,6 +57,10 @@ declare global {
     setItemNames: (language: NameLanguage) => Promise<NameLanguage>;
     getCommunityPrices: () => Promise<boolean>;
     setCommunityPrices: (enabled: boolean) => Promise<boolean>;
+    session: {
+      reset: () => Promise<void>;
+    };
+    setPlayerFilter: (playerId: string | null) => Promise<string | null>;
     toasts: {
       reportHeight: (height: number) => void;
       reportActive: (active: boolean) => void;

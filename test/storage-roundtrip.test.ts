@@ -33,6 +33,8 @@ describe('история переживает исчезновение лого�
     endedAt: 1_700_000_084_000,
     durationMs: 84_000,
     isHub: false,
+    // Настоящий id: больше 2^53, обязан пережить базу без потери разрядов.
+    playerId: '956082728577617920',
     drops: [
       {
         ts: 1_700_000_010_000,
@@ -70,6 +72,40 @@ describe('история переживает исчезновение лого�
     expect(loaded[0]!.drops[0]!.configBaseId).toBe(100300);
     expect(loaded[0]!.drops[0]!.qty).toBe(44);
     expect(loaded[0]!.costs[0]!.configBaseId).toBe(10022);
+    // Строка, не number: в double id теряет младшие разряды.
+    expect(loaded[0]!.playerId).toBe('956082728577617920');
+  });
+
+  it('профиль персонажа читается обратно, пустые поля не затирают известные', () => {
+    db.savePlayers([
+      {
+        playerId: '956082728577617920',
+        name: 'VLPZDC#3648',
+        heroId: 1700,
+        level: 84,
+        seasonId: 1501,
+        lastSeenAt: 2000,
+      },
+    ]);
+    // Событие входа без профиля: только id и время.
+    db.savePlayers([
+      {
+        playerId: '956082728577617920',
+        name: null,
+        heroId: null,
+        level: null,
+        seasonId: null,
+        lastSeenAt: 3000,
+      },
+    ]);
+
+    const players = db.loadPlayers();
+    expect(players).toHaveLength(1);
+    expect(players[0]!.playerId).toBe('956082728577617920');
+    expect(players[0]!.name).toBe('VLPZDC#3648');
+    expect(players[0]!.heroId).toBe(1700);
+    expect(players[0]!.level).toBe(84);
+    expect(players[0]!.lastSeenAt).toBe(3000);
   });
 
   it('лоты и выплаты читаются обратно', () => {

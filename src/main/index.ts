@@ -208,6 +208,7 @@ app.whenReady().then(async () => {
   toastLayer = new ToastLayer(settings);
   engine = new Engine(app.getPath('userData'), items, settings.itemNames, {
     communityPrices: settings.communityPrices,
+    playerFilter: settings.playerFilter,
   });
 
   // Кнопка «Оверлей» в шапке обязана отражать реальность и когда оверлей
@@ -247,6 +248,16 @@ app.whenReady().then(async () => {
   updater = new Updater();
   updater.on('state', (state: UpdateState) => {
     if (window && !window.isDestroyed()) window.webContents.send('update:state', state);
+  });
+
+  // Новая сессия: счётчики обнуляются, история остаётся в базе.
+  ipcMain.handle('session:reset', () => engine?.resetSession());
+
+  // Фильтр по персонажу. null — показывать всех.
+  ipcMain.handle('settings:setPlayerFilter', (_e, playerId: string | null) => {
+    settings?.setPlayerFilter(playerId);
+    engine?.setPlayerFilter(playerId);
+    return playerId;
   });
 
   ipcMain.handle('update:get', () => updater?.current ?? null);

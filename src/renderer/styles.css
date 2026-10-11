@@ -161,6 +161,44 @@ button {
   }
 }
 
+/* Кем зашли в игру: ник крупнее, класс и уровень — приглушённо. */
+.player-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 7px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 4%);
+  border: 1px solid rgb(255 255 255 / 7%);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.player-chip-name {
+  font-weight: 600;
+}
+
+.player-chip-meta {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* Фильтр «чьи забеги показывать» — в тон остальным контролам шапки. */
+.player-filter {
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 4px 8px;
+  font-size: 12px;
+  max-width: 220px;
+  cursor: pointer;
+}
+
+.player-filter:hover {
+  border-color: var(--accent);
+}
+
 .header-right {
   margin-left: auto;
   display: flex;
@@ -351,6 +389,32 @@ button {
   display: grid;
   grid-template-columns: repeat(2, minmax(120px, 1fr));
   gap: 10px;
+}
+
+/* Границы сессии под плитками: строка тише самих плиток. */
+.session-bar {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.session-reset {
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.session-reset:hover {
+  color: var(--text);
+  border-color: var(--accent);
 }
 
 .tile {

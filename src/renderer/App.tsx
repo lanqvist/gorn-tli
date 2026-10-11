@@ -294,6 +294,8 @@ function Header({
         {showAge && <span className={`log-age log-age-${ageTone}`}>лог {ago(age)}</span>}
         {snapshot.hint && <span className="hint">{snapshot.hint}</span>}
       </div>
+      <PlayerChip player={snapshot.player} />
+      <PlayerFilter snapshot={snapshot} />
       <div className="header-right">
         <OverlayButton />
         <button className="overlay-toggle" title="Настройки" onClick={onOpenSettings}>
@@ -302,6 +304,69 @@ function Header({
         {snapshot.seasonId && <span className="season">Сезон {snapshot.seasonId}</span>}
       </div>
     </header>
+  );
+}
+
+/**
+ * Кем зашли в игру: ник, класс и уровень.
+ *
+ * После перезапуска игры персонаж неизвестен до следующего входа —
+ * тогда чип просто не показывается, а не врёт прошлым значением.
+ */
+function PlayerChip({ player }: { player: Snapshot['player'] }) {
+  if (!player) return null;
+  const parts = [
+    player.heroName,
+    player.level !== null ? `${player.level} ур.` : null,
+  ].filter(Boolean);
+  return (
+    <Tip tip="Персонаж, которым зашли в игру, — из лога. Новые забеги записываются на него.">
+      <span className="player-chip">
+        <span className="player-chip-name">{player.name ?? 'Персонаж'}</span>
+        {parts.length > 0 && <span className="player-chip-meta">{parts.join(' · ')}</span>}
+      </span>
+    </Tip>
+  );
+}
+
+/**
+ * Фильтр по персонажу: медиана, стратегии и история — только его забеги.
+ *
+ * У разных героев разные билды и дроп; смешивать их медианы — то самое
+ * «среднее по больнице», против которого весь проект. Показывается только
+ * когда персонажей больше одного: единственному фильтровать нечего.
+ */
+function PlayerFilter({ snapshot }: { snapshot: Snapshot }) {
+  const { players, playerFilter } = snapshot;
+  if (players.length < 2 && playerFilter === null) return null;
+
+  // У персонажа из оборванного лога может не быть профиля — только id.
+  // Голое 18-значное число в выпадашке нечитаемо, показываем хвост.
+  const label = (p: Snapshot['players'][number]) =>
+    [
+      p.heroName ?? p.name ?? `Персонаж …${p.playerId.slice(-5)}`,
+      p.level !== null ? `${p.level} ур.` : null,
+    ]
+      .filter(Boolean)
+      .join(' · ');
+
+  return (
+    <select
+      className="player-filter"
+      value={playerFilter ?? ''}
+      title="Чьи забеги показывать. Влияет на все цифры, кроме Торгового дома. Забеги из логов до этой версии видны только в «Все персонажи»."
+      onChange={(e) => {
+        const value = e.target.value === '' ? null : e.target.value;
+        void window.gorn?.setPlayerFilter(value);
+      }}
+    >
+      <option value="">Все персонажи</option>
+      {players.map((p) => (
+        <option key={p.playerId} value={p.playerId}>
+          {label(p)} — {pluralize(p.runs, RUN)}
+        </option>
+      ))}
+    </select>
   );
 }
 
@@ -911,34 +976,73 @@ function Hero({ snapshot }: { snapshot: Snapshot }) {
         <RateSparkline snapshot={snapshot} />
       </div>
 
-      <div className="hero-tiles">
-        {/* Накопительный темп: двигается при подборе, медиана — намеренно нет.
-            Подпись «за сессию» важна, иначе медленное сползание между
-            подборами выглядит как ошибка, а не как рост знаменателя. */}
-        <Tile
-          label="За сессию, в час"
-          tip="Накопительный темп: вся добыча сессии ÷ активное время в картах. Двигается при каждом подборе, между подборами медленно сползает — это рост знаменателя, не поломка."
-          value={<Fe value={snapshot.liveRate} />}
-          live
-        />
-        <Tile
-          label="Чистый ФЕ в час"
-          tip="Только сама валюта ФЕ, упавшая в сумку, — без оценки предметов по ценам."
-          value={<Fe value={feRate.median} />}
-        />
-        <Tile
-          label="На картах"
-          tip="Активное время: паузы дольше трёх минут не идут в зачёт."
-          value={duration(totals.inMapMs)}
-        />
-        <Tile
-          label="Вложено"
-          tip="Стоимость всего, чем открывались карты: компасы, маяки и прочие расходники."
-          value={<Fe value={totals.costFe} />}
-          {...(unpricedCost ? { warn: `${unpricedCost.name} без цены` } : {})}
-        />
+      <div className="hero-side">
+        <div className="hero-tiles">
+          {/* Накопительный темп: двигается при подборе, медиана — намеренно нет.
+              Подпись «за сессию» важна, иначе медленное сползание между
+              подборами выглядит как ошибка, а не как рост знаменателя. */}
+          <Tile
+            label="За сессию, в час"
+            tip="Накопительный темп: вся добыча сессии ÷ активное время в картах. Двигается при каждом подборе, между подборами медленно сползает — это рост знаменателя, не поломка."
+            value={<Fe value={snapshot.liveRate} />}
+            live
+          />
+          <Tile
+            label="Чистый ФЕ в час"
+            tip="Только сама валюта ФЕ, упавшая в сумку, — без оценки предметов по ценам."
+            value={<Fe value={feRate.median} />}
+          />
+          <Tile
+            label="На картах"
+            tip="Активное время за сессию: паузы дольше трёх минут не идут в зачёт."
+            value={duration(totals.inMapMs)}
+          />
+          <Tile
+            label="Вложено"
+            tip="Стоимость всего, чем открывались карты за сессию: компасы, маяки и прочие расходники."
+            value={<Fe value={totals.costFe} />}
+            {...(unpricedCost ? { warn: `${unpricedCost.name} без цены` } : {})}
+          />
+        </div>
+        <SessionBar snapshot={snapshot} />
       </div>
     </section>
+  );
+}
+
+/**
+ * Границы сессии: с какого момента считают плитки, и кнопка начать заново.
+ *
+ * Сброс ничего не удаляет — прошлые забеги остаются в истории и медиане,
+ * поэтому подтверждение не нужно. Итог прошлой сессии остаётся на экране:
+ * без него сброс выглядит потерей цифр.
+ */
+function SessionBar({ snapshot }: { snapshot: Snapshot }) {
+  const { startedAt, previous } = snapshot.session;
+  // Сессия старше суток подписывается датой: «с 14:32» — это про сегодня.
+  const started =
+    Date.now() - startedAt < 20 * 3_600_000 ? time(startedAt) : cacheDate(startedAt);
+
+  return (
+    <div className="session-bar">
+      <span className="muted small">
+        {startedAt > 0 ? `сессия с ${started}` : 'сессия — вся история'}
+        {previous && (
+          <>
+            {' '}
+            · прошлая: {previous.netFe >= 0 ? '+' : ''}
+            {num(previous.netFe)}{NBSP}ФЕ за {duration(previous.inMapMs)}
+          </>
+        )}
+      </span>
+      <button
+        className="session-reset"
+        title="Плитки и цель оверлея начнут отсчёт заново. История, медиана и стратегии никуда не денутся."
+        onClick={() => window.gorn && void window.gorn.session.reset()}
+      >
+        ⟲ Новая сессия
+      </button>
+    </div>
   );
 }
 

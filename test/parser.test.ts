@@ -64,6 +64,68 @@ describe('разбор строк', () => {
   });
 });
 
+describe('персонаж из лога', () => {
+  it('вход персонажем: id читается строкой без потери разрядов', () => {
+    const parser = new EventParser();
+    // Подлинная строка входа: id больше 2^53, Number исказил бы его.
+    const ev = parser.parse(
+      '[2026.08.12-13.55.37:717][ 21]TLShipping: Display: [Game] PlayerIdTrace@SelectRoleNetMgr:_UserLoginStep3 buildLoginParm playerId=956082728577617920 saveInfoPlayerId=956082728577617920 userId=546679422913130496',
+    );
+    expect(ev).toMatchObject({ kind: 'playerInfo', playerId: '956082728577617920' });
+  });
+
+  it('профиль из дампа GetPlayerData: блок player, а не первый попавшийся Level', () => {
+    const parser = new EventParser();
+    // Подлинный фрагмент дампа. Ключ Level встречается в нём сотнями —
+    // у навыков и питомцев; читаться должен только блок +player.
+    const DUMP = [
+      '[2026.08.12-13.55.40:376][597]TLNetGame: Display: [Game] ----Socket RecvMessage STT----GetPlayerData----SynId = 8',
+      '[2026.08.12-13.55.40:390][597]TLNetGame: Display: [Game] ',
+      '+altarBriefInfo+progressState',
+      '|              +bossChallenge+RemainResurrectionCnt [6]',
+      '+growUpDto+firstStageRewardRecords+1+Id [7010]',
+      '|         |                       | +seasonId [1501]',
+      '+skills+1+key [104]',
+      '|      | +value+skillId [7454_x]',
+      '|      | +value+level [24]',
+      '+player+SkillCurCost [455]',
+      '|      +SeasonId [1501]',
+      '|      +HeroPurchaseId [17001]',
+      '|      +Exp [12283633]',
+      '|      +PlayerId [956082728577617920]',
+      '|      +HeroId [1700]',
+      '|      +Level [84]',
+      '|      +Name [VLPZDC#3648]',
+      '|      +UserId [546679422913130496]',
+      '+userGem+coins+1+key [SpAreaBossPoint_430121]',
+      '|       |     | +value [12]',
+      '[2026.08.12-13.55.40:391][597]TLNetGame: Display: [Game] ----Socket RecvMessage End----',
+    ];
+
+    const events = DUMP.map((line) => parser.parse(line)).filter(Boolean);
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({
+      kind: 'playerInfo',
+      playerId: '956082728577617920',
+      heroId: 1700,
+      level: 84,
+      name: 'VLPZDC#3648',
+      seasonId: 1501,
+    });
+  });
+
+  it('дамп без блока player не рождает событие', () => {
+    const parser = new EventParser();
+    const DUMP = [
+      '[2026.08.12-13.55.40:376][597]TLNetGame: Display: [Game] ----Socket RecvMessage STT----GetPlayerData----SynId = 9',
+      '+altarBriefInfo+progressState',
+      '[2026.08.12-13.55.40:391][597]TLNetGame: Display: [Game] ----Socket RecvMessage End----',
+    ];
+    const events = DUMP.map((line) => parser.parse(line)).filter(Boolean);
+    expect(events).toHaveLength(0);
+  });
+});
+
 describe('цены с биржи', () => {
   // Подлинный обмен из UE_game.log: запрос и ответ связаны по SynId.
   const REQUEST = [

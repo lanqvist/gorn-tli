@@ -13,12 +13,20 @@ import { EventParser } from '../core/eventParser.js';
 import { InventoryTracker } from '../core/inventory.js';
 import { findLogDirectory } from '../core/locate.js';
 import { isBoundName, PriceStore } from '../core/priceStore.js';
+import { heroName } from '../core/heroes.js';
 import { retroScan } from '../core/retroScan.js';
 import { runCost, runValue } from '../core/retroScan.js';
 import { RunSegmenter } from '../core/runSegmenter.js';
 import { percentile, perHour, summarize, type RateSummary } from '../core/stats.js';
 import { TradeLedger, mergeByKey } from '../core/trade.js';
-import { FE_ID, type ConfigBaseId, type Diagnostics, type Run } from '../core/types.js';
+import {
+  FE_ID,
+  mergePlayerInfo,
+  type ConfigBaseId,
+  type Diagnostics,
+  type PlayerProfile,
+  type Run,
+} from '../core/types.js';
 import { Storage } from '../storage/db.js';
 import { CommunityPriceFeed } from './communityPrices.js';
 import { iconUrl } from './icons.js';
@@ -48,6 +56,22 @@ export interface RunView {
   drops: DropView[];
 }
 
+/** Персонаж для показа в интерфейсе. */
+export interface PlayerView {
+  playerId: string;
+  /** Ник аккаунта без решёточного суффикса: «VLPZDC», не «VLPZDC#3648». */
+  name: string | null;
+  /** Имя класса или «Герой N», если id ещё не в словаре. */
+  heroName: string | null;
+  level: number | null;
+}
+
+/** Пункт фильтра по персонажам. */
+export interface PlayerOption extends PlayerView {
+  /** Фарм-забегов у персонажа — чтобы фильтр показывал, где есть данные. */
+  runs: number;
+}
+
 export interface Snapshot {
   status: 'searching' | 'idle' | 'running';
   /** Пояснение статуса для игрока: почему ничего не происходит. */
@@ -60,6 +84,12 @@ export interface Snapshot {
   /** Папка логов, с которой работает движок. null — игра не найдена. */
   logDir: string | null;
   seasonId: number | null;
+  /** Кем зашли в игру. null — вход ещё не видели (или игра перезапущена). */
+  player: PlayerView | null;
+  /** Все известные персонажи — для фильтра. */
+  players: PlayerOption[];
+  /** Активный фильтр по персонажу. null — показываются все. */
+  playerFilter: string | null;
   current: RunView | null;
   recent: RunView[];
   /** Медиана и разброс по чистой добыче в час. */
@@ -77,11 +107,17 @@ export interface Snapshot {
     listedPaperFe: number;
   };
   /**
-   * Темп за всё время в картах, включая текущий забег.
+   * Темп за сессию, включая текущий забег.
    * В отличие от медианы двигается сразу при подборе — иначе экран
    * выглядит замершим ровно в тот момент, когда что-то происходит.
    */
   liveRate: number;
+  session: {
+    /** Начало отсчёта счётчиков. 0 — сессию ещё ни разу не сбрасывали. */
+    startedAt: number;
+    /** Итог прошлой сессии — чтобы сброс не выглядел потерей цифр. */
+    previous: { netFe: number; inMapMs: number; runs: number } | null;
+  };
   /** Норма для сравнений — медиана последних забегов, а не рекорд. */
   norm: number;
   /**
@@ -161,6 +197,16 @@ export class Engine extends EventEmitter {
   private logDir: string | null = null;
   private seasonId: number | null = null;
   private history: Run[] = [];
+  /** Персонаж, которым зашли в игру. null — вход ещё не видели. */
+  private currentPlayer: PlayerProfile | null = null;
+  /** Все персонажи, которых видели в логах или помнит база. */
+  private knownPlayers = new Map<string, PlayerProfile>();
+  /** Фильтр интерфейса: показывать только забеги этого персонажа. */
+  private playerFilter: string | null = null;
+  /** Начало активной сессии. 0 — считаем всю историю (сброса не было). */
+  private sessionStartedAt = 0;
+  /** Границы последней закрытой сессии — для итоговой строки. */
+  private previousSession: { startedAt: number; endedAt: number } | null = null;
   private lastActivityAt = 0;
   /** Метка времени последнего разобранного события — по часам лога. */
   private lastEventTs = 0;
@@ -171,7 +217,7 @@ export class Engine extends EventEmitter {
     dataDir: string,
     items: Array<{ id: number; name: string; nameRu?: string | null; icon: string | null }>,
     language: NameLanguage = 'ru',
-    options: { communityPrices?: boolean } = {},
+    options: { communityPrices?: boolean; playerFilter?: string | null } = {},
   ) {
     super();
     this.storage = new Storage(join(dataDir, 'gorn.db'));
@@ -188,6 +234,7 @@ export class Engine extends EventEmitter {
     this.language = language;
 
     this.communityEnabled = options.communityPrices ?? true;
+    this.playerFilter = options.playerFilter ?? null;
     this.community = new CommunityPriceFeed(dataDir);
     this.community.onUpdate(() => this.emit('snapshot', this.buildSnapshot()));
   }
@@ -242,6 +289,9 @@ export class Engine extends EventEmitter {
     }
     this.booted = true;
 
+    this.sessionStartedAt = this.storage.activeSessionStart();
+    this.previousSession = this.storage.previousSession();
+
     // Сначала поднимаем сохранённое: логи ротируются и удаляются игрой,
     // поэтому база — единственный источник истории старше пары часов.
     const stored = this.storage.loadRuns();
@@ -288,6 +338,15 @@ export class Engine extends EventEmitter {
     this.storage.saveRuns(scan.runs, this.seasonId);
     this.storage.savePrices(scan.prices.all());
     this.storage.saveTrade(scan.trade.listings, scan.trade.receipts);
+    this.storage.savePlayers(scan.players);
+    for (const p of this.storage.loadPlayers()) this.knownPlayers.set(p.playerId, p);
+
+    // Кем зашли в последнем файле — с этим персонажем продолжает живое
+    // дочитывание: перезахода может не быть ещё несколько часов.
+    if (scan.lastPlayerId !== null) {
+      this.currentPlayer = this.knownPlayers.get(scan.lastPlayerId) ?? null;
+      this.segmenter.setPlayer(scan.lastPlayerId);
+    }
 
     // Передаём живому трекеру состояние сумки, полученное при разборе.
     // Без этого первое изменение каждого слота уходит на установку базы,
@@ -372,10 +431,12 @@ export class Engine extends EventEmitter {
       this.history = [...byKey.values()].sort((a, b) => a.startedAt - b.startedAt);
     }
 
-    // Состояние сумки и забегов начинается заново.
+    // Состояние сумки и забегов начинается заново. Персонаж тоже:
+    // после перезапуска игры кем зайдут — неизвестно до следующего входа.
     this.parser = new EventParser();
     this.inventory = new InventoryTracker(this.diagnostics);
     this.segmenter = new RunSegmenter();
+    this.currentPlayer = null;
     this.emit('snapshot', this.buildSnapshot());
   }
 
@@ -441,6 +502,13 @@ export class Engine extends EventEmitter {
         case 'priceObservation': {
           const record = this.prices.observe(ev);
           if (record) this.storage.savePrices([record]);
+          break;
+        }
+        case 'playerInfo': {
+          this.currentPlayer = mergePlayerInfo(this.knownPlayers.get(ev.playerId), ev);
+          this.knownPlayers.set(ev.playerId, this.currentPlayer);
+          this.segmenter.setPlayer(ev.playerId);
+          this.storage.savePlayers([this.currentPlayer]);
           break;
         }
         default:
@@ -536,6 +604,29 @@ export class Engine extends EventEmitter {
     return null;
   }
 
+  /**
+   * Фильтр по персонажу: срез пересобирается сразу.
+   *
+   * Фильтруется всё, что построено на забегах, — медиана, стратегии,
+   * плитки, история. У разных героев разные билды и дроп, смешивать
+   * их медианы — то самое «среднее по больнице». Торговый дом остаётся
+   * общим: у выплат биржи нет пометки, чьи они.
+   */
+  setPlayerFilter(playerId: string | null): void {
+    this.playerFilter = playerId;
+    this.emit('snapshot', this.buildSnapshot());
+  }
+
+  /**
+   * Новая сессия: счётчики начинают отсчёт с этого момента.
+   * История не трогается — прошлые забеги остаются в базе и в медиане.
+   */
+  resetSession(): void {
+    this.sessionStartedAt = this.storage.resetSession(Date.now());
+    this.previousSession = this.storage.previousSession();
+    this.emit('snapshot', this.buildSnapshot());
+  }
+
   /** Включение и отключение цен сообщества на лету. */
   setCommunityPrices(enabled: boolean): void {
     this.communityEnabled = enabled;
@@ -597,7 +688,7 @@ export class Engine extends EventEmitter {
 
   private buildSnapshot(): Snapshot {
     const live = this.segmenter.all;
-    const open = live.find((r) => r.endedAt === null) ?? null;
+    const liveOpen = live.find((r) => r.endedAt === null) ?? null;
 
     // Дедупликация истории и живых забегов по ключу: перестраховка от
     // задвоения при повторном разборе того же лога. Живой разбор свежее.
@@ -607,7 +698,18 @@ export class Engine extends EventEmitter {
       if (run.endedAt !== null) byKey.set(`${run.startedAt}:${run.areaId}`, run);
     }
     const allRuns = [...byKey.values()].sort((a, b) => a.startedAt - b.startedAt);
-    const farming = allRuns.filter((r) => !r.isHub && (r.durationMs ?? 0) > 5000);
+
+    // Фильтр по персонажу режет всё, что построено на забегах. Забеги
+    // без атрибуции (старые логи) видны только в режиме «все».
+    const visible =
+      this.playerFilter === null
+        ? allRuns
+        : allRuns.filter((r) => r.playerId === this.playerFilter);
+    const open =
+      liveOpen && (this.playerFilter === null || liveOpen.playerId === this.playerFilter)
+        ? liveOpen
+        : null;
+    const farming = visible.filter((r) => !r.isHub && (r.durationMs ?? 0) > 5000);
 
     // Время считаем активное, а не по часам: простой внутри карты
     // раздувает знаменатель и тихо занижает любую цифру «в час».
@@ -630,9 +732,16 @@ export class Engine extends EventEmitter {
       for (const d of r.drops) if (this.priceOf(d.configBaseId) === null) unpricedDrops++;
     }
 
-    const inMapMs = farming.reduce((a, r) => a + activeDuration(r), 0) + openElapsed;
-    const valueFe = counted.reduce((a, r) => a + runValue(r, this.priceOf), 0);
-    const costFe = counted.reduce((a, r) => a + runCost(r, this.priceOf), 0);
+    // Счётчики («За сессию», «На картах», «Вложено», цель в оверлее)
+    // считаются от начала сессии. Медиана, стратегии и список цен намеренно
+    // остаются по всей истории: это статистика, а не счётчик, и резать
+    // её выборку каждым сбросом жалко.
+    const sessionFarming = farming.filter((r) => r.startedAt >= this.sessionStartedAt);
+    const sessionCounted = openFarming ? [...sessionFarming, openFarming] : sessionFarming;
+
+    const inMapMs = sessionFarming.reduce((a, r) => a + activeDuration(r), 0) + openElapsed;
+    const valueFe = sessionCounted.reduce((a, r) => a + runValue(r, this.priceOf), 0);
+    const costFe = sessionCounted.reduce((a, r) => a + runCost(r, this.priceOf), 0);
 
     const status: Snapshot['status'] = openFarming ? 'running' : 'idle';
 
@@ -642,6 +751,9 @@ export class Engine extends EventEmitter {
       lastActivityAt: this.lastActivityAt,
       logDir: this.logDir,
       seasonId: this.seasonId,
+      player: this.playerView(),
+      players: this.playerOptions(allRuns),
+      playerFilter: this.playerFilter,
       current: open && !open.isHub ? this.toView(open) : null,
       recent: farming
         .slice(-25)
@@ -671,10 +783,14 @@ export class Engine extends EventEmitter {
           name: this.displayName(m.configBaseId),
           icon: this.items.get(m.configBaseId)?.icon ? iconUrl(m.configBaseId) : null,
         })),
+      session: {
+        startedAt: this.sessionStartedAt,
+        previous: this.previousSummary(farming),
+      },
       totals: {
-        runs: counted.length,
+        runs: sessionCounted.length,
         inMapMs,
-        feGained: counted.reduce(
+        feGained: sessionCounted.reduce(
           (a, r) =>
             a + r.drops.filter((d) => d.configBaseId === FE_ID).reduce((s, d) => s + d.qty, 0),
           0,
@@ -695,6 +811,43 @@ export class Engine extends EventEmitter {
         communityStale: this.community.stale,
       },
     };
+  }
+
+  /** Итог последней закрытой сессии по её границам во времени. */
+  private previousSummary(
+    farming: Run[],
+  ): { netFe: number; inMapMs: number; runs: number } | null {
+    const prev = this.previousSession;
+    if (!prev) return null;
+    const runs = farming.filter(
+      (r) => r.startedAt >= prev.startedAt && r.startedAt < prev.endedAt,
+    );
+    if (runs.length === 0) return null;
+    return {
+      netFe: runs.reduce((a, r) => a + runNet(r, this.priceOf), 0),
+      inMapMs: runs.reduce((a, r) => a + activeDuration(r), 0),
+      runs: runs.length,
+    };
+  }
+
+  private playerView(): PlayerView | null {
+    const p = this.currentPlayer;
+    return p ? toPlayerView(p) : null;
+  }
+
+  /**
+   * Персонажи для фильтра, свежие сверху. Счётчик забегов — по всей
+   * истории, без фильтра: он и есть подсказка, где сколько данных.
+   */
+  private playerOptions(allRuns: Run[]): PlayerOption[] {
+    const counts = new Map<string, number>();
+    for (const r of allRuns) {
+      if (r.isHub || (r.durationMs ?? 0) <= 5000 || r.playerId === null) continue;
+      counts.set(r.playerId, (counts.get(r.playerId) ?? 0) + 1);
+    }
+    return [...this.knownPlayers.values()]
+      .sort((a, b) => b.lastSeenAt - a.lastSeenAt)
+      .map((p) => ({ ...toPlayerView(p), runs: counts.get(p.playerId) ?? 0 }));
   }
 
   private jackpotAutoCache: { key: string; value: number } | null = null;
@@ -754,6 +907,17 @@ export class Engine extends EventEmitter {
     this.persistFinished();
     this.storage.close();
   }
+}
+
+/** Профиль → вид для интерфейса. */
+function toPlayerView(p: PlayerProfile): PlayerView {
+  return {
+    playerId: p.playerId,
+    // Решёточный суффикс — дискриминатор аккаунта, на экране он шум.
+    name: p.name ? p.name.replace(/#\d+$/, '') : null,
+    heroName: heroName(p.heroId),
+    level: p.level,
+  };
 }
 
 /**

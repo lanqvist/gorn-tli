@@ -6,7 +6,7 @@ import type { DatabaseSync as DatabaseSyncType } from 'node:sqlite';
 
 import type { PriceRecord } from '../core/priceStore.js';
 import type { Listing, Receipt } from '../core/trade.js';
-import type { ConfigBaseId, Run } from '../core/types.js';
+import type { ConfigBaseId, PlayerProfile, Run } from '../core/types.js';
 
 export type { Listing, Receipt };
 
@@ -37,7 +37,20 @@ CREATE TABLE IF NOT EXISTS run (
   ended_at     INTEGER,
   duration_ms  INTEGER,
   is_hub       INTEGER NOT NULL,
+  -- Персонаж хранится СТРОКОЙ: id вида 956082728577617920 не помещается
+  -- в double, а INTEGER-колонку node:sqlite отдал бы как number.
+  player_id    TEXT,
   UNIQUE (started_at, area_id)
+);
+
+-- Известные персонажи: ник аккаунта, класс и уровень для показа в интерфейсе.
+CREATE TABLE IF NOT EXISTS player (
+  player_id    TEXT PRIMARY KEY,
+  name         TEXT,
+  hero_id      INTEGER,
+  level        INTEGER,
+  season_id    INTEGER,
+  last_seen_at INTEGER NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS drop_item (
@@ -89,6 +102,15 @@ CREATE TABLE IF NOT EXISTS receipt (
   UNIQUE (ts, fe, seq)
 );
 
+-- Сессии игрока: граница отсчёта для счётчиков на экране. Забеги при
+-- сбросе не трогаются — сессия лишь помнит, С КАКОГО момента считать.
+-- Активная сессия — единственная с ended_at IS NULL.
+CREATE TABLE IF NOT EXISTS session (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  started_at INTEGER NOT NULL,
+  ended_at   INTEGER
+);
+
 -- Позиция чтения каждого файла лога, чтобы не разбирать заново.
 CREATE TABLE IF NOT EXISTS log_cursor (
   path        TEXT PRIMARY KEY,
@@ -135,7 +157,17 @@ export class Storage {
       // Старой таблицы может не быть вовсе — тогда мигрировать нечего.
     }
 
-    // 2. Выплаты: добавилась колонка seq. UNIQUE-ограничение старой таблицы
+    // 2. Забеги: добавилась колонка player_id. Старым забегам персонаж
+    //    неизвестен — они остаются NULL и показываются только в режиме
+    //    «все персонажи»; ретро-скан уцелевших логов проставит их заново.
+    const runCols = this.db.prepare('PRAGMA table_info(run)').all() as Array<{
+      name: string;
+    }>;
+    if (!runCols.some((c) => c.name === 'player_id')) {
+      this.db.exec('ALTER TABLE run ADD COLUMN player_id TEXT');
+    }
+
+    // 3. Выплаты: добавилась колонка seq. UNIQUE-ограничение старой таблицы
     //    снять нельзя, поэтому таблица пересоздаётся.
     const cols = this.db.prepare('PRAGMA table_info(receipt)').all() as Array<{
       name: string;
@@ -164,8 +196,9 @@ export class Storage {
   saveRuns(runs: Run[], seasonId: number | null): number {
     const insertRun = this.db.prepare(`
       INSERT OR IGNORE INTO run
-        (season_id, area_id, asset, level_type, started_at, ended_at, duration_ms, is_hub)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        (season_id, area_id, asset, level_type, started_at, ended_at, duration_ms, is_hub,
+         player_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const findRun = this.db.prepare(
       'SELECT id, duration_ms FROM run WHERE started_at = ? AND area_id = ?',
@@ -176,7 +209,8 @@ export class Storage {
         asset      = COALESCE(?, asset),
         level_type = COALESCE(?, level_type),
         ended_at   = ?,
-        duration_ms = ?
+        duration_ms = ?,
+        player_id  = COALESCE(?, player_id)
       WHERE id = ?
     `);
     const insertDrop = this.db.prepare(`
@@ -201,6 +235,7 @@ export class Storage {
           run.endedAt,
           run.durationMs,
           run.isHub ? 1 : 0,
+          run.playerId,
         );
         const row = findRun.get(run.startedAt, run.areaId) as
           | { id: number; duration_ms: number | null }
@@ -222,6 +257,7 @@ export class Storage {
           run.levelType,
           run.endedAt,
           run.durationMs,
+          run.playerId,
           row.id,
         );
 
@@ -308,7 +344,8 @@ export class Storage {
   loadRuns(): Run[] {
     const rows = this.db
       .prepare(
-        `SELECT id, area_id, asset, level_type, started_at, ended_at, duration_ms, is_hub
+        `SELECT id, area_id, asset, level_type, started_at, ended_at, duration_ms, is_hub,
+                player_id
          FROM run ORDER BY started_at`,
       )
       .all() as Array<{
@@ -320,6 +357,7 @@ export class Storage {
       ended_at: number | null;
       duration_ms: number | null;
       is_hub: number;
+      player_id: string | null;
     }>;
 
     const dropStmt = this.db.prepare(
@@ -337,6 +375,7 @@ export class Storage {
       endedAt: row.ended_at,
       durationMs: row.duration_ms,
       isHub: row.is_hub === 1,
+      playerId: row.player_id,
       drops: (
         dropStmt.all(row.id) as Array<{
           config_base_id: number;
@@ -364,6 +403,58 @@ export class Storage {
         pageId: 0,
         slotId: 0,
       })),
+    }));
+  }
+
+  /**
+   * Профили персонажей. Свежие значения побеждают, но пустые не затирают
+   * известные: событие входа несёт только id, без имени и уровня.
+   */
+  savePlayers(profiles: PlayerProfile[]): void {
+    if (profiles.length === 0) return;
+    const stmt = this.db.prepare(`
+      INSERT INTO player (player_id, name, hero_id, level, season_id, last_seen_at)
+      VALUES (?, ?, ?, ?, ?, ?)
+      ON CONFLICT(player_id) DO UPDATE SET
+        name         = COALESCE(excluded.name, name),
+        hero_id      = COALESCE(excluded.hero_id, hero_id),
+        level        = COALESCE(excluded.level, level),
+        season_id    = COALESCE(excluded.season_id, season_id),
+        last_seen_at = MAX(excluded.last_seen_at, last_seen_at)
+    `);
+    this.db.exec('BEGIN');
+    try {
+      for (const p of profiles) {
+        stmt.run(p.playerId, p.name, p.heroId, p.level, p.seasonId, p.lastSeenAt);
+      }
+      this.db.exec('COMMIT');
+    } catch (err) {
+      this.db.exec('ROLLBACK');
+      throw err;
+    }
+  }
+
+  loadPlayers(): PlayerProfile[] {
+    const rows = this.db
+      .prepare(
+        `SELECT player_id, name, hero_id, level, season_id, last_seen_at
+         FROM player ORDER BY last_seen_at DESC`,
+      )
+      .all() as Array<{
+      player_id: string;
+      name: string | null;
+      hero_id: number | null;
+      level: number | null;
+      season_id: number | null;
+      last_seen_at: number;
+    }>;
+    return rows.map((r) => ({
+      playerId: r.player_id,
+      name: r.name,
+      heroId: r.hero_id,
+      level: r.level,
+      seasonId: r.season_id,
+      lastSeenAt: r.last_seen_at,
     }));
   }
 
@@ -441,6 +532,48 @@ export class Storage {
       n: number;
     };
     return row.n;
+  }
+
+  /**
+   * Начало активной сессии. Если сессий ещё нет, создаётся первая
+   * со start = 0: до первого сброса счётчики охватывают всю историю,
+   * то есть ведут себя ровно как до появления фичи.
+   */
+  activeSessionStart(): number {
+    const row = this.db
+      .prepare('SELECT started_at FROM session WHERE ended_at IS NULL ORDER BY id DESC LIMIT 1')
+      .get() as { started_at: number } | undefined;
+    if (row) return row.started_at;
+    this.db.prepare('INSERT INTO session (started_at, ended_at) VALUES (0, NULL)').run();
+    return 0;
+  }
+
+  /**
+   * Сброс: активная сессия закрывается, открывается новая с этого момента.
+   * Данные забегов не трогаются — меняется только граница отсчёта.
+   */
+  resetSession(now: number): number {
+    this.db.exec('BEGIN');
+    try {
+      this.db.prepare('UPDATE session SET ended_at = ? WHERE ended_at IS NULL').run(now);
+      this.db.prepare('INSERT INTO session (started_at, ended_at) VALUES (?, NULL)').run(now);
+      this.db.exec('COMMIT');
+    } catch (err) {
+      this.db.exec('ROLLBACK');
+      throw err;
+    }
+    return now;
+  }
+
+  /** Границы последней закрытой сессии — для строки «прошлая сессия». */
+  previousSession(): { startedAt: number; endedAt: number } | null {
+    const row = this.db
+      .prepare(
+        `SELECT started_at, ended_at FROM session
+         WHERE ended_at IS NOT NULL ORDER BY ended_at DESC, id DESC LIMIT 1`,
+      )
+      .get() as { started_at: number; ended_at: number } | undefined;
+    return row ? { startedAt: row.started_at, endedAt: row.ended_at } : null;
   }
 
   setCursor(path: string, position: number, size: number): void {

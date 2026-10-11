@@ -67,6 +67,18 @@ export const LEVEL_IDS_RE = new RegExp(
     String.raw`LevelMgr@\s+LevelUid,\s*LevelType,\s*LevelId\s*=\s*(\d+)\s+(\d+)\s+(\d+)`,
 );
 
+/**
+ * Вход персонажем:
+ * PlayerIdTrace@SelectRoleNetMgr:_UserLoginStep3 buildLoginParm
+ *   playerId=956082728577617920 saveInfoPlayerId=… userId=…
+ *
+ * Id захватывается строкой: он не помещается в double.
+ */
+export const PLAYER_LOGIN_RE = new RegExp(
+  CATEGORY +
+    String.raw`PlayerIdTrace@SelectRoleNetMgr:_UserLoginStep3\s+buildLoginParm\s+playerId=(\d+)`,
+);
+
 /** ----Socket SendMessage STT----XchgSearchPrice----SynId = 96 */
 export const SOCKET_START_RE = new RegExp(
   CATEGORY + String.raw`-+Socket\s+(SendMessage|RecvMessage|PushMessage|RecvPushMsg)\s+STT-+([^-]+)-+SynId\s*=\s*(\d+)`,

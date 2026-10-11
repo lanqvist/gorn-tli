@@ -108,11 +108,53 @@ export interface PriceObservationEvent extends LogEventBase {
   synId: number;
 }
 
-/** Имя персонажа и сезон — для скоупинга всех данных. */
+/**
+ * Вход персонажем и его профиль — для атрибуции забегов.
+ *
+ * Источника два: строка PlayerIdTrace при логине (только playerId, зато
+ * мгновенно) и сокет-дамп GetPlayerData (полный профиль чуть позже).
+ */
 export interface PlayerInfoEvent extends LogEventBase {
   kind: 'playerInfo';
+  /**
+   * Идентификатор персонажа — СТРОКА. Значения вида 956082728577617920
+   * больше Number.MAX_SAFE_INTEGER: Number растерял бы младшие разряды,
+   * и два разных персонажа могли бы склеиться в одного.
+   */
+  playerId: string;
+  /** Класс персонажа (HeroId из профиля), например 1700. */
+  heroId?: number;
+  level?: number;
+  /** Ник аккаунта («VLPZDC#3648») — один на все персонажи. */
   name?: string;
   seasonId?: number;
+}
+
+/** Сводный профиль персонажа, накопленный из событий playerInfo. */
+export interface PlayerProfile {
+  playerId: string;
+  /** Ник аккаунта — общий для всех персонажей. */
+  name: string | null;
+  heroId: number | null;
+  level: number | null;
+  seasonId: number | null;
+  /** Последний раз видели в логе — по часам лога. */
+  lastSeenAt: number;
+}
+
+/** Дополняет профиль новым событием: свежие значения затирают старые, отсутствующие — нет. */
+export function mergePlayerInfo(
+  base: PlayerProfile | undefined,
+  ev: PlayerInfoEvent,
+): PlayerProfile {
+  return {
+    playerId: ev.playerId,
+    name: ev.name ?? base?.name ?? null,
+    heroId: ev.heroId ?? base?.heroId ?? null,
+    level: ev.level ?? base?.level ?? null,
+    seasonId: ev.seasonId ?? base?.seasonId ?? null,
+    lastSeenAt: Math.max(ev.ts, base?.lastSeenAt ?? 0),
+  };
 }
 
 export type LogEvent =
@@ -148,6 +190,8 @@ export interface Run {
   endedAt: number | null;
   durationMs: number | null;
   isHub: boolean;
+  /** Персонаж, которым бежали. null — лог старее этой фичи. */
+  playerId: string | null;
   drops: ItemDelta[];
   costs: ItemDelta[];
 }

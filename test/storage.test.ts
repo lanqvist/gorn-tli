@@ -15,6 +15,7 @@ function run(startedAt: number, areaId: number, drops: Array<[number, number]> =
     endedAt: startedAt + 84_000,
     durationMs: 84_000,
     isHub: false,
+    playerId: null,
     drops: drops.map(([configBaseId, qty]) => ({
       ts: startedAt + 1000,
       configBaseId,
@@ -144,6 +145,31 @@ describe('хранилище', () => {
     ]);
     expect(db.latestPrice(10042)).toBe(9);
     expect(db.counts().prices).toBe(1);
+  });
+
+  it('первая сессия охватывает всю историю и переживает перезапуск', () => {
+    // start = 0: до первого сброса поведение неотличимо от «до фичи».
+    expect(db.activeSessionStart()).toBe(0);
+    expect(db.activeSessionStart()).toBe(0);
+    expect(db.previousSession()).toBeNull();
+  });
+
+  it('сброс закрывает активную сессию и открывает новую', () => {
+    db.activeSessionStart();
+    expect(db.resetSession(5000)).toBe(5000);
+    expect(db.activeSessionStart()).toBe(5000);
+    expect(db.previousSession()).toEqual({ startedAt: 0, endedAt: 5000 });
+
+    db.resetSession(9000);
+    expect(db.activeSessionStart()).toBe(9000);
+    expect(db.previousSession()).toEqual({ startedAt: 5000, endedAt: 9000 });
+  });
+
+  it('сброс сессии не трогает забеги', () => {
+    db.saveRuns([run(1000, 5348, [[100300, 44]])], 1501);
+    db.resetSession(5000);
+    expect(db.counts().runs).toBe(1);
+    expect(db.loadRuns()).toHaveLength(1);
   });
 
   it('позиция чтения лога переживает перезапуск', () => {

@@ -29,6 +29,11 @@ export interface Settings {
    * Ручной путь нужен не-Steam установкам и нестандартным дискам.
    */
   logDir: string | null;
+  /**
+   * Фильтр по персонажу: показывать только его забеги. null — все.
+   * Хранится id строкой: значения не помещаются в double.
+   */
+  playerFilter: string | null;
   /** Закрытие окна сворачивает в трей: трекер живёт фоном часами. */
   closeToTray: boolean;
   /** Запуск вместе с Windows: трекер полезен, только если уже запущен. */
@@ -62,6 +67,7 @@ const DEFAULTS: Settings = {
   itemNames: 'ru',
   communityPrices: true,
   logDir: null,
+  playerFilter: null,
   closeToTray: false,
   autoStart: false,
   overlay: {
@@ -110,6 +116,7 @@ export class SettingsStore {
         itemNames: raw.settings.itemNames ?? DEFAULTS.itemNames,
         communityPrices: raw.settings.communityPrices ?? DEFAULTS.communityPrices,
         logDir: raw.settings.logDir ?? DEFAULTS.logDir,
+        playerFilter: raw.settings.playerFilter ?? DEFAULTS.playerFilter,
         closeToTray: raw.settings.closeToTray ?? DEFAULTS.closeToTray,
         autoStart: raw.settings.autoStart ?? DEFAULTS.autoStart,
         overlay: { ...DEFAULTS.overlay, ...raw.settings.overlay },
@@ -148,6 +155,15 @@ export class SettingsStore {
 
   setLogDir(dir: string | null): void {
     this.data.logDir = dir;
+    this.save();
+  }
+
+  get playerFilter(): string | null {
+    return this.data.playerFilter;
+  }
+
+  setPlayerFilter(playerId: string | null): void {
+    this.data.playerFilter = playerId;
     this.save();
   }
 

@@ -7,11 +7,17 @@ import {
   ITEM_CHANGE_RE,
   LEVEL_IDS_RE,
   LEVEL_PATH_RE,
+  PLAYER_LOGIN_RE,
   SOCKET_END_RE,
   SOCKET_START_RE,
   TIMESTAMP_RE,
 } from './patterns.js';
-import { FE_ID, type LogEvent, type PriceObservationEvent } from './types.js';
+import {
+  FE_ID,
+  type LogEvent,
+  type PlayerInfoEvent,
+  type PriceObservationEvent,
+} from './types.js';
 
 /**
  * Метки в UE_game.log записаны в UTC: последняя строка сессии 07:30:50
@@ -172,6 +178,12 @@ export class EventParser {
       };
     }
 
+    if ((m = PLAYER_LOGIN_RE.exec(raw))) {
+      if (ts === null) return null;
+      // Id остаётся строкой: 956082728577617920 не влезает в double.
+      return { kind: 'playerInfo', ts, line, playerId: m[1]! };
+    }
+
     return null;
   }
 
@@ -190,6 +202,9 @@ export class EventParser {
   }
 
   private finishSocket(msg: PendingSocket, line: number): LogEvent | null {
+    if (msg.action === 'GetPlayerData' && msg.direction === 'RecvMessage') {
+      return this.finishPlayerData(msg, line);
+    }
     if (msg.action !== 'XchgSearchPrice') return null;
 
     const fields = parseBody(msg.body);
@@ -255,6 +270,45 @@ export class EventParser {
       synId: msg.synId,
     };
     return ev;
+  }
+
+  /**
+   * Профиль персонажа из дампа GetPlayerData: блок `+player` содержит
+   * PlayerId, HeroId, Level и ник аккаунта (Name).
+   *
+   * Поля читаются только из блока `player`, а не поиском по всему дереву:
+   * ключ Level встречается в дампе сотнями — у навыков, питомцев и сезонных
+   * механик, и findValue вернул бы первый попавшийся.
+   */
+  private finishPlayerData(msg: PendingSocket, line: number): PlayerInfoEvent | null {
+    const fields = parseBody(msg.body);
+    const player = fields.get('player');
+    if (!(player instanceof Map)) return null;
+
+    const playerId = player.get('PlayerId');
+    // Id — строка: в double значение не помещается.
+    if (typeof playerId !== 'string' || !/^\d+$/.test(playerId)) return null;
+
+    const num = (key: string): number | undefined => {
+      const v = player.get(key);
+      const n = typeof v === 'string' ? Number(v) : NaN;
+      return Number.isFinite(n) ? n : undefined;
+    };
+    const heroId = num('HeroId');
+    const level = num('Level');
+    const seasonId = num('SeasonId');
+    const name = player.get('Name');
+
+    return {
+      kind: 'playerInfo',
+      ts: msg.ts,
+      line,
+      playerId,
+      ...(heroId !== undefined ? { heroId } : {}),
+      ...(level !== undefined ? { level } : {}),
+      ...(typeof name === 'string' && name.length > 0 ? { name } : {}),
+      ...(seasonId !== undefined ? { seasonId } : {}),
+    };
   }
 }
 

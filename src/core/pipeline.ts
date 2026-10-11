@@ -5,7 +5,14 @@ import { EventParser } from './eventParser.js';
 import { InventoryTracker, type SlotState } from './inventory.js';
 import { RunSegmenter } from './runSegmenter.js';
 import { TradeLedger } from './trade.js';
-import type { ConfigBaseId, Diagnostics, PriceObservationEvent, Run } from './types.js';
+import {
+  mergePlayerInfo,
+  type ConfigBaseId,
+  type Diagnostics,
+  type PlayerProfile,
+  type PriceObservationEvent,
+  type Run,
+} from './types.js';
 
 export interface AnalysisResult {
   runs: Run[];
@@ -16,6 +23,10 @@ export interface AnalysisResult {
   slots: Array<[string, SlotState]>;
   diagnostics: Diagnostics;
   seasonId: number | null;
+  /** Все персонажи, встреченные в файле. */
+  players: PlayerProfile[];
+  /** Кем зашли последним — состояние для живого дочитывания. */
+  lastPlayerId: string | null;
   firstTs: number | null;
   lastTs: number | null;
 }
@@ -47,6 +58,8 @@ export async function analyzeLogFile(path: string): Promise<AnalysisResult> {
   let seasonId: number | null = null;
   let firstTs: number | null = null;
   let lastTs: number | null = null;
+  const players = new Map<string, PlayerProfile>();
+  let lastPlayerId: string | null = null;
 
   const rl = createInterface({
     input: createReadStream(path, { encoding: 'utf8' }),
@@ -119,6 +132,12 @@ export async function analyzeLogFile(path: string): Promise<AnalysisResult> {
         prices.push(ev);
         break;
 
+      case 'playerInfo':
+        players.set(ev.playerId, mergePlayerInfo(players.get(ev.playerId), ev));
+        lastPlayerId = ev.playerId;
+        segmenter.setPlayer(ev.playerId);
+        break;
+
       default:
         break;
     }
@@ -134,6 +153,8 @@ export async function analyzeLogFile(path: string): Promise<AnalysisResult> {
     slots: inventory.exportSlots(),
     diagnostics,
     seasonId,
+    players: [...players.values()],
+    lastPlayerId,
     firstTs,
     lastTs,
   };

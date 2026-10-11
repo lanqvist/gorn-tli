@@ -19,6 +19,8 @@ export class RunSegmenter {
   /** Путь ассета приходит отдельной строкой ДО входа в зону. */
   private pendingAsset: string | null = null;
   private pendingLevelType: number | null = null;
+  /** Кем зашли в игру. Все последующие забеги — его. */
+  private playerId: string | null = null;
 
   noteAsset(asset: string): void {
     this.pendingAsset = asset;
@@ -26,6 +28,14 @@ export class RunSegmenter {
 
   noteLevelType(levelType: number): void {
     this.pendingLevelType = levelType;
+  }
+
+  /**
+   * Смена персонажа. Вход другим персонажем идёт через экран выбора,
+   * то есть между забегами — открытый забег переатрибутировать не нужно.
+   */
+  setPlayer(playerId: string | null): void {
+    this.playerId = playerId;
   }
 
   /**
@@ -56,6 +66,7 @@ export class RunSegmenter {
       endedAt: null,
       durationMs: null,
       isHub,
+      playerId: this.playerId,
       drops: [],
       // Вложения, сделанные в городе перед входом, принадлежат этой карте.
       costs: isHub ? [] : this.takePendingCosts(ev.ts),

@@ -5,7 +5,7 @@ import { listLogFiles } from './locate.js';
 import { analyzeLogFile } from './pipeline.js';
 import { PriceStore } from './priceStore.js';
 import { TradeLedger, mergeByKey } from './trade.js';
-import type { ConfigBaseId, Run } from './types.js';
+import type { ConfigBaseId, PlayerProfile, Run } from './types.js';
 
 /**
  * Разбор всех накопленных логов при первом запуске.
@@ -39,6 +39,13 @@ export interface RetroScanResult {
   slots: Array<[string, SlotState]>;
   /** Сезон последнего файла — текущий. Первый в seasonIds — самый старый. */
   latestSeasonId: number | null;
+  /** Все персонажи из всех файлов: у каждого — самое свежее известное состояние. */
+  players: PlayerProfile[];
+  /**
+   * Кем зашли в последнем файле. Живое дочитывание стартует с этим
+   * персонажем, иначе забеги до следующего перезахода остались бы ничьими.
+   */
+  lastPlayerId: string | null;
   /**
    * Размер текущего лога сразу после его разбора. Живое дочитывание
    * начинает с этой позиции, а не с конца файла на момент своего старта:
@@ -71,6 +78,8 @@ export async function retroScan(
   let linesScanned = 0;
   let seasonId: number | null = null;
   let currentLog: RetroScanResult['currentLog'] = null;
+  const players = new Map<string, PlayerProfile>();
+  let lastPlayerId: string | null = null;
 
   // Файлы могут перекрываться после ротации при краше, поэтому торговые
   // события каждого файла копятся отдельно и сливаются с дедупликацией.
@@ -114,6 +123,21 @@ export async function retroScan(
     for (const [proto, n] of result.diagnostics.unknownProtos) {
       unknownProtos.set(proto, (unknownProtos.get(proto) ?? 0) + n);
     }
+
+    // Файлы идут от старых к новым: свежие значения побеждают, но пустые
+    // не затирают известные — в оборванном логе бывает вход без профиля.
+    for (const profile of result.players) {
+      const known = players.get(profile.playerId);
+      players.set(profile.playerId, {
+        playerId: profile.playerId,
+        name: profile.name ?? known?.name ?? null,
+        heroId: profile.heroId ?? known?.heroId ?? null,
+        level: profile.level ?? known?.level ?? null,
+        seasonId: profile.seasonId ?? known?.seasonId ?? null,
+        lastSeenAt: Math.max(profile.lastSeenAt, known?.lastSeenAt ?? 0),
+      });
+    }
+    if (result.lastPlayerId !== null) lastPlayerId = result.lastPlayerId;
 
     if (file.isCurrent) {
       // Размер файла на момент окончания разбора: с него продолжит tailer.
@@ -160,6 +184,8 @@ export async function retroScan(
     failed,
     slots,
     latestSeasonId: seasonId,
+    players: [...players.values()],
+    lastPlayerId,
     currentLog,
   };
 }

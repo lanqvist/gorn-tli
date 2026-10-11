@@ -166,11 +166,19 @@ async function main(): Promise<void> {
   storage.saveRuns(result.runs, seasonId);
   storage.savePrices(result.prices.all());
   storage.saveTrade(result.trade.listings, result.trade.receipts);
+  storage.savePlayers(result.players);
 
   const counts = storage.counts();
   console.log('\n═══ СОХРАНЕНО ═══');
   console.log(`  база              data/gorn.db`);
   console.log(`  забегов           ${counts.runs} (фарм ${counts.farmingRuns})`);
+  for (const p of result.players) {
+    const attributed = result.runs.filter((r) => r.playerId === p.playerId).length;
+    console.log(
+      `  персонаж          ${p.name ?? p.playerId} (герой ${p.heroId ?? '?'}, ` +
+        `${p.level ?? '?'} ур.) — ${pluralize(attributed, RUN)}`,
+    );
+  }
   console.log(`  записей о дропе   ${counts.drops}`);
   console.log(`  предметов с ценой ${counts.prices}`);
   console.log(`  лотов / выплат    ${counts.listings} / ${counts.receipts}`);

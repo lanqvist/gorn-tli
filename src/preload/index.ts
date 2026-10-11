@@ -22,6 +22,15 @@ contextBridge.exposeInMainWorld('gorn', {
     return () => ipcRenderer.removeListener('scan:progress', handler);
   },
 
+  /** Новая сессия: счётчики с нуля, история никуда не девается. */
+  session: {
+    reset: () => ipcRenderer.invoke('session:reset'),
+  },
+
+  /** Фильтр по персонажу: null — все. Выбор запоминается. */
+  setPlayerFilter: (playerId: string | null) =>
+    ipcRenderer.invoke('settings:setPlayerFilter', playerId),
+
   update: {
     get: () => ipcRenderer.invoke('update:get'),
     check: () => ipcRenderer.invoke('update:check'),

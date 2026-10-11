@@ -31,6 +31,7 @@ function run(opts: Partial<Run> & { startedAt: number; endedAt: number }): Run {
     levelType: 3,
     isHub: false,
     durationMs: opts.endedAt - opts.startedAt,
+    playerId: null,
     drops: [],
     costs: [],
     ...opts,

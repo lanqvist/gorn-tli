@@ -41,6 +41,33 @@ export const demoSnapshot: Snapshot = {
   logDir:
     'C:\\Program Files (x86)\\Steam\\steamapps\\common\\Torchlight Infinite\\UE_game\\TorchLight\\Saved\\Logs',
   seasonId: 1501,
+  player: {
+    playerId: '956082728577617920',
+    name: 'VLPZDC',
+    heroName: 'Селена',
+    level: 85,
+  },
+  session: {
+    startedAt: now - 3 * 3_600_000,
+    previous: { netFe: 3240, inMapMs: 2 * 3_600_000 + 10 * 60_000, runs: 14 },
+  },
+  players: [
+    {
+      playerId: '956082728577617920',
+      name: 'VLPZDC',
+      heroName: 'Селена',
+      level: 85,
+      runs: 23,
+    },
+    {
+      playerId: '947836609175392256',
+      name: 'VLPZDC',
+      heroName: 'Герой 1200',
+      level: 62,
+      runs: 8,
+    },
+  ],
+  playerFilter: null,
   current: {
     areaId: 5348,
     name: 'MaNeiLaYuLin',
