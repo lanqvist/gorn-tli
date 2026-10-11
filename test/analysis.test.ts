@@ -3,12 +3,21 @@ import { describe, expect, it } from 'vitest';
 import {
   activeDuration,
   groupByStrategy,
+  isFarmingRun,
+  mergeRuns,
   missingPrices,
   rollingNorm,
+  runFe,
   runNet,
   strategyKey,
 } from '../src/core/analysis.js';
-import type { ItemDelta, Run } from '../src/core/types.js';
+import {
+  FE_ID,
+  mergePlayerInfo,
+  mergePlayerProfile,
+  type ItemDelta,
+  type Run,
+} from '../src/core/types.js';
 
 const T0 = 1_700_000_000_000;
 
@@ -222,5 +231,64 @@ describe('норма для сравнения', () => {
 
   it('пустая история даёт ноль, а не деление на ноль', () => {
     expect(rollingNorm([])).toBe(0);
+  });
+});
+
+describe('общие хелперы забегов', () => {
+  it('фарм — не город и не проход через зону', () => {
+    expect(isFarmingRun(run({ startedAt: T0, endedAt: T0 + 60_000 }))).toBe(true);
+    expect(isFarmingRun(run({ startedAt: T0, endedAt: T0 + 4_000 }))).toBe(false);
+    expect(isFarmingRun(run({ startedAt: T0, endedAt: T0 + 60_000, isHub: true }))).toBe(false);
+  });
+
+  it('ФЕ считается только по самой валюте', () => {
+    const r = run({
+      startedAt: T0,
+      endedAt: T0 + 60_000,
+      drops: [delta(FE_ID, 30, T0 + 1), delta(FE_ID, 12, T0 + 2), delta(5028, 1, T0 + 3)],
+    });
+    expect(runFe(r)).toBe(42);
+  });
+
+  it('слияние забегов: поздний список побеждает, порядок по времени', () => {
+    const old = run({ startedAt: T0 + 1000, endedAt: T0 + 2000, playerId: null });
+    const fresh = { ...old, playerId: '956082728577617920' };
+    const earlier = run({ startedAt: T0, endedAt: T0 + 500 });
+    const merged = mergeRuns([old], [fresh, earlier]);
+    expect(merged.map((r) => r.startedAt)).toEqual([T0, T0 + 1000]);
+    expect(merged[1]!.playerId).toBe('956082728577617920');
+  });
+});
+
+describe('профиль персонажа', () => {
+  const full = {
+    playerId: '956082728577617920',
+    name: 'VLPZDC#3648',
+    heroId: 1700,
+    level: 84,
+    seasonId: 1501,
+    lastSeenAt: T0,
+  };
+
+  it('вход без профиля не стирает известные поля', () => {
+    const merged = mergePlayerInfo(full, {
+      kind: 'playerInfo',
+      ts: T0 + 1000,
+      line: 1,
+      playerId: full.playerId,
+    });
+    expect(merged).toEqual({ ...full, lastSeenAt: T0 + 1000 });
+  });
+
+  it('свежие значения побеждают, время не откатывается назад', () => {
+    const merged = mergePlayerProfile(full, {
+      ...full,
+      level: 85,
+      name: null,
+      lastSeenAt: T0 - 1,
+    });
+    expect(merged.level).toBe(85);
+    expect(merged.name).toBe('VLPZDC#3648');
+    expect(merged.lastSeenAt).toBe(T0);
   });
 });

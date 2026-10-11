@@ -1,7 +1,34 @@
 import { percentile, perHour, summarize, type RateSummary } from './stats.js';
-import type { ConfigBaseId, ItemDelta, Run } from './types.js';
+import { FE_ID, type ConfigBaseId, type ItemDelta, type Run } from './types.js';
 
 export type PriceLookup = (id: ConfigBaseId) => number | null;
+
+/**
+ * Забег, который идёт в статистику фарма: не город и не мгновенный
+ * проход через зону — пять секунд и меньше бывают только загрузкой.
+ */
+export function isFarmingRun(run: Run): boolean {
+  return !run.isHub && (run.durationMs ?? 0) > 5000;
+}
+
+/** Сколько самой валюты ФЕ упало за забег — без оценки предметов. */
+export function runFe(run: Run): number {
+  let fe = 0;
+  for (const d of run.drops) if (d.configBaseId === FE_ID) fe += d.qty;
+  return fe;
+}
+
+/** Ключ забега для дедупликации: один и тот же лог может разбираться дважды. */
+export function runKey(run: Run): string {
+  return `${run.startedAt}:${run.areaId}`;
+}
+
+/** Слияние списков забегов по ключу: при совпадении побеждает более поздний список. */
+export function mergeRuns(...lists: Run[][]): Run[] {
+  const byKey = new Map<string, Run>();
+  for (const list of lists) for (const run of list) byKey.set(runKey(run), run);
+  return [...byKey.values()].sort((a, b) => a.startedAt - b.startedAt);
+}
 
 /**
  * Сколько времени карта была «живой».

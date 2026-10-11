@@ -1019,9 +1019,11 @@ function Hero({ snapshot }: { snapshot: Snapshot }) {
  */
 function SessionBar({ snapshot }: { snapshot: Snapshot }) {
   const { startedAt, previous } = snapshot.session;
-  // Сессия старше суток подписывается датой: «с 14:32» — это про сегодня.
+  // Вчерашняя сессия подписывается датой: «с 14:32» читается как сегодня.
   const started =
-    Date.now() - startedAt < 20 * 3_600_000 ? time(startedAt) : cacheDate(startedAt);
+    new Date(startedAt).toDateString() === new Date().toDateString()
+      ? time(startedAt)
+      : cacheDate(startedAt);
 
   return (
     <div className="session-bar">

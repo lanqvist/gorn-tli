@@ -142,19 +142,38 @@ export interface PlayerProfile {
   lastSeenAt: number;
 }
 
-/** Дополняет профиль новым событием: свежие значения затирают старые, отсутствующие — нет. */
+/**
+ * Дополняет профиль более свежими данными: известные значения затирают
+ * старые, отсутствующие — нет. Вход персонажем несёт только id, и без
+ * этого правила он стирал бы имя и уровень из профиля.
+ */
+export function mergePlayerProfile(
+  base: PlayerProfile | undefined,
+  next: PlayerProfile,
+): PlayerProfile {
+  return {
+    playerId: next.playerId,
+    name: next.name ?? base?.name ?? null,
+    heroId: next.heroId ?? base?.heroId ?? null,
+    level: next.level ?? base?.level ?? null,
+    seasonId: next.seasonId ?? base?.seasonId ?? null,
+    lastSeenAt: Math.max(next.lastSeenAt, base?.lastSeenAt ?? 0),
+  };
+}
+
+/** Дополняет профиль событием playerInfo. */
 export function mergePlayerInfo(
   base: PlayerProfile | undefined,
   ev: PlayerInfoEvent,
 ): PlayerProfile {
-  return {
+  return mergePlayerProfile(base, {
     playerId: ev.playerId,
-    name: ev.name ?? base?.name ?? null,
-    heroId: ev.heroId ?? base?.heroId ?? null,
-    level: ev.level ?? base?.level ?? null,
-    seasonId: ev.seasonId ?? base?.seasonId ?? null,
-    lastSeenAt: Math.max(ev.ts, base?.lastSeenAt ?? 0),
-  };
+    name: ev.name ?? null,
+    heroId: ev.heroId ?? null,
+    level: ev.level ?? null,
+    seasonId: ev.seasonId ?? null,
+    lastSeenAt: ev.ts,
+  });
 }
 
 export type LogEvent =

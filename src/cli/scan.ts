@@ -8,7 +8,7 @@
 import { readFileSync } from 'node:fs';
 import { basename, resolve } from 'node:path';
 
-import { activeDuration } from '../core/analysis.js';
+import { activeDuration, isFarmingRun } from '../core/analysis.js';
 import {
   confidenceLabel,
   formatDateTime,
@@ -64,7 +64,7 @@ async function main(): Promise<void> {
   result.prices.registerBoundIds(bound);
   const priceOf = (id: ConfigBaseId) => result.prices.priceOf(id);
 
-  const farming = result.runs.filter((r) => !r.isHub && (r.durationMs ?? 0) > 5000);
+  const farming = result.runs.filter(isFarmingRun);
   // Активное время, а не по часам: простой в карте занижает «в час».
   const inMapMs = farming.reduce((a, r) => a + activeDuration(r), 0);
 

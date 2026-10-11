@@ -4,8 +4,11 @@ import { join } from 'node:path';
 import {
   activeDuration,
   groupByStrategy,
+  isFarmingRun,
+  mergeRuns,
   missingPrices,
   rollingNorm,
+  runFe,
   runNet,
   type StrategyStats,
 } from '../core/analysis.js';
@@ -14,13 +17,11 @@ import { InventoryTracker } from '../core/inventory.js';
 import { findLogDirectory } from '../core/locate.js';
 import { isBoundName, PriceStore } from '../core/priceStore.js';
 import { heroName } from '../core/heroes.js';
-import { retroScan } from '../core/retroScan.js';
-import { runCost, runValue } from '../core/retroScan.js';
+import { retroScan, runCost, runValue } from '../core/retroScan.js';
 import { RunSegmenter } from '../core/runSegmenter.js';
 import { percentile, perHour, summarize, type RateSummary } from '../core/stats.js';
 import { TradeLedger, mergeByKey } from '../core/trade.js';
 import {
-  FE_ID,
   mergePlayerInfo,
   type ConfigBaseId,
   type Diagnostics,
@@ -310,10 +311,7 @@ export class Engine extends EventEmitter {
 
     // Разбор логов точнее сохранённого (мог улучшиться парсер), поэтому
     // при совпадении забега берём свежий разбор.
-    const byKey = new Map<string, Run>();
-    for (const run of stored) byKey.set(`${run.startedAt}:${run.areaId}`, run);
-    for (const run of scan.runs) byKey.set(`${run.startedAt}:${run.areaId}`, run);
-    this.history = [...byKey.values()].sort((a, b) => a.startedAt - b.startedAt);
+    this.history = mergeRuns(stored, scan.runs);
 
     for (const record of scan.prices.all()) {
       this.prices.set(record.configBaseId, record.fe, record.observedAt);
@@ -425,10 +423,7 @@ export class Engine extends EventEmitter {
     const finished = this.segmenter.finish(this.lastEventTs || Date.now());
     if (finished.length > 0) {
       this.storage.saveRuns(finished, this.seasonId);
-      const byKey = new Map<string, Run>();
-      for (const run of this.history) byKey.set(`${run.startedAt}:${run.areaId}`, run);
-      for (const run of finished) byKey.set(`${run.startedAt}:${run.areaId}`, run);
-      this.history = [...byKey.values()].sort((a, b) => a.startedAt - b.startedAt);
+      this.history = mergeRuns(this.history, finished);
     }
 
     // Состояние сумки и забегов начинается заново. Персонаж тоже:
@@ -639,9 +634,7 @@ export class Engine extends EventEmitter {
   }
 
   private toView(run: Run): RunView {
-    const feGained = run.drops
-      .filter((d) => d.configBaseId === FE_ID)
-      .reduce((a, d) => a + d.qty, 0);
+    const feGained = runFe(run);
 
     const valueFe = runValue(run, this.priceOf);
     const costFe = runCost(run, this.priceOf);
@@ -692,12 +685,10 @@ export class Engine extends EventEmitter {
 
     // Дедупликация истории и живых забегов по ключу: перестраховка от
     // задвоения при повторном разборе того же лога. Живой разбор свежее.
-    const byKey = new Map<string, Run>();
-    for (const run of this.history) byKey.set(`${run.startedAt}:${run.areaId}`, run);
-    for (const run of live) {
-      if (run.endedAt !== null) byKey.set(`${run.startedAt}:${run.areaId}`, run);
-    }
-    const allRuns = [...byKey.values()].sort((a, b) => a.startedAt - b.startedAt);
+    const allRuns = mergeRuns(
+      this.history,
+      live.filter((r) => r.endedAt !== null),
+    );
 
     // Фильтр по персонажу режет всё, что построено на забегах. Забеги
     // без атрибуции (старые логи) видны только в режиме «все».
@@ -709,15 +700,12 @@ export class Engine extends EventEmitter {
       liveOpen && (this.playerFilter === null || liveOpen.playerId === this.playerFilter)
         ? liveOpen
         : null;
-    const farming = visible.filter((r) => !r.isHub && (r.durationMs ?? 0) > 5000);
+    const farming = visible.filter(isFarmingRun);
 
     // Время считаем активное, а не по часам: простой внутри карты
     // раздувает знаменатель и тихо занижает любую цифру «в час».
     const netRates = farming.map((r) => perHour(runNet(r, this.priceOf), activeDuration(r)));
-    const feRates = farming.map((r) => {
-      const fe = r.drops.filter((d) => d.configBaseId === FE_ID).reduce((a, d) => a + d.qty, 0);
-      return perHour(fe, activeDuration(r));
-    });
+    const feRates = farming.map((r) => perHour(runFe(r), activeDuration(r)));
 
     const realized = this.trade.summarize(this.priceOf);
 
@@ -736,14 +724,20 @@ export class Engine extends EventEmitter {
     // считаются от начала сессии. Медиана, стратегии и список цен намеренно
     // остаются по всей истории: это статистика, а не счётчик, и резать
     // её выборку каждым сбросом жалко.
-    const sessionFarming = farming.filter((r) => r.startedAt >= this.sessionStartedAt);
+    //
+    // Забег принадлежит сессии, в которой ЗАКОНЧИЛСЯ: сброс посреди карты
+    // оставляет её в новой сессии целиком. Иначе открытая карта шла бы
+    // в счётчики, пока идёт, и пропадала из них при выходе.
+    const sessionFarming = farming.filter((r) => runEnd(r) >= this.sessionStartedAt);
     const sessionCounted = openFarming ? [...sessionFarming, openFarming] : sessionFarming;
 
     const inMapMs = sessionFarming.reduce((a, r) => a + activeDuration(r), 0) + openElapsed;
     const valueFe = sessionCounted.reduce((a, r) => a + runValue(r, this.priceOf), 0);
     const costFe = sessionCounted.reduce((a, r) => a + runCost(r, this.priceOf), 0);
 
-    const status: Snapshot['status'] = openFarming ? 'running' : 'idle';
+    // Статус — про игру, а не про фильтр: на карте другим персонажем
+    // «Ждём вход на карту» было бы неправдой.
+    const status: Snapshot['status'] = liveOpen && !liveOpen.isHub ? 'running' : 'idle';
 
     return {
       status,
@@ -790,11 +784,7 @@ export class Engine extends EventEmitter {
       totals: {
         runs: sessionCounted.length,
         inMapMs,
-        feGained: sessionCounted.reduce(
-          (a, r) =>
-            a + r.drops.filter((d) => d.configBaseId === FE_ID).reduce((s, d) => s + d.qty, 0),
-          0,
-        ),
+        feGained: sessionCounted.reduce((a, r) => a + runFe(r), 0),
         valueFe,
         costFe,
         realizedFe: realized.realizedFe,
@@ -819,9 +809,7 @@ export class Engine extends EventEmitter {
   ): { netFe: number; inMapMs: number; runs: number } | null {
     const prev = this.previousSession;
     if (!prev) return null;
-    const runs = farming.filter(
-      (r) => r.startedAt >= prev.startedAt && r.startedAt < prev.endedAt,
-    );
+    const runs = farming.filter((r) => runEnd(r) >= prev.startedAt && runEnd(r) < prev.endedAt);
     if (runs.length === 0) return null;
     return {
       netFe: runs.reduce((a, r) => a + runNet(r, this.priceOf), 0),
@@ -842,7 +830,7 @@ export class Engine extends EventEmitter {
   private playerOptions(allRuns: Run[]): PlayerOption[] {
     const counts = new Map<string, number>();
     for (const r of allRuns) {
-      if (r.isHub || (r.durationMs ?? 0) <= 5000 || r.playerId === null) continue;
+      if (!isFarmingRun(r) || r.playerId === null) continue;
       counts.set(r.playerId, (counts.get(r.playerId) ?? 0) + 1);
     }
     return [...this.knownPlayers.values()]
@@ -907,6 +895,11 @@ export class Engine extends EventEmitter {
     this.persistFinished();
     this.storage.close();
   }
+}
+
+/** Когда забег закончился — по этой границе он относится к сессии. */
+function runEnd(run: Run): number {
+  return run.endedAt ?? run.startedAt;
 }
 
 /** Профиль → вид для интерфейса. */

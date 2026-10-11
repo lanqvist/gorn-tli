@@ -5,7 +5,7 @@ import { listLogFiles } from './locate.js';
 import { analyzeLogFile } from './pipeline.js';
 import { PriceStore } from './priceStore.js';
 import { TradeLedger, mergeByKey } from './trade.js';
-import type { ConfigBaseId, PlayerProfile, Run } from './types.js';
+import { mergePlayerProfile, type ConfigBaseId, type PlayerProfile, type Run } from './types.js';
 
 /**
  * Разбор всех накопленных логов при первом запуске.
@@ -127,15 +127,7 @@ export async function retroScan(
     // Файлы идут от старых к новым: свежие значения побеждают, но пустые
     // не затирают известные — в оборванном логе бывает вход без профиля.
     for (const profile of result.players) {
-      const known = players.get(profile.playerId);
-      players.set(profile.playerId, {
-        playerId: profile.playerId,
-        name: profile.name ?? known?.name ?? null,
-        heroId: profile.heroId ?? known?.heroId ?? null,
-        level: profile.level ?? known?.level ?? null,
-        seasonId: profile.seasonId ?? known?.seasonId ?? null,
-        lastSeenAt: Math.max(profile.lastSeenAt, known?.lastSeenAt ?? 0),
-      });
+      players.set(profile.playerId, mergePlayerProfile(players.get(profile.playerId), profile));
     }
     if (result.lastPlayerId !== null) lastPlayerId = result.lastPlayerId;
 
