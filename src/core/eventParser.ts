@@ -38,6 +38,30 @@ export function parseTimestamp(line: string): number | null {
   );
 }
 
+/**
+ * Дешёвый предфильтр перед регулярками.
+ *
+ * Событие несёт меньше процента строк лога (18,7 тыс. из 3,3 млн за
+ * шестичасовую сессию), а каждая строка проходила через разбор метки
+ * времени и девять регулярок подряд: 400 МБ лога разбирались 30 секунд
+ * при чтении с диска за 1,3. Каждый шаблон обязательно содержит один
+ * из маркеров ниже, поэтому строка без маркера события не несёт — и
+ * проверка подстроки результат разбора не меняет.
+ */
+function mayCarryEvent(raw: string): boolean {
+  return (
+    raw.includes('BagMgr@') ||
+    raw.includes('ItemChange@') ||
+    raw.includes('LevelMgr') ||
+    raw.includes('PlayerIdTrace@')
+  );
+}
+
+/** Маркер заголовка и конца сокет-дампа: «----Socket RecvMessage STT----». */
+function maySocketMarker(raw: string): boolean {
+  return raw.includes('-Socket');
+}
+
 interface PendingSocket {
   direction: string;
   action: string;
@@ -68,7 +92,7 @@ export class EventParser {
 
     // Тело сокет-сообщения не имеет метки времени — копим до маркера End.
     if (this.pending) {
-      if (SOCKET_END_RE.test(raw)) {
+      if (maySocketMarker(raw) && SOCKET_END_RE.test(raw)) {
         const done = this.pending;
         this.pending = null;
         return this.finishSocket(done, line);
@@ -78,7 +102,7 @@ export class EventParser {
       // тело» и молча глотал ВСЕ последующие события до конца сессии.
       // Поэтому недописанный дамп бросаем, как только строка опознаётся
       // как начало нового дампа или любое обычное событие.
-      if (SOCKET_START_RE.test(raw)) {
+      if (maySocketMarker(raw) && SOCKET_START_RE.test(raw)) {
         this.pending = null;
         // Дальше строка разбирается как обычное начало дампа.
       } else {
@@ -97,6 +121,7 @@ export class EventParser {
 
   /** Однострочные события — всё, кроме сокет-дампов. */
   private parseEvent(raw: string, line: number): LogEvent | null {
+    if (!mayCarryEvent(raw)) return null;
     const ts = parseTimestamp(raw);
 
     let m: RegExpExecArray | null;
@@ -188,6 +213,7 @@ export class EventParser {
   }
 
   private parseSocketStart(raw: string): null {
+    if (!maySocketMarker(raw)) return null;
     const m = SOCKET_START_RE.exec(raw);
     if (m) {
       this.pending = {
