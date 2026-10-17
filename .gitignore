@@ -27,6 +27,8 @@ debug/
 # Тексты клиента игры (тексты издателя) и извлечённые игровые файлы — только
 # локально. Числа и ID из них переносятся в docs/prison/rules.md.
 docs/prison/client-texts.*.md
+# Все JSON с текстами (client-config, relic, event, localization-records…) и
+# архив извлечённых игровых файлов source-files.zip. В git — только manifest
+# (пути и контрольные суммы, без текстов).
 docs/prison/client-data/*
-!docs/prison/client-data/client-config.json
 !docs/prison/client-data/manifest.json
