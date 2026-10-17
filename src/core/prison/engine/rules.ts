@@ -17,7 +17,8 @@ import {
   F_VIS_RARE, F_VIS_TIER, HUNT_LEFT, HUNT_LION, HUNT_PREY, LOCK, NEST, NEXT, OBJECTIVE_ID, OBJ_DONE, OBJ_PROGRESS,
   OFFER, OFFER_GIFT, OFFER_KIND, OFFER_N, OFFER_TOOL, OFFICE_LEFT, PICK_TOOLS, PICK_GIFTS, PRE_BEAST, PRE_TIER,
   P_CHAIN, P_DAYEND, P_END, P_EVENT, P_MANAGE, P_MORNING, P_OFFICE, P_PATROL, P_RATWAY, REROLLS, START, STAT_BITES,
-  STAT_DEVOURS, STAT_EVENTS, STAT_OPENED, STAT_STEPS, STORAGE, TIER, TOOLS, USED, USED_DEVOUR, USED_HUNT, USED_SWAP, WARDEN,
+  STAT_DEVOURS, STAT_EVENTS, STAT_OPENED, STAT_STEPS, STORAGE, TIER, TOOLS, USED, USED_DEVOUR, USED_HUNT, USED_SWAP, USURP,
+  WARDEN,
   type State, dist, hasTool,
 } from './state.js';
 
@@ -96,8 +97,43 @@ function doorFloor(s: State, c: number): number {
   return hasTool(s, TOOL.hook) && floor < 1 ? 1 : floor;
 }
 
-function randomEvent(r: Rng): number {
-  return POOL[r.int(POOL.length)]!;
+/**
+ * Событие из пула: 13 постоянных и текущая ступень Узурпации, если она ещё
+ * в пуле (клиент 252–255: ступень заменяет себя в пуле следующей). Доли
+ * поровну. [догадка: веса событий не найдены]
+ */
+function randomEvent(s: State, r: Rng): number {
+  const u = s.m[USURP]!;
+  const n = POOL.length + (u >= 0 ? 1 : 0);
+  const k = r.int(n);
+  return k < POOL.length ? POOL[k]! : u;
+}
+
+/** Поставить событие в случайную камеру без события; mask — где можно. */
+function addEvent(s: State, r: Rng, mask: number): void {
+  const c = pickBit(mask, r);
+  if (c >= 0) s.m[EVT + c] = randomEvent(s, r) + 1;
+}
+
+function eventCount(s: State): number {
+  let n = 0;
+  for (let c = 1; c < CELLS; c++) if (s.m[EVT + c] !== 0) n++;
+  return n;
+}
+
+/**
+ * Клиент 310 «棋盘最小事变标记数» = 1: меток событий на поле не меньше
+ * eventMin. Добираются в любую камеру без события, открытую или запертую.
+ * [догадка: когда и куда добираются]
+ */
+export function topUpEvents(s: State, r: Rng, p: Params): void {
+  for (let n = eventCount(s); n < p.eventMin; n++) addEvent(s, r, noEventMask(s));
+}
+
+function noEventMask(s: State): number {
+  let mask = 0;
+  for (let c = 1; c < CELLS; c++) if (s.m[EVT + c] === 0) mask |= 1 << c;
+  return mask;
 }
 
 // ── цели ────────────────────────────────────────────────────────────────────
@@ -155,7 +191,7 @@ export function relock(s: State, r: Rng, p: Params, c: number): void {
   m[PRE_TIER + c] = -1;
   m[PRE_BEAST + c] = -1;
   if (m[CHAIN_EATER] === c) m[CHAIN_EATER] = -1;
-  if (m[EVT + c] === 0 && r.chance(p.relockEvent)) m[EVT + c] = randomEvent(r) + 1;
+  if (m[EVT + c] === 0 && r.chance(p.relockEvent)) m[EVT + c] = randomEvent(s, r) + 1;
 }
 
 /**
@@ -290,7 +326,7 @@ export function targets(s: State, e: number): number {
     const bt = m[BEAST + t]!;
     const food = bt === f1 || bt === f2;
     if (
-      (food && (tt === te || anyTier)) ||
+      (food && (tt === te || (anyTier && tt < te))) ||
       (crown && tt === te) ||
       (skewer && bt === RAT && tt === te) ||
       (maul && food && tt > te) ||
@@ -319,7 +355,8 @@ export function bite(s: State, r: Rng, p: Params, e: number, t: number, inChain:
   let gain = 1;
   if (door) gain = p.clawsGain;
   else if (be === MAMMOTH && hasTool(s, TOOL.maul) && isFood(be, bt)) gain = Math.max(1, tt + 2 - te);
-  else if (tt < te && !r.chance(1 - p.oppressStep * (te - tt))) gain = 0; // «Подавление»
+  // Клиент 146: после поедания ниже по редкости Гильотиной — «Подавление».
+  else if (tt < te && be === WOLF && bt === RAT && hasTool(s, TOOL.guillotine) && !r.chance(1 - p.oppressStep * (te - tt))) gain = 0;
   if (be === RAT && hasTool(s, TOOL.skewer)) gain += p.skewerBonus;
   if (be === LION && hasTool(s, TOOL.crown)) gain += p.crownBonus;
   if (hasTool(s, TOOL.whip) && r.chance(p.whipChance)) gain++;
@@ -359,13 +396,19 @@ function afterDevour(s: State, r: Rng, p: Params, e: number): void {
   if (m[TIER + e]! >= 0 && hasTool(s, TOOL.revenge) && r.chance(p.revengeChance)) openFood(s, r, p, e);
 }
 
-/** Открыть случайную запертую камеру с первой едой узника e его редкости. */
+/**
+ * Открыть случайную запертую камеру с узником, которого e гарантированно
+ * может съесть (клиент 104, 221): его редкости, зверь — случайный из тех,
+ * над кем у e преимущество. [догадка: как выбирается зверь]
+ */
 function openFood(s: State, r: Rng, p: Params, e: number): void {
   const m = s.m;
   const c = pickBit(lockedMask(s), r);
   if (c < 0) return;
+  const be = m[BEAST + e]!;
+  const second = SECOND_FOOD[be]!;
   m[PRE_TIER + c] = m[TIER + e]!;
-  m[PRE_BEAST + c] = FIRST_FOOD[m[BEAST + e]!]!;
+  m[PRE_BEAST + c] = second >= 0 && r.int(2) === 1 ? second : FIRST_FOOD[be]!;
   openCell(s, r, p, c);
 }
 
@@ -438,22 +481,21 @@ export function morning(s: State, r: Rng, p: Params): void {
   if (hasTool(s, TOOL.ravenous)) ravenous(s, r, p);
   if (hasTool(s, TOOL.coin) && r.chance(p.coinChance)) coin(s, r, p);
 
+  // Клиент 141, 145, 147: каждое утро по одной новой метке. Камера с меткой
+  // второй раз не выбирается. [догадка: метки не складываются]
   if (hasTool(s, TOOL.tongs)) {
-    let marked = false;
     let mammoths = 0;
     for (let c = 1; c < CELLS; c++) {
-      if (m[TIER + c]! < 0) continue;
-      if (m[FLAGS + c]! & F_TUSK) marked = true;
-      if (m[BEAST + c] === MAMMOTH) mammoths |= 1 << c;
+      if (m[TIER + c]! >= 0 && m[BEAST + c] === MAMMOTH && !(m[FLAGS + c]! & F_TUSK)) mammoths |= 1 << c;
     }
-    const c = marked ? -1 : pickBit(mammoths, r);
+    const c = pickBit(mammoths, r);
     if (c >= 0) m[FLAGS + c] = m[FLAGS + c]! | F_TUSK;
   }
 
   if (hasTool(s, TOOL.claws)) {
-    let scratched = false;
-    for (let c = 1; c < CELLS; c++) if (m[LOCK + c] === 1 && m[FLAGS + c]! & F_SCRATCH) scratched = true;
-    const c = scratched ? -1 : pickBit(lockedMask(s), r);
+    let free = 0;
+    for (let c = 1; c < CELLS; c++) if (m[LOCK + c] === 1 && !(m[FLAGS + c]! & F_SCRATCH)) free |= 1 << c;
+    const c = pickBit(free, r);
     if (c >= 0) {
       preset(s, r, p, c);
       m[FLAGS + c] = m[FLAGS + c]! | F_SCRATCH | F_VIS_TIER;
@@ -461,9 +503,9 @@ export function morning(s: State, r: Rng, p: Params): void {
   }
 
   if (hasTool(s, TOOL.ironbox)) {
-    let nests = false;
-    for (let c = 1; c < CELLS; c++) if (m[NEST + c]! > 0) nests = true;
-    const c = nests ? -1 : pickBit(lockedMask(s), r);
+    let free = 0;
+    for (let c = 1; c < CELLS; c++) if (m[LOCK + c] === 1 && m[NEST + c] === 0) free |= 1 << c;
+    const c = pickBit(free, r);
     if (c >= 0) m[NEST + c] = p.ironboxDays;
   }
 
@@ -476,6 +518,7 @@ export function morning(s: State, r: Rng, p: Params): void {
     raise(s, r, p, lion, 1);
   }
 
+  topUpEvents(s, r, p);
   dealDoors(s, r, p);
   m[NEXT] = P_PATROL;
 }
@@ -506,27 +549,28 @@ function ravenous(s: State, r: Rng, p: Params): void {
   raise(s, r, p, e, gain);
 }
 
-/** Монета участи братьев: пара одинаковых (зверь и редкость) — один уходит, другой растёт. */
+/**
+ * Монета участи братьев (клиент 113): случайно убирает 1 идентичного узника,
+ * затем случайный из оставшихся идентичных ему +2.
+ */
 function coin(s: State, r: Rng, p: Params): void {
   const m = s.m;
-  let pairs = 0;
+  let twins = 0;
   for (let a = 1; a < CELLS; a++) {
     if (m[TIER + a]! < 0) continue;
-    for (let b = a + 1; b < CELLS; b++) if (m[TIER + b] === m[TIER + a] && m[BEAST + b] === m[BEAST + a]) pairs++;
-  }
-  if (pairs === 0) return;
-  let k = r.int(pairs);
-  for (let a = 1; a < CELLS; a++) {
-    if (m[TIER + a]! < 0) continue;
-    for (let b = a + 1; b < CELLS; b++) {
-      if (m[TIER + b] !== m[TIER + a] || m[BEAST + b] !== m[BEAST + a]) continue;
-      if (k-- > 0) continue;
-      const first = r.int(2) === 0;
-      remove(s, r, p, first ? a : b);
-      raise(s, r, p, first ? b : a, p.coinBonus);
-      return;
+    for (let b = 1; b < CELLS; b++) {
+      if (b !== a && m[TIER + b] === m[TIER + a] && m[BEAST + b] === m[BEAST + a]) twins |= 1 << a;
     }
   }
+  const gone = pickBit(twins, r);
+  if (gone < 0) return;
+  let rest = 0;
+  for (let b = 1; b < CELLS; b++) {
+    if (b !== gone && m[TIER + b] === m[TIER + gone] && m[BEAST + b] === m[BEAST + gone]) rest |= 1 << b;
+  }
+  remove(s, r, p, gone);
+  const c = pickBit(rest, r);
+  if (c >= 0) raise(s, r, p, c, p.coinBonus);
 }
 
 /**
@@ -604,19 +648,20 @@ export function patrol(s: State, r: Rng, p: Params, cell: number): void {
   }
   if (hasTool(s, TOOL.shortchain) && steps <= p.shortchainSteps && r.chance(p.shortchainChance)) openRandom(s, r, p);
   if (hasTool(s, TOOL.shackles) && steps >= p.shacklesSteps && r.chance(p.shacklesChance)) raiseRandom(s, r, p, 1, 1);
-  arrive(s, p, cell);
+  arrive(s, r, p, cell);
 }
 
 /** «Крысиная тропа»: переход без шагов; дверь открывается, орудия обхода не срабатывают. */
 export function ratway(s: State, r: Rng, p: Params, cell: number): void {
   s.m[WARDEN] = cell;
   openCell(s, r, p, cell);
-  arrive(s, p, cell);
+  arrive(s, r, p, cell);
 }
 
-function arrive(s: State, p: Params, cell: number): void {
+function arrive(s: State, r: Rng, p: Params, cell: number): void {
   const m = s.m;
   if (cell === OFFICE) {
+    tyrannyArrive(s, r, p);
     m[OFFICE_LEFT] = officeRounds(s, p);
     m[NEXT] = P_OFFICE;
   } else if (m[EVT + cell] !== 0) {
@@ -643,23 +688,38 @@ function doorTools(s: State, r: Rng, p: Params, c: number): void {
 
 // ── допросная ───────────────────────────────────────────────────────────────
 
-/** Выборов в допросной за визит: 1, с «Тиранией» ещё tyrannyExtra. */
-export function officeRounds(s: State, p: Params): number {
-  return 1 + (s.m[START] === START_EVENT.tyranny ? p.tyrannyExtra : 0);
+/** Выборов в допросной за визит: один. */
+export function officeRounds(_s: State, _p: Params): number {
+  return 1;
 }
 
-export function office(s: State, r: Rng, p: Params, instigate: boolean): void {
-  const m = s.m;
-  if (instigate) {
-    let mask = lockedNoEventMask(s);
-    for (let i = 0; i < p.instigateDoors && mask; i++) {
-      const c = pickBit(mask, r);
-      mask &= ~(1 << c);
-      m[EVT + c] = randomEvent(r) + 1;
-    }
-  } else {
+/** «Подстрекнуть»: событие за случайную запертую дверь без события. [догадка: только запертые] */
+function instigate(s: State, r: Rng, p: Params): void {
+  let mask = lockedNoEventMask(s);
+  for (let i = 0; i < p.instigateDoors && mask; i++) {
+    const c = pickBit(mask, r);
+    mask &= ~(1 << c);
+    s.m[EVT + c] = randomEvent(s, r) + 1;
+  }
+}
+
+/**
+ * «Злоупотребление властью» (клиент 301): при каждой остановке в допросной
+ * ещё tyrannyExtra раз автоматически Подстрекнуть и Наградить. [догадка:
+ * срабатывают при приходе, до выбора игрока, сначала Подстрекнуть]
+ */
+export function tyrannyArrive(s: State, r: Rng, p: Params): void {
+  if (s.m[START] !== START_EVENT.tyranny) return;
+  for (let i = 0; i < p.tyrannyExtra; i++) {
+    instigate(s, r, p);
     raiseRandom(s, r, p, 1, 1);
   }
+}
+
+export function office(s: State, r: Rng, p: Params, choose: boolean): void {
+  const m = s.m;
+  if (choose) instigate(s, r, p);
+  else raiseRandom(s, r, p, 1, 1);
   m[OFFICE_LEFT] = m[OFFICE_LEFT]! - 1;
   m[NEXT] = m[OFFICE_LEFT]! > 0 ? P_OFFICE : P_MANAGE;
 }
@@ -687,12 +747,13 @@ export function runEvent(s: State, r: Rng, p: Params, c: number, ev: number): vo
       m[CHAIN_REACTION] = 1;
       break;
     case EVENT.execution: {
+      // Клиент 222: все низшие узники, над которыми у текущего преимущество; +1 за каждого.
       const te = m[TIER + c]!;
       if (te < 0) break;
-      const food = FIRST_FOOD[m[BEAST + c]!]!;
+      const be = m[BEAST + c]!;
       let n = 0;
       for (let t = 1; t < CELLS; t++) {
-        if (t !== c && m[BEAST + t] === food && m[TIER + t]! >= 0 && m[TIER + t]! < te) {
+        if (t !== c && m[TIER + t]! >= 0 && m[TIER + t]! < te && isFood(be, m[BEAST + t]!)) {
           remove(s, r, p, t);
           n++;
         }
@@ -742,9 +803,10 @@ export function runEvent(s: State, r: Rng, p: Params, c: number, ev: number): vo
       break;
     }
     case EVENT.convict: {
+      // Клиент 201: камера с узником не ниже Легендарной. [догадка: доли — шансы двери от Легендарной]
       const t = pickBit(lockedMask(s), r);
       if (t < 0) break;
-      m[PRE_TIER + t] = r.int(2) === 0 ? LEGENDARY : SUPREME;
+      m[PRE_TIER + t] = rollTier(r, p.doorOdds, LEGENDARY);
       m[PRE_BEAST + t] = r.int(4);
       openCell(s, r, p, t);
       break;
@@ -768,13 +830,12 @@ export function runEvent(s: State, r: Rng, p: Params, c: number, ev: number): vo
     case EVENT.usurp2:
     case EVENT.usurp3:
     case EVENT.usurp4: {
-      // Карта: «Случайно улучшить редкость 1 узника на N рангов…»
+      // Клиент 252–255: I — 1 узник +1, II — 1 узник +2, III — 2 узника +2,
+      // IV — все +2. Ступень заменяет себя в пуле следующей, IV уходит из пула.
       const level = ev - EVENT.usurp1;
-      raiseRandom(s, r, p, 1, p.usurpGain[level]!);
-      if (ev !== EVENT.usurp4) {
-        const t = pickBit(lockedNoEventMask(s), r);
-        if (t >= 0) m[EVT + t] = ev + 2;
-      }
+      const n = p.usurpCount[level]!;
+      raiseRandom(s, r, p, n < 0 ? CELLS : n, p.usurpGain[level]!);
+      if (m[USURP] === ev) m[USURP] = ev === EVENT.usurp4 ? -1 : ev + 1;
       break;
     }
     case EVENT.ratway:
@@ -833,7 +894,8 @@ export function swap(s: State, r: Rng, p: Params): void {
       mask &= ~(1 << t);
       remove(s, r, p, t);
     }
-    tier = oldTier + 1;
+    // Клиент 121: «редкость после замены гарантированно повышается». [догадка: бросок замены не ниже прежней + 1]
+    tier = rollTier(r, p.replaceOdds, Math.min(oldTier + 1, PRISMATIC));
   } else {
     let floor = hasTool(s, TOOL.rope) ? 2 : 0;
     if (floor < 1 && hasTool(s, TOOL.hook)) floor = 1;
@@ -987,7 +1049,7 @@ export interface RunSetup {
   startPick: boolean;
 }
 
-/** Новый забег: надзиратель в допросной, камеры заперты, события за дверями. */
+/** Новый забег: надзиратель в допросной, 4 случайные камеры открыты, остальные заперты, метки событий. */
 export function newRun(s: State, r: Rng, p: Params, setup: RunSetup): void {
   const m = s.m;
   m.fill(0);
@@ -996,19 +1058,22 @@ export function newRun(s: State, r: Rng, p: Params, setup: RunSetup): void {
     m[TIER + c] = -1;
     m[PRE_TIER + c] = -1;
     m[PRE_BEAST + c] = -1;
-    if (c !== OFFICE) {
-      m[LOCK + c] = 1;
-      if (r.chance(p.doorEvent)) m[EVT + c] = randomEvent(r) + 1;
-    }
+    if (c !== OFFICE) m[LOCK + c] = 1;
   }
-  m[WARDEN] = OFFICE;
+  m[USURP] = EVENT.usurp1;
+  m[OBJECTIVE_ID] = -1; // цель ставится в конце: стартовые камеры её не двигают
+  m[TOOLS] = setup.tools & ALL_TOOLS;
   m[START] = setup.start;
+  // Клиент 309 «开局随机开房数» = 4; на своих кадрах первого дня открыто 4 камеры.
+  for (let i = 0; i < p.startOpen; i++) openRandom(s, r, p);
+  for (let c = 1; c < CELLS; c++) if (m[LOCK + c] === 1 && r.chance(p.doorEvent)) m[EVT + c] = randomEvent(s, r) + 1;
+  topUpEvents(s, r, p);
+  m[WARDEN] = OFFICE;
   m[DAY_LIMIT] = setup.start === START_EVENT.ironlaw ? p.ironLawDays : p.days;
   m[REROLLS] = p.rerolls;
   m[CHAIN_EATER] = -1;
   m[HUNT_LION] = -1;
   m[HUNT_PREY] = -1;
-  m[TOOLS] = setup.tools & ALL_TOOLS;
   m[PICK_TOOLS] = setup.startPick ? 1 : 0;
   m[NEXT] = P_MORNING;
   setObjective(s, r, p, setup.objective);

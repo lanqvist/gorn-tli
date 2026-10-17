@@ -94,8 +94,10 @@ export const STAT_BITES = S0 + 33;
 export const STAT_STEPS = S0 + 34;
 export const STAT_EVENTS = S0 + 35;
 export const STAT_DEVOURS = S0 + 36;
+/** Ступень Узурпации в пуле событий (EVENT.usurp1…usurp4), −1 — Узурпации в пуле нет. */
+export const USURP = S0 + 37;
 
-export const SIZE = S0 + 37;
+export const SIZE = S0 + 38;
 
 // ── фазы ────────────────────────────────────────────────────────────────────
 

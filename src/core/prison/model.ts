@@ -57,25 +57,34 @@ export const TOOL_NAMES: Record<ToolId, string> = {
   whip: 'Шипастая железная плеть',
   saw: 'Ржавая пила',
   collar: 'Шипастый ошейник безумного зверя',
-  muzzle: 'Пыточный намордник',
+  muzzle: 'Пыточный намордник бешеного зверя',
   revenge: 'Железная дева мстителя',
   cage: 'Переполненная клетка зверей',
   skewer: 'Шампур крысиных голов: Огромная крыса',
   crown: 'Железная корона короля тюрьмы: Яростный лев',
-  maul: 'Молот «Слоновья нога»: Мамонт',
-  guillotine: 'Клыкастая гильотина: Альфа-волк',
-  ravenous: 'Голодная удушающая цепь',
+  maul: 'Молот Слоновья нога: Слон',
+  guillotine: 'Гильотина с волчьими клыками: Вожак',
+  ravenous: 'Голодная удушающая цепь лютого зверя',
   rope: 'Висельная петля',
   pestle: 'Железный пест',
   scales: 'Весы тюремщика',
   axe: 'Палаческая секира надзирателя',
   maiden: 'Рассечённый саркофаг',
   scapegoat: 'Гильотина козла отпущения',
-  tongs: 'Железные щипцы похоти: Мамонт',
-  claws: 'Грязные когти: Альфа-волк',
-  ironbox: 'Шевелящийся железный ящик: Огромная крыса',
+  tongs: 'Клещи порока: Слон',
+  claws: 'Грязный железный коготь: Вожак',
+  ironbox: 'Кишащий железный ящик: Огромная крыса',
   coin: 'Монета участи братьев',
   trap: 'Окровавленный капкан: Яростный лев',
+};
+
+/** ID орудия в клиенте игры (таблица relic, docs/prison/client-datamining.md). */
+export const TOOL_CLIENT_ID: Record<ToolId, number> = {
+  muzzle: 101, ravenous: 102, collar: 103, revenge: 104, cage: 105, whip: 106, saw: 107,
+  blacklist: 111, keys: 112, coin: 113, fire: 114, dogtag: 115, forged: 116, hook: 117,
+  scapegoat: 121, axe: 122, maiden: 123, scales: 124, rope: 125, stake: 126, pestle: 127,
+  shortchain: 131, shackles: 132,
+  tongs: 141, maul: 142, trap: 143, crown: 144, claws: 145, guillotine: 146, ironbox: 147, skewer: 148,
 };
 
 // ── подарки сокровищницы (§9) ───────────────────────────────────────────────
@@ -84,11 +93,14 @@ export const GIFT_IDS = ['ring', 'horn', 'wine', 'brand'] as const;
 export type GiftId = (typeof GIFT_IDS)[number];
 export const GIFT = Object.fromEntries(GIFT_IDS.map((id, i) => [id, i])) as { readonly [K in GiftId]: number };
 
+/** ID подарка в клиенте (таблица colored_reward). */
+export const GIFT_CLIENT_ID: Record<GiftId, number> = { ring: 1, horn: 2, wine: 3, brand: 4 };
+
 // ── события (§8) ────────────────────────────────────────────────────────────
 
 export const EVENT_IDS = [
   'chain', // Цепная реакция
-  'execution', // Казнь
+  'execution', // Эффективность казни
   'behind', // Закулисные махинации
   'appetite', // Зверский аппетит
   'convict', // Каторжник
@@ -98,7 +110,7 @@ export const EVENT_IDS = [
   'usurp2',
   'usurp3',
   'usurp4',
-  'ratway', // Крысиная тропа
+  'ratway', // Крысиный ход в стоках
   'treasure', // Поиск «сокровищ»
   'rival', // Заклятый враг
   'luck', // Делим удачу
@@ -108,14 +120,21 @@ export const EVENT_IDS = [
 export type EventId = (typeof EVENT_IDS)[number];
 export const EVENT = Object.fromEntries(EVENT_IDS.map((id, i) => [id, i])) as { readonly [K in EventId]: number };
 
-/** События, которые выпадают за дверью и от «Подстрекнуть». Узурпация II–IV — только по цепочке. */
+/** ID события в клиенте (таблица event). */
+export const EVENT_CLIENT_ID: Record<EventId, number> = {
+  convict: 201, freedom: 202, behind: 203, appetite: 211, extra: 212, luck: 213, rival: 221, execution: 222,
+  raven: 231, treasure: 232, ratway: 241, chain: 242, escort: 251, usurp1: 252, usurp2: 253, usurp3: 254, usurp4: 255,
+};
+
+/** Постоянная часть пула событий. Узурпация — одна текущая ступень, её держит состояние (клиент 252–255). */
 export const EVENT_POOL: readonly EventId[] = [
-  'chain', 'execution', 'behind', 'appetite', 'convict', 'raven', 'freedom', 'usurp1', 'ratway', 'treasure',
+  'chain', 'execution', 'behind', 'appetite', 'convict', 'raven', 'freedom', 'ratway', 'treasure',
   'rival', 'luck', 'escort', 'extra',
 ];
 
 // ── цели и стартовые события (§10) ──────────────────────────────────────────
 
+/** Порядок здесь свой; ID цели в клиенте (таблица task): apex 1, jungle 2, doors 3, currents 4, walk 5. */
 export const OBJECTIVE_IDS = [
   'apex', // Загнанный зверь-царь
   'jungle', // Закон джунглей
@@ -128,12 +147,13 @@ export const OBJECTIVE = Object.fromEntries(OBJECTIVE_IDS.map((id, i) => [id, i]
   readonly [K in ObjectiveId]: number;
 };
 
+/** Особые темы забега (клиент 301–304; шанс темы за забег 12 %, клиент 161). */
 export const START_EVENT_IDS = [
   'none',
-  'cagefight', // Бой в клетке
-  'ironlaw', // Железный закон
-  'tyranny', // Тирания
-  'abundance', // Изобилие
+  'cagefight', // 304 Схватка узников
+  'ironlaw', // 303 Железный закон
+  'tyranny', // 301 Злоупотребление властью
+  'abundance', // 302 Расточительность
 ] as const;
 export type StartEventId = (typeof START_EVENT_IDS)[number];
 export const START_EVENT = Object.fromEntries(START_EVENT_IDS.map((id, i) => [id, i])) as {
@@ -161,42 +181,50 @@ export type Action =
 /** Доли по редкостям 0…5. */
 export type TierOdds = readonly [number, number, number, number, number, number];
 
+/**
+ * Числа правил. Источник у каждого: «клиент N» — ID записи в клиенте игры
+ * (docs/prison/client-datamining.md; тексты и числовой конфиг), [замер] —
+ * свои забеги, [догадка] — не найдено ни в клиенте, ни в замерах.
+ */
 export interface Params {
-  /** Дней в забеге; «Железный закон» — ironLawDays. */
+  /** Дней в забеге (20); «Железный закон» (клиент 303) — 30. */
   days: number;
   ironLawDays: number;
-  /** Мест в хранилище призматических. */
+  /** Мест в хранилище призматических (клиент config 114 = 10). */
   storage: number;
-  /** Обновлений выбора орудий на забег: счётчик общий на забег (tlidb «Осталось раз»). */
+  /** Обновлений выбора орудий на забег; счётчик общий на забег (глоссарий 16000106). [догадка: базовое 1 — по кадрам] */
   rerolls: number;
-  /** Кто за дверью. [замер, 7 191 дверь] */
+  /** Кто за дверью. [замер, 7 191 дверь; в клиенте не найдено] */
   doorOdds: TierOdds;
-  /** Новый узник при замене. [замер, 696 замен] */
+  /** Новый узник при замене. [замер, 696 замен; в клиенте не найдено] */
   replaceOdds: TierOdds;
-  /** Пунктов назначения утром. */
+  /** Пунктов назначения утром (клиент config 305 = 3 кандидата броска). */
   doorCards: number;
-  /** Утром без «минус-карточных» орудий карточек на одну меньше. [замер, 8 592 утра] */
+  /** Утром без «минус-карточных» орудий карточек на одну меньше. [замер, 8 592 утра; механизм не найден] */
   oneLessDoor: number;
-  /** Карточки — среди шагов 1…doorReach вперёд. [замер] */
+  /** Карточки — среди шагов 1…doorReach (клиент config 306–307: бросок 1–6). */
   doorReach: number;
-  /** Событие за дверью в начале забега. [замер, 10 370 дверей] */
+  /** Камер, открытых в начале забега (клиент config 309 = 4; на своих кадрах первого дня — 4). */
+  startOpen: number;
+  /** Меток событий на поле не меньше (клиент config 310 = 1). [догадка: когда добираются — утром] */
+  eventMin: number;
+  /** Событие за каждой запертой дверью в начале забега сверх минимума. [догадка: 0 — хватает eventMin] */
   doorEvent: number;
-  /** Событие за дверью, которая снова заперлась. [догадка: как в первый день] */
+  /** Событие за дверью, которая снова заперлась. [догадка: 0 — хватает eventMin] */
   relockEvent: number;
-  /** «Закон джунглей» считает каждое Пожирание, укус цепочки тоже (карты зовут его «цепным Пожиранием»). */
+  /** «Закон джунглей» (клиент task 2) считает каждое Пожирание, укус цепочки тоже. [догадка по тексту 103] */
   jungleCountsBites: boolean;
   /** После выполнения цели выпадает следующая (другая случайная). [догадка] */
   objectiveRepeat: boolean;
-  /** Сколько нужно для цели. */
+  /** Сколько нужно для цели (клиент task 1–5). */
   objectiveTarget: Readonly<Record<ObjectiveId, number>>;
-  /** «Тирания»: дополнительных выборов в допросной за визит. [догадка] */
+  /** «Злоупотребление властью» (клиент 301): автоматических Подстрекнуть и Наградить за остановку в допросной. */
   tyrannyExtra: number;
-  /** «Изобилие»: подарков после каждого призматического. [факт] */
+  /** «Расточительность» (клиент 302): выборов сокровища за призматического, 1 + 2. */
   abundanceGifts: number;
 
-  // орудия обхода и дверей
+  // орудия обхода и дверей (клиент 111–117, 126, 131–132)
   forgedChance: number;
-  /** На карте 80 %, в замерах 63 % (199 случаев). */
   keysChance: number;
   dogtagChance: number;
   blacklistLocked: number;
@@ -208,7 +236,7 @@ export interface Params {
   shacklesChance: number;
   stakeChance: number;
 
-  // пожирание
+  // пожирание (клиент 101–107, 142, 144, 146, 148)
   whipChance: number;
   sawChance: number;
   collarChance: number;
@@ -217,50 +245,51 @@ export interface Params {
   revengeChance: number;
   cageChance: number;
   /**
-   * «Подавление» (tlidb): за каждый ранг разницы редкостей шанс повышения −5 %.
-   * Применяется к укусу узника ниже едока (Гильотина, «Бой в клетке»). [догадка: к чему относится]
+   * «Подавление» (глоссарий 16000117): за каждый ранг разницы шанс повышения −5 %.
+   * Срабатывает после поедания Гильотиной (клиент 146). [догадка: от базового 100 %]
    */
   oppressStep: number;
-  /** Добавка к укусу крысы с «Шампуром». */
+  /** Шампур (клиент 148): крыса после Пожирания дополнительно +2. */
   skewerBonus: number;
-  /** Добавка к укусу льва с «Короной», как у «Шампура»: итого +1 + crownBonus. [догадка] */
+  /** Корона (клиент 144): лев после Пожирания дополнительно +2. */
   crownBonus: number;
   ravenousChance: number;
 
-  // замена
+  // замена (клиент 121–127)
   scalesChance: number;
   axeOpens: number;
   maidenBonus: number;
   scapegoatRemoves: number;
 
-  // утро
+  // утро и метки (клиент 102, 113, 141, 143, 145, 147; глоссарий)
   tongsTargets: number;
-  /** Укус волка в камеру с Царапинами: обычный +1 и ещё +2 (tlidb «Царапины»). */
+  /** Укус волка в камеру с Царапинами: обычный +1 и ещё +2 (глоссарий «Царапины»). */
   clawsGain: number;
   ironboxDays: number;
-  /** Гнездо открывается Редкой крысой (tlidb «Крысиное гнездо»). */
+  /** Гнездо открывается Редкой крысой (глоссарий «Крысиное гнездо»). */
   ironboxTier: number;
   coinChance: number;
   coinBonus: number;
-  /** Метка «Добыча» длится 3 хода (tlidb). */
+  /** Метка «Добыча» длится 3 хода (глоссарий). */
   trapMornings: number;
 
-  // события
+  // события (клиент 201–255)
   appetiteTries: number;
   appetiteChance: number;
   ravenCells: number;
   freedomOpens: number;
-  /** Узурпация I…IV: прирост случайного узника. [I, II — карта; III, IV — догадка по ряду] */
+  /** Узурпация I…IV (клиент 252–255): сколько случайных узников (−1 — все) и на сколько. */
+  usurpCount: readonly [number, number, number, number];
   usurpGain: readonly [number, number, number, number];
-  /** «Добавка»: до стольких случайных узников +1. */
+  /** «Добавка» (клиент 212): до стольких случайных узников +1. */
   extraCount: number;
 
-  // подарки
+  // подарки (клиент colored_reward 1–4)
   ringOpens: number;
   brandCount: number;
 
   // допросная
-  /** «Подстрекнуть»: событий за запертые двери без события (tlidb: одно). */
+  /** «Подстрекнуть»: событий за визит (глоссарий 16000108; игрок). [догадка: только за запертые двери] */
   instigateDoors: number;
 }
 
@@ -274,8 +303,10 @@ const defaults: Params = {
   doorCards: 3,
   oneLessDoor: 0.169,
   doorReach: 6,
-  doorEvent: 0.064,
-  relockEvent: 0.064,
+  startOpen: 4,
+  eventMin: 1,
+  doorEvent: 0,
+  relockEvent: 0,
   jungleCountsBites: true,
   objectiveRepeat: true,
   objectiveTarget: { apex: 1, jungle: 4, doors: 10, walk: 18, currents: 2 },
@@ -302,7 +333,7 @@ const defaults: Params = {
   revengeChance: 0.3,
   cageChance: 0.4,
   oppressStep: 0.05,
-  skewerBonus: 1,
+  skewerBonus: 2,
   crownBonus: 2,
   ravenousChance: 0.4,
 
@@ -323,7 +354,8 @@ const defaults: Params = {
   appetiteChance: 0.5,
   ravenCells: 4,
   freedomOpens: 3,
-  usurpGain: [1, 2, 3, 4],
+  usurpCount: [1, 1, 2, -1],
+  usurpGain: [1, 2, 2, 2],
   extraCount: 3,
 
   ringOpens: 3,

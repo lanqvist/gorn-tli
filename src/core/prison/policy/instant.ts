@@ -190,11 +190,9 @@ function bestBite(t: number, b: number, c: number): number {
   if (hasFood(t, f1, f2)) best = biteOption(t, b, c, t, true);
   else if (b === LION && crown && cnt[row]! + cnt[row + 1]! + cnt[row + 2]! + cnt[row + 3]! > 0) best = biteOption(t, b, c, t, false);
   else if (b === RAT && skewer && cnt[row + RAT]! > 0) best = biteOption(t, b, c, t, false);
-  if (anyTier || (b === MAMMOTH && maul)) {
-    for (let u = anyTier ? 0 : t + 1; u < 5; u++) {
-      if (u !== t && hasFood(u, f1, f2)) best = Math.max(best, biteOption(t, b, c, u, true));
-    }
-  }
+  // «Схватка узников» (клиент 304) — еда ниже по редкости; Молот (142) — выше.
+  if (anyTier) for (let u = 0; u < t; u++) if (hasFood(u, f1, f2)) best = Math.max(best, biteOption(t, b, c, u, true));
+  if (b === MAMMOTH && maul) for (let u = t + 1; u < 5; u++) if (hasFood(u, f1, f2)) best = Math.max(best, biteOption(t, b, c, u, true));
   if (b === WOLF && guillotine) {
     for (let u = 0; u < t; u++) if (cnt[u * 4 + RAT]! > 0) best = Math.max(best, biteOption(t, b, c, u, false));
   }
@@ -327,7 +325,13 @@ function instigateValue(): number {
 
 /** Ценность прихода в камеру c (без орудий хода). */
 function cellValue(c: number): number {
-  if (c === OFFICE) return officeRounds(S, P) * Math.max(bestowValue(), instigateValue());
+  if (c === OFFICE) {
+    const bv = bestowValue();
+    const iv = instigateValue();
+    // «Злоупотребление властью» (клиент 301): ещё автоматически Подстрекнуть и Наградить
+    const auto = m[START] === START_EVENT.tyranny ? P.tyrannyExtra * (bv + iv) : 0;
+    return officeRounds(S, P) * Math.max(bv, iv) + auto;
+  }
   let v = m[EVT + c] !== 0 ? W[W_EVENT]! : 0;
   if (m[LOCK + c] !== 1) return v + manageValue(c);
   v += doorInmateValue(c) - W[W_DOOR]! * frac;
@@ -377,7 +381,7 @@ function fedCount(x: Int32Array): number {
     const b = x[BEAST + c]!;
     let ok = false;
     if (anyTier) {
-      for (let u = 0; u < 5 && !ok; u++) ok = cnt2[u * 4 + FIRST_FOOD[b]!]! > 0 || (SECOND_FOOD[b]! >= 0 && cnt2[u * 4 + SECOND_FOOD[b]!]! > 0);
+      for (let u = 0; u <= t && !ok; u++) ok = cnt2[u * 4 + FIRST_FOOD[b]!]! > 0 || (SECOND_FOOD[b]! >= 0 && cnt2[u * 4 + SECOND_FOOD[b]!]! > 0);
     } else {
       const row = t * 4;
       ok = cnt2[row + FIRST_FOOD[b]!]! > 0 || (SECOND_FOOD[b]! >= 0 && cnt2[row + SECOND_FOOD[b]!]! > 0);

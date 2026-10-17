@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  EVENT, LION, MAMMOTH, OBJECTIVE, RAT, TOOL, TOOL_IDS, WOLF,
+  DEFAULT_PARAMS, EVENT, LION, MAMMOTH, OBJECTIVE, RAT, TOOL, TOOL_IDS, WOLF,
 } from '../../src/core/prison/model.js';
 import {
   applyCode, codeBuffer, createEngine, decode, encode, legalCodes, settle,
@@ -14,7 +14,7 @@ import {
   CHAIN_EATER, CHAIN_REACTION, DAY, DAY_LIMIT, DOORS, DOORS_N, EVT, FLAGS, F_VIS_RARE, F_VIS_TIER, NEXT,
   OBJECTIVE_ID, OBJ_DONE, OBJ_PROGRESS, OFFER_KIND, OFFER_N, OFFER_GIFT, OFFER_TOOL, OFFER, PHASE, PICK_GIFTS,
   PICK_TOOLS, PRE_TIER, P_CHAIN, P_EVENT, P_MANAGE, P_MORNING, P_OFFICE, P_PATROL, P_PICK, P_RATWAY, REROLLS, STAT_BITES,
-  STAT_EVENTS, STAT_STEPS, STORAGE, State, TOOLS, USED, WARDEN, dist,
+  STAT_EVENTS, STAT_STEPS, STORAGE, State, TOOLS, USED, USURP, WARDEN, dist,
 } from '../../src/core/prison/engine/state.js';
 import { NO, P, Seq, YES, beast, blank, hide, inmates, locked, manageAt, put, tier } from './engine-helpers.js';
 
@@ -218,14 +218,17 @@ describe('допросная', () => {
     expect(s.m[EVT + 1]).toBe(EVENT.raven + 1);
   });
 
-  it('«Тирания»: ещё 3 выбора за визит', () => {
+  it('«Злоупотребление властью» (клиент 301): при остановке ещё 3 раза Подстрекнуть и Наградить сами, выбор один', () => {
     const s = blank({ start: 'tyranny' });
+    put(s, 5, WOLF, 0);
+    put(s, 6, RAT, 0);
     doorTo(s, 12, 0);
     act(s, { type: 'patrol', cell: 0 });
-    for (let i = 0; i < 3; i++) {
-      act(s, { type: 'office', choice: 'instigate' });
-      expect(s.m[PHASE]).toBe(P_OFFICE);
-    }
+    expect(s.m[PHASE]).toBe(P_OFFICE);
+    let events = 0;
+    for (let c = 1; c < 16; c++) if (s.m[EVT + c] !== 0) events++;
+    expect(events).toBe(3);
+    expect(tier(s, 5) + tier(s, 6)).toBe(3);
     act(s, { type: 'office', choice: 'instigate' });
     expect(s.m[PHASE]).toBe(P_PATROL);
   });
@@ -275,15 +278,15 @@ describe('кто кого ест', () => {
     expect(canEat(s, 1, 2)).toBe(false);
   });
 
-  it('«Бой в клетке»: едят на любой редкости, зверь после укуса не меняется', () => {
+  it('«Схватка узников» (клиент 304): едят свою еду ниже по редкости, но не выше; зверь не меняется', () => {
     const s = blank({ start: 'cagefight' });
     put(s, 1, MAMMOTH, 1);
     put(s, 2, LION, 0);
     put(s, 3, LION, 3);
     expect(canEat(s, 1, 2)).toBe(true);
-    expect(canEat(s, 1, 3)).toBe(true);
+    expect(canEat(s, 1, 3)).toBe(false);
     bite(s, NO, P, 1, 2, false);
-    expect(beast(s, 1)).toBe(MAMMOTH);
+    expect([beast(s, 1), tier(s, 1)]).toEqual([MAMMOTH, 2]);
   });
 });
 
@@ -482,13 +485,13 @@ describe('события', () => {
     expect(s.m[CHAIN_REACTION]).toBe(0);
   });
 
-  it('Казнь: палач убирает свою первую еду ниже своей редкости, +1 за жертву', () => {
+  it('Эффективность казни (клиент 222): убирает всех низших, над кем есть преимущество, +1 за каждого', () => {
     const s = blank();
     put(s, 1, MAMMOTH, 2);
     put(s, 2, LION, 0);
-    put(s, 3, LION, 1);
-    put(s, 4, LION, 2);
-    put(s, 5, WOLF, 0);
+    put(s, 3, WOLF, 1); // вторая еда мамонта
+    put(s, 4, LION, 2); // той же редкости — не низший
+    put(s, 5, RAT, 0); // без преимущества
     runEvent(s, NO, P, 1, EVENT.execution);
     expect(tier(s, 1)).toBe(4);
     expect(locked(s, 2) && locked(s, 3)).toBe(true);
@@ -546,19 +549,39 @@ describe('события', () => {
     expect(inmates(s)).toBe(3);
   });
 
-  it('Узурпация: случайный узник растёт на 1/2/3/4, следующая ступень — за случайной дверью', () => {
-    const s = blank();
-    put(s, 3, WOLF, 1);
-    put(s, 5, RAT, 0);
-    runEvent(s, YES, P, 5, EVENT.usurp1);
-    expect([tier(s, 3), tier(s, 5)]).toEqual([2, 0]); // не узник события, а случайный
-    expect(s.m[EVT + 1]).toBe(EVENT.usurp2 + 1);
-    runEvent(s, YES, P, 5, EVENT.usurp2);
-    expect(tier(s, 3)).toBe(4);
-    runEvent(s, YES, P, 3, EVENT.usurp4);
-    let n = 0;
-    for (let c = 1; c < 16; c++) if (s.m[EVT + c] !== 0) n++;
-    expect(n).toBe(2); // ступени II и III от I и II; IV новой не ставит
+  it('Узурпация (клиент 252–255): I — 1 узник +1, II — 1 узник +2, III — 2 узника +2, IV — все +2; ступени сменяются в пуле', () => {
+    const run = (ev: number) => {
+      const s = blank();
+      put(s, 3, WOLF, 0);
+      put(s, 5, RAT, 0);
+      put(s, 7, LION, 0);
+      s.m[USURP] = ev;
+      runEvent(s, YES, P, 5, ev);
+      let events = 0;
+      for (let c = 1; c < 16; c++) if (s.m[EVT + c] !== 0) events++;
+      expect(events).toBe(0); // следующая ступень не ставится за дверь
+      return { tiers: [tier(s, 3), tier(s, 5), tier(s, 7)].sort(), pool: s.m[USURP] };
+    };
+    expect(run(EVENT.usurp1)).toEqual({ tiers: [0, 0, 1], pool: EVENT.usurp2 });
+    expect(run(EVENT.usurp2)).toEqual({ tiers: [0, 0, 2], pool: EVENT.usurp3 });
+    expect(run(EVENT.usurp3)).toEqual({ tiers: [0, 2, 2], pool: EVENT.usurp4 });
+    expect(run(EVENT.usurp4)).toEqual({ tiers: [2, 2, 2], pool: -1 });
+  });
+
+  it('в начале забега 4 камеры открыты и есть метка события (клиент 309, 310); утром метка добирается', () => {
+    const p = { ...DEFAULT_PARAMS };
+    const s = blank({ params: p });
+    expect(inmates(s)).toBe(4);
+    let events = 0;
+    for (let c = 1; c < 16; c++) if (s.m[EVT + c] !== 0) events++;
+    expect(events).toBe(1);
+    expect(s.m[USURP]).toBe(EVENT.usurp1);
+    for (let c = 1; c < 16; c++) s.m[EVT + c] = 0;
+    s.m[NEXT] = P_MORNING;
+    settle(s, new Rng(3), p);
+    events = 0;
+    for (let c = 1; c < 16; c++) if (s.m[EVT + c] !== 0) events++;
+    expect(events).toBe(1);
   });
 
   it('Заклятый враг: открывается камера с едой текущего узника его редкости', () => {
