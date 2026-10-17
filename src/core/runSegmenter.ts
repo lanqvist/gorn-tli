@@ -1,4 +1,4 @@
-import { isHubAsset } from './patterns.js';
+import { isChallengeLevel, isHubAsset } from './patterns.js';
 import type { EnterLevelEvent, ItemDelta, Run } from './types.js';
 
 /**
@@ -86,11 +86,13 @@ export class RunSegmenter {
   /**
    * areaId — это тип карты, а не экземпляр, поэтому совпадения зоны мало.
    * Продолжением считается только если между выходом и возвратом были
-   * одни хабы, не открывалась новая карта (нет ожидающих вложений)
-   * и прошло меньше RESUME_TTL_MS.
+   * одни хабы, не открывалась новая карта (нет ожидающих вложений),
+   * зона не испытание и прошло меньше RESUME_TTL_MS.
    */
   private tryResume(ev: EnterLevelEvent): boolean {
     if (this.pendingCosts.length > 0) return false;
+    // В испытание не возвращаются порталом: каждый вход — новый забег.
+    if (isChallengeLevel(this.pendingLevelType)) return false;
 
     for (let i = this.runs.length - 1; i >= 0; i--) {
       const run = this.runs[i]!;

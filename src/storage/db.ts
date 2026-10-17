@@ -229,7 +229,7 @@ export class Storage {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const findRun = this.db.prepare(
-      'SELECT id, duration_ms FROM run WHERE started_at = ? AND area_id = ?',
+      'SELECT id, duration_ms, ended_at FROM run WHERE started_at = ? AND area_id = ?',
     );
     const updateRun = this.db.prepare(`
       UPDATE run SET
@@ -250,6 +250,11 @@ export class Storage {
     const clearDrops = this.db.prepare('DELETE FROM drop_item WHERE run_id = ?');
     const clearCosts = this.db.prepare('DELETE FROM cost_item WHERE run_id = ?');
 
+    // Начало следующего забега той же пачки: сохранённая копия, которая
+    // заходит за него, — склейка нескольких заходов, а не полная версия.
+    const starts = [...new Set(runs.map((r) => r.startedAt))].sort((a, b) => a - b);
+    const nextStart = (ts: number): number | undefined => starts.find((t) => t > ts);
+
     let saved = 0;
     this.db.exec('BEGIN');
     try {
@@ -266,7 +271,7 @@ export class Storage {
           run.playerId,
         );
         const row = findRun.get(run.startedAt, run.areaId) as
-          | { id: number; duration_ms: number | null }
+          | { id: number; duration_ms: number | null; ended_at: number | null }
           | undefined;
         if (!row) continue;
 
@@ -275,8 +280,15 @@ export class Storage {
         // ею полную нельзя. Раньше состав дропа перезаписывался всегда,
         // а строка забега — никогда, и после усечённого первого сохранения
         // полный дроп навсегда делился на усечённую длительность.
+        //
+        // Но длиннее не всегда полнее: прежние версии склеивали подряд идущие
+        // заходы в сезонную тюрьму SS14 в один забег. Такая копия перекрывает
+        // следующий забег пачки — её свежий разбор заменяет, иначе добыча
+        // отдельных заходов считалась бы дважды.
+        const next = nextStart(run.startedAt);
+        const merged = next !== undefined && row.ended_at !== null && row.ended_at > next;
         const better =
-          row.duration_ms === null || (run.durationMs ?? 0) >= row.duration_ms;
+          merged || row.duration_ms === null || (run.durationMs ?? 0) >= row.duration_ms;
         if (!better) continue;
 
         updateRun.run(

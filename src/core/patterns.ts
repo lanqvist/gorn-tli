@@ -196,3 +196,19 @@ const HUB_ASSET_RE =
 export function isHubAsset(asset: string | null): boolean {
   return asset !== null && HUB_ASSET_RE.test(asset);
 }
+
+/**
+ * Зоны-испытания, где каждый вход — новый забег, а не возврат через портал.
+ *
+ * SS14: сезонная тюрьма (ZhongZuiDiYu, LevelType 28) открывается кнопкой
+ * старта — с доски (Btn_S16GamePlay_CheckOut_StartChallenge) или за «Оковы»
+ * (Btn_S16GamePlay_Start), — и выход из неё всегда ведёт в укрытие.
+ * Портала обратно нет. Заходы с доски бесплатны, и без этого правила
+ * два-три подряд в пределах окна возврата склеивались в один забег
+ * с суммой добычи: 11 заходов за утро давали 9 забегов.
+ */
+const CHALLENGE_LEVEL_TYPES = new Set([28]);
+
+export function isChallengeLevel(levelType: number | null): boolean {
+  return levelType !== null && CHALLENGE_LEVEL_TYPES.has(levelType);
+}

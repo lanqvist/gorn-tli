@@ -64,6 +64,53 @@ describe('SS14: вход в сезонную зону стоит компасо�
     expect(result.runs.find((r) => r.areaId === 235501)!.costs).toEqual([]);
   });
 
+  it('заходы в тюрьму подряд — отдельные забеги, а не возврат через портал', async () => {
+    // Подлинный ритм 17 октября: заходы с ежедневной доски в 10:28, 10:31
+    // и 10:36, между ними — укрытие. Бесплатные, поэтому расход склейку
+    // не остановит; раньше все три сливались в один забег с суммой добычи.
+    const prison = (enter: string, pick: string, fe: number, leave: string) => [
+      L(enter, 'LevelMgr@ LevelUid, LevelType, LevelId = 344 28 235501'),
+      L(enter, "LevelMgr@:LevelPath, Model = Content/Art/Season/S16/Maps/ZhongZuiDiYu/ZhongZuiDiYu.umap World'/Game/Art/Season/S16/Maps/ZhongZuiDiYu/ZhongZuiDiYu.ZhongZuiDiYu'"),
+      L(enter, 'LevelMgr:_EnterLevelSuccess() 235501'),
+      L(pick, 'ItemChange@ ProtoName=PickItems start'),
+      L(pick, `BagMgr@:Modfy BagItem PageId = 102 SlotId = 0 ConfigBaseId = ${FE_ID} Num = ${fe}`),
+      L(pick, 'ItemChange@ ProtoName=PickItems end'),
+      L(leave, 'LevelMgr@ LevelUid, LevelType, LevelId = 111000 0 110'),
+      L(leave, 'LevelMgr@:LevelPath, Model = Content/Art/Maps/01SD/XZ_YuJinZhiXiBiNanSuo200/XZ_YuJinZhiXiBiNanSuo200.umap'),
+      L(leave, 'LevelMgr:_EnterLevelSuccess() 110'),
+    ];
+    const result = await analyzeLogFile(
+      logFile([
+        L('10.20.00', 'LevelMgr@ LevelUid, LevelType, LevelId = 111000 0 110'),
+        L('10.20.00', 'LevelMgr@:LevelPath, Model = Content/Art/Maps/01SD/XZ_YuJinZhiXiBiNanSuo200/XZ_YuJinZhiXiBiNanSuo200.umap'),
+        L('10.20.00', 'LevelMgr:_EnterLevelSuccess() 110'),
+        L('10.20.01', `BagMgr@:InitBagData PageId = 102 SlotId = 0 ConfigBaseId = ${FE_ID} Num = 1000`),
+        ...prison('10.28.02', '10.29.00', 1030, '10.29.56'),
+        ...prison('10.31.49', '10.32.30', 1050, '10.33.00'),
+        ...prison('10.36.07', '10.37.40', 1066, '10.38.11'),
+      ]),
+    );
+    const zones = result.runs.filter((r) => r.areaId === 235501);
+    expect(zones.map((r) => r.drops.reduce((a, d) => a + d.qty, 0))).toEqual([30, 20, 16]);
+  });
+
+  it('обычная карта после похода в город по-прежнему один забег', async () => {
+    const map = [
+      L('11.00.00', 'LevelMgr@ LevelUid, LevelType, LevelId = 1091407 3 5055'),
+      L('11.00.00', 'LevelMgr@:LevelPath, Model = Content/Art/Maps/05JH/JH_YWMD_00002/JH_YWMD_00002.umap'),
+      L('11.00.00', 'LevelMgr:_EnterLevelSuccess() 5055'),
+    ];
+    const hub = (t: string) => [
+      L(t, 'LevelMgr@ LevelUid, LevelType, LevelId = 111000 0 110'),
+      L(t, 'LevelMgr@:LevelPath, Model = Content/Art/Maps/01SD/XZ_YuJinZhiXiBiNanSuo200/XZ_YuJinZhiXiBiNanSuo200.umap'),
+      L(t, 'LevelMgr:_EnterLevelSuccess() 110'),
+    ];
+    const result = await analyzeLogFile(
+      logFile([...hub('10.59.00'), ...map, ...hub('11.02.00'), ...map.map((l) => l.replace('11.00.00', '11.03.00')), ...hub('11.05.00')]),
+    );
+    expect(result.runs.filter((r) => r.areaId === 5055)).toHaveLength(1);
+  });
+
   it('Push2 в плюс — награда, а не добыча и не вложение', () => {
     // В укрытии Push2 приносит маяки за задания: +10 Steel Forge Beacon.
     expect(deltaKind('Push2', 400021, 10, () => true)).toBe('neutral');

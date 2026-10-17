@@ -116,6 +116,62 @@ describe('база помнит сезон забега и цены', () => {
     expect(seasonsOf(db)).toEqual([SS13]);
   });
 
+  it('склеенные прежней версией заходы в тюрьму заменяются отдельными', () => {
+    const MIN = 60_000;
+    const prison = (start: number, end: number, fe: number[]): Run => ({
+      ...run(start, SS14),
+      areaId: 235501,
+      asset: 'ZhongZuiDiYu',
+      levelType: 28,
+      endedAt: end,
+      durationMs: end - start,
+      drops: fe.map((qty, i) => ({
+        ts: start + (i + 1) * 1000,
+        configBaseId: FE_ID,
+        qty,
+        proto: 'PickItems',
+        kind: 'loot' as const,
+        pageId: 102,
+        slotId: 0,
+      })),
+    });
+    const hub = (start: number, end: number): Run => ({
+      ...run(start, SS14),
+      areaId: 110,
+      asset: 'XZ_YuJinZhiXiBiNanSuo200',
+      isHub: true,
+      endedAt: end,
+      durationMs: end - start,
+      drops: [],
+    });
+    const t = SEASON_START;
+
+    // Прежняя версия: три захода слиты в один забег на 10 минут.
+    db.saveRuns([prison(t, t + 10 * MIN, [19, 50, 27])], SS14);
+
+    // Пересканирование того же лога после исправления.
+    db.saveRuns(
+      [
+        prison(t, t + 2 * MIN, [19]),
+        hub(t + 2 * MIN, t + 3 * MIN),
+        prison(t + 3 * MIN, t + 5 * MIN, [50]),
+        hub(t + 5 * MIN, t + 8 * MIN),
+        prison(t + 8 * MIN, t + 10 * MIN, [27]),
+      ],
+      SS14,
+    );
+
+    const zones = db.loadRuns().filter((r) => r.areaId === 235501);
+    expect(zones.map((r) => r.drops.map((d) => d.qty))).toEqual([[19], [50], [27]]);
+    expect(zones[0]!.durationMs).toBe(2 * MIN);
+  });
+
+  it('усечённая копия из оборванного лога по-прежнему не затирает полную', () => {
+    db.saveRuns([run(SEASON_START, SS14)], SS14); // 84 с
+    db.saveRuns([{ ...run(SEASON_START, SS14), endedAt: SEASON_START + 30_000, durationMs: 30_000 }], SS14);
+    expect(db.loadRuns()[0]!.durationMs).toBe(84_000);
+  });
+
   it('цены отдаются только своего сезона, и тренд — тоже', () => {
     const observe = (store: PriceStore, ts: number, price: number, season: number) => {
       const ev: PriceObservationEvent = {
