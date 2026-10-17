@@ -140,3 +140,41 @@ describe('CSV для Excel', () => {
     expect(csv.slice(1).split('\r\n')).toEqual(['Map,FE', '"Voidlands, Timemark 8",12.35', '']);
   });
 });
+
+describe('история по ценам сезона забега', () => {
+  const ITEM = 5000;
+  const priceIn = (season: number | null) => (id: number) =>
+    id === ITEM ? (season === 1501 ? 2 : 5) : null;
+  const pricing = { forRun: (r: Run) => priceIn(r.seasonId) };
+  const base = (startedAt: number, seasonId: number): Run => ({
+    areaId: 1,
+    asset: 'YL_MaNeiLaYuLin100',
+    levelType: 3,
+    startedAt,
+    endedAt: startedAt + 600_000,
+    durationMs: 600_000,
+    isHub: false,
+    playerId: null,
+    seasonId,
+    drops: [
+      {
+        ts: startedAt + 1000,
+        configBaseId: ITEM,
+        qty: 10,
+        proto: 'PickItem',
+        kind: 'loot',
+        pageId: 100,
+        slotId: 0,
+      },
+    ],
+    costs: [],
+  });
+  const now = new Date(2026, 9, 17, 12).getTime();
+  const runs = [base(now - 2 * 3_600_000, 1501), base(now - 3_600_000, 1601)];
+
+  it('карты, дни и сессии суммируют забеги по ценам их сезонов', () => {
+    expect(groupByMap(runs, () => 'map', pricing)[0]!.netPerRun).toBe((20 + 50) / 2);
+    expect(dailyTotals(runs, pricing, 1, now)[0]!.netFe).toBe(70);
+    expect(sessionTotals([{ startedAt: 0, endedAt: null }], runs, pricing)[0]!.netFe).toBe(70);
+  });
+});

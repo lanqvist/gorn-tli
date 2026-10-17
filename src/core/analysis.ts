@@ -4,6 +4,18 @@ import { FE_ID, type ConfigBaseId, type ItemDelta, type Run } from './types.js';
 export type PriceLookup = (id: ConfigBaseId) => number | null;
 
 /**
+ * Цены для набора забегов: одна таблица на всех или своя на каждый забег.
+ * Экономика каждый сезон начинается заново, и забег прошлого сезона,
+ * оценённый нынешними ценами, показывал бы цифры, которых не было.
+ */
+export type RunPricing = PriceLookup | { forRun: (run: Run) => PriceLookup };
+
+/** Таблица цен, по которой оценивается этот забег. */
+export function pricesFor(pricing: RunPricing, run: Run): PriceLookup {
+  return typeof pricing === 'function' ? pricing : pricing.forRun(run);
+}
+
+/**
  * Забег, который идёт в статистику фарма: не город и не мгновенный
  * проход через зону — пять секунд и меньше бывают только загрузкой.
  */
@@ -72,7 +84,8 @@ export function activeDuration(run: Run, idleCapMs = IDLE_CAP_MS, until?: number
 }
 
 /** Чистая стоимость забега: добыча минус вложения, обе по референсным ценам. */
-export function runNet(run: Run, priceOf: PriceLookup): number {
+export function runNet(run: Run, pricing: RunPricing): number {
+  const priceOf = pricesFor(pricing, run);
   let value = 0;
   for (const d of run.drops) {
     const price = priceOf(d.configBaseId);
@@ -121,7 +134,7 @@ export interface StrategyStats {
  */
 export function groupByStrategy(
   runs: Run[],
-  priceOf: PriceLookup,
+  pricing: RunPricing,
   idleCapMs = IDLE_CAP_MS,
 ): StrategyStats[] {
   const groups = new Map<string, Run[]>();
@@ -140,6 +153,7 @@ export function groupByStrategy(
     let activeMs = 0;
 
     for (const run of list) {
+      const priceOf = pricesFor(pricing, run);
       const active = activeDuration(run, idleCapMs);
       const runValue = runNet(run, priceOf);
       activeMs += active;
@@ -184,13 +198,18 @@ export interface MissingPrice {
  * прибыль напрямую. Поэтому сначала расходники, затем то, что встречается
  * в большем числе забегов, и только потом количество.
  */
-export function missingPrices(runs: Run[], priceOf: PriceLookup): MissingPrice[] {
+export function missingPrices(runs: Run[], pricing: RunPricing): MissingPrice[] {
   const totals = new Map<
     ConfigBaseId,
     { qty: number; runs: Set<number>; isCost: boolean }
   >();
 
-  const note = (delta: ItemDelta, index: number, isCost: boolean): void => {
+  const note = (
+    delta: ItemDelta,
+    index: number,
+    isCost: boolean,
+    priceOf: PriceLookup,
+  ): void => {
     if (priceOf(delta.configBaseId) !== null) return;
     const entry = totals.get(delta.configBaseId) ?? {
       qty: 0,
@@ -204,8 +223,9 @@ export function missingPrices(runs: Run[], priceOf: PriceLookup): MissingPrice[]
   };
 
   for (const [index, run] of runs.entries()) {
-    for (const drop of run.drops) note(drop, index, false);
-    for (const cost of run.costs) note(cost, index, true);
+    const priceOf = pricesFor(pricing, run);
+    for (const drop of run.drops) note(drop, index, false, priceOf);
+    for (const cost of run.costs) note(cost, index, true, priceOf);
   }
 
   return [...totals.entries()]

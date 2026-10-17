@@ -34,6 +34,8 @@ const ANON_KEY = 'sb_publishable_YgqYSMUarrM_IKvcNpJlBw_KwTpp7ho';
 
 const PAGE_SIZE = 1000;
 export const REFRESH_INTERVAL_MS = 15 * 60_000;
+/** Рынок прошлого сезона закрыт: его цены сверяются не чаще раза в сутки. */
+export const PAST_SEASON_REFRESH_MS = 24 * 3_600_000;
 
 export interface CommunityPrice {
   configBaseId: ConfigBaseId;
@@ -77,8 +79,12 @@ export class CommunityPriceFeed {
   /** Последняя попытка провалилась — живём на кэше. */
   private refreshFailed = false;
 
-  constructor(cacheDir: string) {
-    this.cachePath = join(cacheDir, 'community-prices.json');
+  /**
+   * Файл кэша у каждой ленты свой: лента текущего сезона перезаписывает
+   * свой кэш при смене сезона, и цены прошлого живут в отдельном файле.
+   */
+  constructor(cacheDir: string, cacheFile = 'community-prices.json') {
+    this.cachePath = join(cacheDir, cacheFile);
   }
 
   onUpdate(listener: (prices: Map<ConfigBaseId, CommunityPrice>) => void): void {
@@ -113,7 +119,7 @@ export class CommunityPriceFeed {
    */
   start(seasonId: number): void {
     this.stop();
-    this.seasonId = seasonId;
+    this.switchSeason(seasonId);
     this.loadCache(seasonId);
     if (this.prices.size > 0) this.notify();
 
@@ -121,6 +127,35 @@ export class CommunityPriceFeed {
     this.timer = setInterval(() => void this.refresh(), REFRESH_INTERVAL_MS);
     // Не держим процесс живым ради опроса цен.
     this.timer.unref?.();
+  }
+
+  /**
+   * Разовая загрузка без опроса — для прошлого сезона: забеги того сезона
+   * оцениваются его ценами, а рынок уже не движется. Свежий кэш в сеть
+   * не ходит вовсе.
+   */
+  loadOnce(seasonId: number): void {
+    this.stop();
+    this.switchSeason(seasonId);
+    this.loadCache(seasonId);
+    if (this.prices.size > 0) this.notify();
+    if (this.fetchedAt === null || Date.now() - this.fetchedAt > PAST_SEASON_REFRESH_MS) {
+      void this.refresh();
+    }
+  }
+
+  /**
+   * Смена сезона сбрасывает всё полученное: без этого цены прошлого сезона
+   * доживали в ленте до перезапуска, перекрывая предметы, которых новый
+   * сезон ещё не знает.
+   */
+  private switchSeason(seasonId: number): void {
+    if (this.seasonId === seasonId) return;
+    this.seasonId = seasonId;
+    this.prices.clear();
+    this.cursor = null;
+    this.fetchedAt = null;
+    this.refreshFailed = false;
   }
 
   stop(): void {

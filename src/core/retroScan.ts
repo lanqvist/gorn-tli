@@ -1,11 +1,12 @@
 import { statSync } from 'node:fs';
 
+import { pricesFor, type RunPricing } from './analysis.js';
 import type { SlotState } from './inventory.js';
 import { listLogFiles } from './locate.js';
 import { analyzeLogFile, type AnalyzeOptions } from './pipeline.js';
 import { PriceStore } from './priceStore.js';
 import { TradeLedger, mergeByKey } from './trade.js';
-import { mergePlayerProfile, type ConfigBaseId, type PlayerProfile, type Run } from './types.js';
+import { mergePlayerProfile, type PlayerProfile, type Run } from './types.js';
 
 /**
  * Разбор всех накопленных логов при первом запуске.
@@ -186,7 +187,8 @@ export async function retroScan(
 }
 
 /** Суммарная бумажная оценка дропа забега. */
-export function runValue(run: Run, priceOf: (id: ConfigBaseId) => number | null): number {
+export function runValue(run: Run, pricing: RunPricing): number {
+  const priceOf = pricesFor(pricing, run);
   let total = 0;
   for (const drop of run.drops) {
     const price = priceOf(drop.configBaseId);
@@ -196,7 +198,8 @@ export function runValue(run: Run, priceOf: (id: ConfigBaseId) => number | null)
 }
 
 /** Суммарная стоимость вложенного в карту. */
-export function runCost(run: Run, priceOf: (id: ConfigBaseId) => number | null): number {
+export function runCost(run: Run, pricing: RunPricing): number {
+  const priceOf = pricesFor(pricing, run);
   let total = 0;
   for (const cost of run.costs) {
     const price = priceOf(cost.configBaseId);

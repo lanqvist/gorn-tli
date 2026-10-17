@@ -293,3 +293,52 @@ describe('профиль персонажа', () => {
     expect(merged.lastSeenAt).toBe(T0);
   });
 });
+
+describe('забеги разных сезонов — по ценам своего сезона', () => {
+  const ITEM = 5000;
+  const BEACON = 5001;
+  // В SS13 предмет стоил 2 ФЕ, в SS14 — 5; маяк есть только в ценах SS13.
+  const prices = new Map<number, Map<number, number>>([
+    [1501, new Map([[ITEM, 2], [BEACON, 4]])],
+    [1601, new Map([[ITEM, 5]])],
+  ]);
+  const pricing = {
+    forRun: (r: Run) => (id: number) => prices.get(r.seasonId ?? 1601)?.get(id) ?? null,
+  };
+  const ss13 = run({
+    startedAt: T0,
+    endedAt: T0 + 600_000,
+    seasonId: 1501,
+    drops: [delta(ITEM, 10, T0 + 1000)],
+    costs: [delta(BEACON, 1, T0, true)],
+  });
+  const ss14 = run({
+    startedAt: T0 + 3_600_000,
+    endedAt: T0 + 4_200_000,
+    seasonId: 1601,
+    drops: [delta(ITEM, 10, T0 + 3_601_000)],
+    costs: [delta(BEACON, 1, T0 + 3_600_000, true)],
+  });
+
+  it('чистая стоимость — по таблице сезона забега', () => {
+    expect(runNet(ss13, pricing)).toBe(20 - 4);
+    expect(runNet(ss14, pricing)).toBe(50);
+  });
+
+  it('стратегия складывает забеги, оценённые каждый своими ценами', () => {
+    const [s] = groupByStrategy([ss13, ss14], pricing);
+    expect(s!.runs).toBe(2);
+    expect(s!.netPerRun).toBe((16 + 50) / 2);
+    expect(s!.costPerRun).toBe(4 / 2);
+  });
+
+  it('нет цены — только там, где её нет в сезоне забега', () => {
+    const missing = missingPrices([ss13, ss14], pricing);
+    expect(missing).toEqual([{ configBaseId: BEACON, qty: 1, runs: 1, isCost: true }]);
+  });
+
+  it('одна таблица на всех по-прежнему работает', () => {
+    const flat = (id: number) => (id === ITEM ? 5 : null);
+    expect(runNet(ss13, flat)).toBe(50);
+  });
+});
