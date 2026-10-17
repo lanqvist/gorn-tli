@@ -13,8 +13,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
  */
 const WIDTHS: Record<OverlayMode, number> = {
   minimal: 250,
-  compact: 320,
-  full: 380,
+  compact: 290,
+  full: 330,
 };
 
 /** Стартовая высота до первого замера — окно не должно мигать большим. */

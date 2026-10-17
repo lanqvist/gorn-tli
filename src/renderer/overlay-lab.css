@@ -1,0 +1,133 @@
+/* Стенд оверлея. Дев-страница, в сборку не входит. */
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #121014;
+  color: #ece6dc;
+  font: 14px/1.45 'Segoe UI', system-ui, sans-serif;
+}
+
+.lab {
+  padding: 18px 20px 48px;
+}
+
+.lab h1 {
+  margin: 0 0 4px;
+  font-size: 20px;
+}
+
+.lab-sub {
+  margin: 0 0 12px;
+  color: #a39a8f;
+  max-width: 900px;
+}
+
+.lab-ctl {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  margin-bottom: 16px;
+}
+
+.seg {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.seg span {
+  color: #a39a8f;
+  margin-right: 4px;
+  font-size: 13px;
+}
+
+.seg button {
+  background: #221d1f;
+  color: #ece6dc;
+  border: 1px solid #3a3133;
+  border-radius: 7px;
+  padding: 4px 9px;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.seg button.on {
+  border-color: #ff9d3c;
+  color: #ffb866;
+}
+
+.lab-place {
+  margin-bottom: 18px;
+}
+
+.lab-place h2 {
+  margin: 0 0 6px;
+  font-size: 16px;
+  color: #ffb866;
+}
+
+.scene {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 18px;
+  padding: 14px;
+  border-radius: 10px;
+}
+
+.scene figure {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.scene iframe {
+  border: 0;
+  display: block;
+  background: transparent;
+  color-scheme: normal;
+}
+
+.scene figcaption {
+  align-self: flex-start;
+  font-size: 12px;
+  color: #fff;
+  background: rgb(0 0 0 / 55%);
+  padding: 1px 8px;
+  border-radius: 6px;
+}
+
+/* ── фоны-имитации игры ───────────────────────────────────────── */
+
+.bg-dungeon {
+  background:
+    radial-gradient(circle at 20% 70%, rgb(255 120 30 / 45%), transparent 22%),
+    radial-gradient(circle at 75% 25%, rgb(90 140 255 / 22%), transparent 30%),
+    repeating-linear-gradient(35deg, #1c1a20 0 14px, #232026 14px 28px),
+    #18161b;
+}
+
+.bg-desert {
+  background:
+    radial-gradient(ellipse at 70% 15%, #fffaf0, transparent 40%),
+    radial-gradient(circle at 30% 60%, rgb(255 230 170), transparent 35%),
+    repeating-linear-gradient(-20deg, #e2c48d 0 22px, #d8b67a 22px 44px),
+    #e3c48d;
+}
+
+.bg-battle {
+  background:
+    radial-gradient(circle at 78% 18%, rgb(255 255 255 / 95%), transparent 9%),
+    radial-gradient(circle at 70% 30%, rgb(80 220 255 / 90%), transparent 22%),
+    radial-gradient(circle at 88% 12%, rgb(255 70 200 / 85%), transparent 18%),
+    radial-gradient(circle at 40% 10%, rgb(255 170 40 / 95%), transparent 20%),
+    radial-gradient(circle at 15% 75%, rgb(120 255 120 / 60%), transparent 25%),
+    repeating-linear-gradient(60deg, #5b4a3b 0 9px, #8a7458 9px 18px, #3c3129 18px 30px),
+    #6b5844;
+}

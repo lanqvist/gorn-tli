@@ -2,12 +2,20 @@ import { useEffect, useRef, useState } from 'react';
 
 import { tr } from '../core/i18n.js';
 import { RUN, pluralize } from '../core/plural.js';
-import type { Snapshot } from '../main/engine.js';
+import type { DropView, Snapshot } from '../main/engine.js';
 import type { OverlayMode } from '../main/settings.js';
 import { Fe, FeIcon } from './components/Fe.js';
 import { clock, NBSP, num } from './format.js';
+import { Icon } from './overlay/icons.js';
 
 type Mode = OverlayMode;
+
+/**
+ * Где сейчас игрок. Оверлей перестраивает главную цифру под момент:
+ * на карте важен доход этого забега, в городе — итог сессии, без игры —
+ * только то, что Горн жив и ждёт.
+ */
+type Place = 'map' | 'town' | 'offline';
 
 /** Оценка «ещё столько-то» для цели сессии — грубая, поэтому округлённая. */
 const roughEta = (ms: number) => {
@@ -23,21 +31,36 @@ const roughEta = (ms: number) => {
 /** Порог, до которого темп забега не показывается: знаменатель слишком мал. */
 const WARMUP_MS = 60_000;
 
+/** Лог молчит дольше этого — игра, скорее всего, закрыта (как в подсказке движка). */
+const SILENT_MS = 120_000;
+
+/** Строк находок по режимам: в компактном — только то, что решает. */
+const DROP_ROWS: Record<Mode, number> = { minimal: 0, compact: 4, full: 8 };
+
+function placeOf(snapshot: Snapshot | null, now: number): Place {
+  if (!snapshot || snapshot.status === 'searching') return 'offline';
+  if (snapshot.current) return 'map';
+  if (snapshot.lastActivityAt === 0 || now - snapshot.lastActivityAt > SILENT_MS) return 'offline';
+  return 'town';
+}
+
+const DEFAULT_PREFS: GornOverlayPrefs = {
+  popups: true,
+  sound: true,
+  volume: 0.5,
+  soundImportantOnly: false,
+  jackpotFe: 50,
+  whistleFe: 10,
+  fontScale: 1,
+  goalFe: 0,
+};
+
 export function OverlayApp() {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [mode, setMode] = useState<Mode>('compact');
   const [locked, setLocked] = useState(true);
   const [now, setNow] = useState(Date.now());
-  const [prefs, setPrefs] = useState<GornOverlayPrefs>({
-    popups: true,
-    sound: true,
-    volume: 0.5,
-    soundImportantOnly: false,
-    jackpotFe: 50,
-    whistleFe: 10,
-    fontScale: 1,
-    goalFe: 0,
-  });
+  const [prefs, setPrefs] = useState<GornOverlayPrefs>(DEFAULT_PREFS);
   // Автоуклонение: закреплённый оверлей получает mousemove даже с
   // пропуском кликов (forward: true) — при наведении панель гаснет
   // и не мешает целиться, а через полсекунды возвращается.
@@ -74,11 +97,37 @@ export function OverlayApp() {
     // В браузере main-процесса нет — показываем демо, чтобы вёрстку оверлея
     // можно было проверять без запуска игры. Подборы имитируются таймером:
     // без изменяющегося среза всплывашки и звук иначе не проверить.
+    // Параметры адреса подменяют то, что в приложении приходит из main:
+    // ?place=town|offline, ?mode=minimal|full, ?scale=1.25, ?goal=1000, ?locked=1.
     if (!window.gorn) {
       if (import.meta.env.DEV) {
+        const params = new URLSearchParams(location.search);
+        const place = params.get('place');
+        const demoMode = params.get('mode');
+        if (demoMode === 'minimal' || demoMode === 'compact' || demoMode === 'full') {
+          setMode(demoMode);
+        }
+        setPrefs({
+          ...DEFAULT_PREFS,
+          fontScale: Number(params.get('scale')) || 1,
+          goalFe: Number(params.get('goal')) || 0,
+        });
+        setLocked(params.get('locked') === '1');
+
         let timer: ReturnType<typeof setInterval> | undefined;
         void import('./demo.js').then((m) => {
-          let current = m.demoSnapshot;
+          let current: Snapshot =
+            place === 'town'
+              ? { ...m.demoSnapshot, status: 'idle', current: null }
+              : place === 'offline'
+                ? {
+                    ...m.demoSnapshot,
+                    status: 'idle',
+                    current: null,
+                    lastActivityAt: 0,
+                    hint: tr('Игра не запущена.', 'The game is not running.'),
+                  }
+                : m.demoSnapshot;
           setSnapshot(current);
           timer = setInterval(() => {
             const gained = Math.random() < 0.15 ? 55 + Math.random() * 40 : Math.random() * 6;
@@ -105,7 +154,6 @@ export function OverlayApp() {
             setSnapshot(current);
           }, 2500);
         });
-        setLocked(false);
         return () => timer && clearInterval(timer);
       }
       return;
@@ -143,11 +191,12 @@ export function OverlayApp() {
     return () => clearInterval(t);
   }, []);
 
+  const place = placeOf(snapshot, now);
   const run = snapshot?.current ?? null;
   const previous = snapshot?.recent[0] ?? null;
-  const shown = run ?? previous;
-  const elapsed = run ? now - run.startedAt : (previous?.durationMs ?? 0);
+  const elapsed = run ? now - run.startedAt : 0;
   const median = snapshot?.rate.median ?? 0;
+  const sessionNet = snapshot ? snapshot.totals.valueFe - snapshot.totals.costFe : 0;
 
   const pace = run && elapsed >= WARMUP_MS ? (run.netFe / elapsed) * 3_600_000 : null;
   const delta = pace !== null && median > 0 ? Math.round(((pace - median) / median) * 100) : null;
@@ -165,7 +214,7 @@ export function OverlayApp() {
     // а окну main-процесс даёт пропорциональную ширину.
     <div
       ref={root}
-      className={`ov ov-${mode} ${locked ? 'ov-locked' : 'ov-free'} ${
+      className={`ov ov-${mode} ov-${place} ${locked ? 'ov-locked' : 'ov-free'} ${
         locked && dodge ? 'ov-dodge' : ''
       }`}
       style={{ zoom: prefs.fontScale }}
@@ -175,7 +224,10 @@ export function OverlayApp() {
           в заблокированном клики всё равно уходят в игру. */}
       {!locked && (
         <div className="ov-grip">
-          <span>{tr('Горн', 'Gorn')}</span>
+          <span className="ov-brand">
+            <FeIcon />
+            {tr('Горн', 'Gorn')}
+          </span>
           <div className="ov-actions">
             <button
               onClick={() => window.gorn?.overlay.setPrefs({ popups: !prefs.popups })}
@@ -186,7 +238,7 @@ export function OverlayApp() {
               }
               className={prefs.popups ? '' : 'ov-off'}
             >
-              ✦
+              <Icon name="popups" />
             </button>
             <button
               onClick={() => window.gorn?.overlay.setPrefs({ sound: !prefs.sound })}
@@ -197,19 +249,25 @@ export function OverlayApp() {
               }
               className={prefs.sound ? '' : 'ov-off'}
             >
-              ♪
+              <Icon name={prefs.sound ? 'sound' : 'mute'} />
             </button>
-            <button onClick={() => window.gorn?.overlay.cycleMode()} title={tr('Режим', 'Mode')}>
-              ⇱
+            <button
+              onClick={() => window.gorn?.overlay.cycleMode()}
+              title={tr('Режим (Ctrl+Alt+M)', 'Mode (Ctrl+Alt+M)')}
+            >
+              <Icon name="mode" />
             </button>
             <button
               onClick={() => window.gorn?.overlay.toggleLock()}
-              title={tr('Закрепить', 'Lock')}
+              title={tr('Закрепить (Ctrl+Alt+L)', 'Lock (Ctrl+Alt+L)')}
             >
-              ⌖
+              <Icon name="lock" />
             </button>
-            <button onClick={() => window.gorn?.overlay.close()} title={tr('Закрыть', 'Close')}>
-              ✕
+            <button
+              onClick={() => window.gorn?.overlay.close()}
+              title={tr('Закрыть (Ctrl+Alt+G)', 'Close (Ctrl+Alt+G)')}
+            >
+              <Icon name="close" />
             </button>
           </div>
         </div>
@@ -219,90 +277,201 @@ export function OverlayApp() {
       {!locked && (
         <div className="ov-hint">
           {tr(
-            'перетащите за полоску · ⌖ или Ctrl+Alt+L — закрепить · Ctrl+Alt+M — режим',
-            'drag by the strip · ⌖ or Ctrl+Alt+L — lock · Ctrl+Alt+M — mode',
+            'Тяните за полоску. Закрепить — замок или Ctrl+Alt+L, режим — Ctrl+Alt+M.',
+            'Drag by the strip. Lock with the padlock or Ctrl+Alt+L, mode — Ctrl+Alt+M.',
           )}
         </div>
       )}
 
-      <div className="ov-line">
-        <span className="ov-rate">
-          <Fe value={median} />
-          <em>{tr('/час', '/h')}</em>
-        </span>
-        {run ? (
-          <span className="ov-timer">{clock(elapsed)}</span>
-        ) : (
-          <span className="ov-timer ov-idle">{tr('не на карте', 'not in a map')}</span>
+      {/* Шапка: где игрок. На карте — таймер и название зоны. */}
+      <div className="ov-head">
+        {place === 'map' && run && (
+          <>
+            <span className="ov-chip">
+              <Icon name="timer" />
+              {clock(elapsed)}
+            </span>
+            <span className="ov-mapname">{run.name}</span>
+          </>
+        )}
+        {place === 'town' && (
+          <span className="ov-chip ov-chip-town">
+            <Icon name="town" />
+            {tr('в городе', 'in town')}
+          </span>
+        )}
+        {place === 'offline' && (
+          <span className="ov-chip ov-chip-off">
+            <Icon name="offline" />
+            {snapshot?.status === 'searching'
+              ? tr('игра не найдена', 'game not found')
+              : tr('нет игры', 'no game')}
+          </span>
         )}
       </div>
 
-      {/* Цель сессии: тонкий прогресс с ETA по накопительному темпу.
-          Работает и в минимальном режиме — ради него и затевалась. */}
-      {prefs.goalFe > 0 && snapshot && (
-        <GoalProgress goalFe={prefs.goalFe} snapshot={snapshot} />
+      {/* Главная цифра: доход забега на карте, итог сессии в городе. */}
+      {place === 'map' && run && (
+        <div className="ov-hero">
+          <Fe value={run.netFe} signed />
+          {delta !== null && <Delta value={delta} />}
+        </div>
+      )}
+      {place === 'town' && (
+        <div className="ov-hero">
+          <Fe value={sessionNet} signed />
+          <span className="ov-hero-sub">{tr('за сессию', 'this session')}</span>
+        </div>
       )}
 
-      {mode !== 'minimal' && shown && (
-        <>
-          <div className="ov-run">
-            <span className="ov-map">{shown.name}</span>
-            <span className="ov-net">
-              {ghost !== null && (
-                <em
-                  className="ov-ghost"
-                  title={tr(
-                    'Прошлый забег к этой же секунде — грубо, по его среднему темпу',
-                    'The previous run at this same second — rough, based on its average pace',
-                  )}
-                >
-                  {tr('тень', 'ghost')} ~{num(ghost)}
-                </em>
-              )}
-              <Fe value={shown.netFe} />
-              {delta !== null && (
-                <em className={delta >= 0 ? 'up' : 'down'}>
-                  {delta >= 0 ? '+' : '−'}
-                  {Math.abs(delta)}%
-                </em>
-              )}
+      <div className="ov-rows">
+        <div className="ov-row">
+          <Icon name="pace" />
+          <span>{tr('темп, медиана', 'pace, median')}</span>
+          <b>
+            <Fe value={median} />
+            <small>{tr('/ч', '/h')}</small>
+          </b>
+        </div>
+        {mode !== 'minimal' && place === 'map' && ghost !== null && (
+          <div
+            className="ov-row ov-row-dim"
+            title={tr(
+              'Прошлый забег к этой же секунде — грубо, по его среднему темпу',
+              'The previous run at this same second — rough, based on its average pace',
+            )}
+          >
+            <Icon name="ghost" />
+            <span>{tr('прошлый к этой секунде', 'last run by now')}</span>
+            <b>~{num(ghost)}</b>
+          </div>
+        )}
+        {mode !== 'minimal' && place === 'town' && previous && (
+          <div className="ov-row ov-row-dim">
+            <Icon name="map" />
+            <span>
+              {previous.name}
+              {previous.durationMs != null && ` · ${clock(previous.durationMs)}`}
+            </span>
+            <b>
+              <Fe value={previous.netFe} signed />
+            </b>
+          </div>
+        )}
+        {mode === 'full' && place === 'map' && (
+          <div className="ov-row ov-row-dim">
+            <Icon name="bag" />
+            <span>{tr('за сессию', 'this session')}</span>
+            <b>
+              <Fe value={sessionNet} signed />
+            </b>
+          </div>
+        )}
+        {mode === 'full' && place !== 'offline' && snapshot && (
+          <div className="ov-row ov-row-dim">
+            <Icon name="runs" />
+            <span>
+              {pluralize(snapshot.totals.runs, RUN)} · {confidence(snapshot)}
             </span>
           </div>
+        )}
+        {mode !== 'minimal' && place === 'offline' && snapshot?.hint && (
+          <div className="ov-note">{snapshot.hint}</div>
+        )}
+      </div>
 
-          {shown.drops.length > 0 && (
-            <ul className="ov-drops">
-              {shown.drops.slice(0, mode === 'full' ? 10 : 4).map((d) => (
-                <li key={d.configBaseId}>
-                  <span className="ov-drop-name">{d.name}</span>
-                  <span className="ov-drop-qty">×{num(d.qty)}</span>
-                  {d.totalFe !== null && (
-                    <span className="ov-drop-fe">
-                      <Fe value={d.totalFe} />
-                    </span>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-        </>
+      {place === 'map' && run && DROP_ROWS[mode] > 0 && snapshot && (
+        <DropBars drops={run.drops} rows={DROP_ROWS[mode]} snapshot={snapshot} prefs={prefs} />
       )}
 
-      {mode === 'full' && snapshot && (
-        <div className="ov-footer">
-          <span>
-            {pluralize(snapshot.totals.runs, RUN)}{' '}
-            · <FeIcon />
-            {NBSP}
-            {num(snapshot.totals.valueFe - snapshot.totals.costFe)}
-          </span>
-          <span className="ov-conf">{confidence(snapshot)}</span>
-        </div>
+      {/* Цель сессии: полоса прогресса с ETA по накопительному темпу.
+          Работает и в минимальном режиме — ради него и затевалась. */}
+      {prefs.goalFe > 0 && snapshot && place !== 'offline' && (
+        <GoalProgress goalFe={prefs.goalFe} snapshot={snapshot} brief={mode === 'minimal'} />
       )}
     </div>
   );
 }
 
-function GoalProgress({ goalFe, snapshot }: { goalFe: number; snapshot: Snapshot }) {
+function Delta({ value }: { value: number }) {
+  return (
+    <span
+      className={`ov-delta ${value >= 0 ? 'up' : 'down'}`}
+      title={tr('Темп этой карты к медиане', 'This map’s pace vs the median')}
+    >
+      <Icon name={value >= 0 ? 'up' : 'down'} />
+      {Math.abs(value)}%
+    </span>
+  );
+}
+
+/**
+ * Находки забега полосами, как в Details!: длина — доля от самой дорогой
+ * находки, цвет кромки — ступень ценности (те же пороги, что у свиста
+ * и золотой плашки). Мелочь и исключённое не показываются — как в списке
+ * добычи главного окна.
+ */
+function DropBars({
+  drops,
+  rows,
+  snapshot,
+  prefs,
+}: {
+  drops: DropView[];
+  rows: number;
+  snapshot: Snapshot;
+  prefs: GornOverlayPrefs;
+}) {
+  // Порог «золота» тот же, что у плашек: явный из настроек либо авто (P95 цен).
+  const goldFe = prefs.jackpotFe > 0 ? prefs.jackpotFe : snapshot.jackpotAutoFe;
+  const orangeFe = prefs.whistleFe > 0 ? prefs.whistleFe : goldFe / 5;
+  const shown = drops
+    .filter(
+      (d) =>
+        d.priceSource !== 'excluded' && !(d.totalFe !== null && d.totalFe < snapshot.minDropFe),
+    )
+    .slice(0, rows);
+  if (shown.length === 0) return null;
+  const max = Math.max(1, ...shown.map((d) => d.totalFe ?? 0));
+
+  const tier = (fe: number | null) =>
+    fe === null ? 'none' : fe >= goldFe ? 'gold' : fe >= orangeFe ? 'orange' : 'plain';
+
+  return (
+    <ul className="ov-drops">
+      {shown.map((d) => (
+        <li key={d.configBaseId} className={`t-${tier(d.totalFe)}`}>
+          <i style={{ width: `${d.totalFe === null ? 0 : (d.totalFe / max) * 100}%` }} />
+          <span className="ov-drop-icon">
+            <ItemIcon drop={d} />
+          </span>
+          <span className="ov-drop-name">{d.name}</span>
+          {d.qty > 1 && <span className="ov-drop-qty">×{num(d.qty)}</span>}
+          <span className="ov-drop-fe">
+            {d.totalFe === null ? '—' : <Fe value={d.totalFe} />}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** Иконка предмета; без неё или при ошибке загрузки — первая буква на плашке. */
+function ItemIcon({ drop }: { drop: DropView }) {
+  const [failed, setFailed] = useState(false);
+  if (!drop.icon || failed) return <span className="ov-drop-ph">{drop.name.slice(0, 1)}</span>;
+  return <img src={drop.icon} alt="" draggable={false} onError={() => setFailed(true)} />;
+}
+
+function GoalProgress({
+  goalFe,
+  snapshot,
+  brief,
+}: {
+  goalFe: number;
+  snapshot: Snapshot;
+  brief: boolean;
+}) {
   const net = snapshot.totals.valueFe - snapshot.totals.costFe;
   const share = Math.max(0, Math.min(1, net / goalFe));
   const remaining = goalFe - net;
@@ -310,15 +479,19 @@ function GoalProgress({ goalFe, snapshot }: { goalFe: number; snapshot: Snapshot
     remaining > 0 && snapshot.liveRate > 0 ? (remaining / snapshot.liveRate) * 3_600_000 : null;
 
   return (
-    <div className="ov-goal">
+    <div
+      className={`ov-goal ${remaining <= 0 ? 'ov-goal-done' : ''}`}
+      title={tr('Цель сессии', 'Session goal')}
+    >
+      <Icon name={remaining <= 0 ? 'check' : 'goal'} />
       <div className="ov-goal-bar">
         <i style={{ width: `${share * 100}%` }} />
       </div>
-      <span className={`ov-goal-text ${remaining <= 0 ? 'up' : ''}`}>
+      <span className="ov-goal-text">
         {remaining <= 0
-          ? tr('цель взята ✓', 'goal reached ✓')
-          : `${num(net)} / ${num(goalFe)}${
-              etaMs !== null
+          ? tr('цель взята', 'goal reached')
+          : `${num(net)}/${num(goalFe)}${
+              etaMs !== null && !brief
                 ? tr(` · ещё ~${roughEta(etaMs)}`, ` · ~${roughEta(etaMs)} left`)
                 : ''
             }`}
