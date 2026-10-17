@@ -16,7 +16,7 @@ import {
   patrol, ratway, swap, takeGift, takeTool, targets,
 } from './rules.js';
 import {
-  CHAIN_EATER, DOORS, DOORS_N, NEXT, OFFER, OFFER_GIFT, OFFER_KIND, OFFER_N, OFFER_NONE, OFFER_TOOL, PHASE,
+  CHAIN_EATER, DAY, DOORS, DOORS_N, NEXT, OFFER, OFFER_GIFT, OFFER_KIND, OFFER_N, OFFER_NONE, OFFER_TOOL, PHASE,
   PICK_GIFTS, PICK_TOOLS, P_CHAIN, P_DAYEND, P_END, P_EVENT, P_HUNT, P_MANAGE, P_MORNING, P_OFFICE, P_PATROL,
   P_PICK, P_RATWAY, REROLLS, State, TIER, USED, WARDEN, EVT, copy, score,
 } from './state.js';
@@ -98,6 +98,7 @@ export function settle(s: State, r: Rng, p: Params): void {
     const nx = m[NEXT]!;
     switch (nx) {
       case P_MORNING:
+        r.morning(m[DAY]!);
         morning(s, r, p);
         continue;
       case P_DAYEND:
@@ -191,8 +192,16 @@ function illegal(s: State, c: number): never {
   throw new Error(`тюрьма: ход ${JSON.stringify(decode(c))} нельзя в фазе ${s.m[PHASE]}`);
 }
 
-/** Применить ход по коду. Ход должен быть легальным (проверяется фаза и цель). */
-export function applyCode(s: State, c: number, r: Rng, p: Params): void {
+/**
+ * Применить ход по коду. Ход должен быть легальным: фаза и цель
+ * проверяются, если check (по умолчанию да). Доигрывания своей стратегией
+ * передают false — её ходы легальны по построению.
+ */
+export function applyCode(s: State, c: number, r: Rng, p: Params, check = true): void {
+  if (!check) {
+    applyTrusted(s, c, r, p);
+    return;
+  }
   const m = s.m;
   const arg = c & 63;
   const ph = m[PHASE];
@@ -267,11 +276,63 @@ export function applyCode(s: State, c: number, r: Rng, p: Params): void {
   settle(s, r, p);
 }
 
+/** То же без проверок. */
+function applyTrusted(s: State, c: number, r: Rng, p: Params): void {
+  const m = s.m;
+  const arg = c & 63;
+  switch (c >> 6) {
+    case A_PATROL:
+      if (m[PHASE] === P_RATWAY) ratway(s, r, p, arg);
+      else patrol(s, r, p, arg);
+      break;
+    case A_DEVOUR:
+      devour(s, r, p, arg);
+      break;
+    case A_CHAIN:
+      chainBite(s, r, p, arg);
+      break;
+    case A_STOPCHAIN:
+      finishDevour(s, r, p, m[CHAIN_EATER]!);
+      break;
+    case A_SWAP:
+      swap(s, r, p);
+      break;
+    case A_END:
+      m[NEXT] = P_DAYEND;
+      break;
+    case A_HUNT:
+      hunt(s, arg, p);
+      break;
+    case A_BESTOW:
+    case A_INSTIGATE:
+      office(s, r, p, c >> 6 === A_INSTIGATE);
+      break;
+    case A_ACCEPT:
+    case A_SKIP:
+      eventDecision(s, r, p, c >> 6 === A_ACCEPT);
+      break;
+    case A_TOOL:
+      m[OFFER_KIND] = OFFER_NONE;
+      takeTool(s, arg);
+      break;
+    case A_GIFT:
+      m[OFFER_KIND] = OFFER_NONE;
+      takeGift(s, r, p, arg);
+      break;
+    case A_REROLL:
+      m[REROLLS] = m[REROLLS]! - 1;
+      m[OFFER_KIND] = OFFER_NONE;
+      break;
+  }
+  settle(s, r, p);
+}
+
 // ── начало забега и плейаут ─────────────────────────────────────────────────
 
 export interface RunOptions {
   start?: StartEventId;
-  objective?: ObjectiveId;
+  /** Цель; null — без цели (тогда и без орудий за цели). */
+  objective?: ObjectiveId | null;
   /** Орудия, которые уже есть. */
   tools?: ToolId[];
   /** Выбор орудия в начале (по умолчанию да). */
@@ -284,7 +345,7 @@ export function startRun(s: State, r: Rng, p: Params, opts: RunOptions = {}): vo
   for (const t of opts.tools ?? []) tools |= 1 << TOOL[t];
   newRun(s, r, p, {
     start: START_EVENT[opts.start ?? 'none'],
-    objective: opts.objective ? OBJECTIVE[opts.objective] : r.int(5),
+    objective: opts.objective === null ? -1 : opts.objective ? OBJECTIVE[opts.objective] : r.int(5),
     tools,
     startPick: opts.startPick ?? true,
   });
