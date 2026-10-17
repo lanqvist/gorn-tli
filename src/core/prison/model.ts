@@ -59,7 +59,7 @@ export const TOOL_NAMES: Record<ToolId, string> = {
   collar: 'Шипастый ошейник безумного зверя',
   muzzle: 'Пыточный намордник',
   revenge: 'Железная дева мстителя',
-  cage: 'Тесная клетка',
+  cage: 'Переполненная клетка зверей',
   skewer: 'Шампур крысиных голов: Огромная крыса',
   crown: 'Железная корона короля тюрьмы: Яростный лев',
   maul: 'Молот «Слоновья нога»: Мамонт',
@@ -69,12 +69,12 @@ export const TOOL_NAMES: Record<ToolId, string> = {
   pestle: 'Железный пест',
   scales: 'Весы тюремщика',
   axe: 'Палаческая секира надзирателя',
-  maiden: 'Отсечённая железная дева',
+  maiden: 'Рассечённый саркофаг',
   scapegoat: 'Гильотина козла отпущения',
   tongs: 'Железные щипцы похоти: Мамонт',
   claws: 'Грязные когти: Альфа-волк',
   ironbox: 'Шевелящийся железный ящик: Огромная крыса',
-  coin: 'Монета судьбы рода',
+  coin: 'Монета участи братьев',
   trap: 'Окровавленный капкан: Яростный лев',
 };
 
@@ -89,9 +89,9 @@ export const GIFT = Object.fromEntries(GIFT_IDS.map((id, i) => [id, i])) as { re
 export const EVENT_IDS = [
   'chain', // Цепная реакция
   'execution', // Казнь
-  'behind', // За закрытыми дверями
-  'appetite', // Ненасытный аппетит
-  'convict', // Опасный каторжник
+  'behind', // Закулисные махинации
+  'appetite', // Зверский аппетит
+  'convict', // Каторжник
   'raven', // Шёпот ворона
   'freedom', // Вкус свободы
   'usurp1', // Узурпация I
@@ -99,7 +99,11 @@ export const EVENT_IDS = [
   'usurp3',
   'usurp4',
   'ratway', // Крысиная тропа
-  'treasure', // «Охота за сокровищем»
+  'treasure', // Поиск «сокровищ»
+  'rival', // Заклятый враг
+  'luck', // Делим удачу
+  'escort', // Этапирование сообщников
+  'extra', // Добавка
 ] as const;
 export type EventId = (typeof EVENT_IDS)[number];
 export const EVENT = Object.fromEntries(EVENT_IDS.map((id, i) => [id, i])) as { readonly [K in EventId]: number };
@@ -107,6 +111,7 @@ export const EVENT = Object.fromEntries(EVENT_IDS.map((id, i) => [id, i])) as { 
 /** События, которые выпадают за дверью и от «Подстрекнуть». Узурпация II–IV — только по цепочке. */
 export const EVENT_POOL: readonly EventId[] = [
   'chain', 'execution', 'behind', 'appetite', 'convict', 'raven', 'freedom', 'usurp1', 'ratway', 'treasure',
+  'rival', 'luck', 'escort', 'extra',
 ];
 
 // ── цели и стартовые события (§10) ──────────────────────────────────────────
@@ -115,8 +120,8 @@ export const OBJECTIVE_IDS = [
   'apex', // Загнанный зверь-царь
   'jungle', // Закон джунглей
   'doors', // За дверью камеры
-  'walk', // Прогулка по тюрьме
-  'currents', // Подводные течения
+  'walk', // Путь обхода тюрьмы
+  'currents', // Скрытые волнения
 ] as const;
 export type ObjectiveId = (typeof OBJECTIVE_IDS)[number];
 export const OBJECTIVE = Object.fromEntries(OBJECTIVE_IDS.map((id, i) => [id, i])) as {
@@ -144,6 +149,7 @@ export type Action =
   | { type: 'stopchain' }
   | { type: 'swap' }
   | { type: 'end' }
+  /** «Выслеживание» (Окровавленный капкан): лев в камере надзирателя метит добычу. */
   | { type: 'hunt'; to: number }
   | { type: 'office'; choice: 'bestow' | 'instigate' }
   | { type: 'event'; accept: boolean }
@@ -161,7 +167,7 @@ export interface Params {
   ironLawDays: number;
   /** Мест в хранилище призматических. */
   storage: number;
-  /** Обновлений выбора орудий на забег. [догадка: на забег, не на выбор] */
+  /** Обновлений выбора орудий на забег: счётчик общий на забег (tlidb «Осталось раз»). */
   rerolls: number;
   /** Кто за дверью. [замер, 7 191 дверь] */
   doorOdds: TierOdds;
@@ -177,7 +183,7 @@ export interface Params {
   doorEvent: number;
   /** Событие за дверью, которая снова заперлась. [догадка: как в первый день] */
   relockEvent: number;
-  /** «Закон джунглей» считает каждый укус (а не действие). [догадка] */
+  /** «Закон джунглей» считает каждое Пожирание, укус цепочки тоже (карты зовут его «цепным Пожиранием»). */
   jungleCountsBites: boolean;
   /** После выполнения цели выпадает следующая (другая случайная). [догадка] */
   objectiveRepeat: boolean;
@@ -210,6 +216,11 @@ export interface Params {
   muzzleBonus: number;
   revengeChance: number;
   cageChance: number;
+  /**
+   * «Подавление» (tlidb): за каждый ранг разницы редкостей шанс повышения −5 %.
+   * Применяется к укусу узника ниже едока (Гильотина, «Бой в клетке»). [догадка: к чему относится]
+   */
+  oppressStep: number;
   /** Добавка к укусу крысы с «Шампуром». */
   skewerBonus: number;
   /** Добавка к укусу льва с «Короной», как у «Шампура»: итого +1 + crownBonus. [догадка] */
@@ -224,11 +235,14 @@ export interface Params {
 
   // утро
   tongsTargets: number;
+  /** Укус волка в камеру с Царапинами: обычный +1 и ещё +2 (tlidb «Царапины»). */
   clawsGain: number;
   ironboxDays: number;
+  /** Гнездо открывается Редкой крысой (tlidb «Крысиное гнездо»). */
   ironboxTier: number;
   coinChance: number;
   coinBonus: number;
+  /** Метка «Добыча» длится 3 хода (tlidb). */
   trapMornings: number;
 
   // события
@@ -236,14 +250,17 @@ export interface Params {
   appetiteChance: number;
   ravenCells: number;
   freedomOpens: number;
-  /** Узурпация I…IV: прирост узника в камере события. [догадка] */
+  /** Узурпация I…IV: прирост случайного узника. [I, II — карта; III, IV — догадка по ряду] */
   usurpGain: readonly [number, number, number, number];
+  /** «Добавка»: до стольких случайных узников +1. */
+  extraCount: number;
 
   // подарки
   ringOpens: number;
   brandCount: number;
 
   // допросная
+  /** «Подстрекнуть»: событий за запертые двери без события (tlidb: одно). */
   instigateDoors: number;
 }
 
@@ -284,6 +301,7 @@ const defaults: Params = {
   muzzleBonus: 2,
   revengeChance: 0.3,
   cageChance: 0.4,
+  oppressStep: 0.05,
   skewerBonus: 1,
   crownBonus: 2,
   ravenousChance: 0.4,
@@ -305,12 +323,13 @@ const defaults: Params = {
   appetiteChance: 0.5,
   ravenCells: 4,
   freedomOpens: 3,
-  usurpGain: [1, 1, 1, 1],
+  usurpGain: [1, 2, 3, 4],
+  extraCount: 3,
 
   ringOpens: 3,
   brandCount: 4,
 
-  instigateDoors: 2,
+  instigateDoors: 1,
 };
 
 export const DEFAULT_PARAMS: Readonly<Params> = Object.freeze(defaults);

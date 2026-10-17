@@ -6,7 +6,7 @@ import type { Rng } from '../../src/core/prison/engine/rng.js';
 import { bite, canEat, morning, openCell } from '../../src/core/prison/engine/rules.js';
 import {
   DOORS, DOORS_N, FLAGS, F_SCRATCH, F_TUSK, F_VIS_BEAST, F_VIS_TIER, HUNT_LEFT, NEST, NEXT, PHASE, PRE_TIER,
-  P_HUNT, P_MORNING, P_PATROL, State, WARDEN,
+  P_CHAIN, P_MORNING, P_PATROL, State, WARDEN,
 } from '../../src/core/prison/engine/state.js';
 import { NO, P, Seq, YES, beast, blank, hide, inmates, locked, manageAt, put, tier } from './engine-helpers.js';
 
@@ -135,6 +135,18 @@ describe('орудия пожирания', () => {
     expect(tier(s, 1)).toBe(3);
   });
 
+  it('Ржавая пила срабатывает и на укусе цепочки («цепное Пожирание»)', () => {
+    const s = withTools('saw');
+    put(s, 1, MAMMOTH, 0);
+    put(s, 2, LION, 0);
+    put(s, 3, RAT, 2);
+    manageAt(s, 1, YES);
+    act(s, { type: 'devour', to: 2 }, YES); // 0 + 1 + пила: Редкий мамонт
+    expect([beast(s, 1), tier(s, 1)]).toEqual([MAMMOTH, 2]);
+    bite(s, YES, P, 3, 1, true); // укус в цепочке: 2 + 1 + пила
+    expect(tier(s, 3)).toBe(4);
+  });
+
   it('Шипастый ошейник: укус в цепочке 80 % — +1', () => {
     const s = withTools('collar');
     put(s, 1, MAMMOTH, 1);
@@ -172,7 +184,7 @@ describe('орудия пожирания', () => {
     expect([beast(s, 2), tier(s, 2)]).toEqual([LION, 2]);
   });
 
-  it('Тесная клетка: 40 % — камера съеденного сразу открывается с новым узником', () => {
+  it('Переполненная клетка зверей: 40 % — камера съеденного сразу открывается с новым узником', () => {
     const s = withTools('cage');
     put(s, 1, MAMMOTH, 1);
     put(s, 2, LION, 1);
@@ -219,6 +231,20 @@ describe('орудия пожирания', () => {
     put(t, 1, MAMMOTH, 1);
     put(t, 2, LION, 1);
     bite(t, NO, P, 1, 2, false);
+    expect(tier(t, 1)).toBe(3);
+  });
+
+  it('«Подавление»: укус узника ниже — шанс повышения −5 % за ранг разницы', () => {
+    const p = { ...P, oppressStep: 0.5 };
+    const s = withTools('guillotine');
+    put(s, 1, WOLF, 2);
+    put(s, 2, RAT, 0);
+    bite(s, new Seq([0.5]), p, 1, 2, false); // шанс 1 − 0,5 · 2 = 0: не повысился
+    expect(tier(s, 1)).toBe(2);
+    const t = withTools('guillotine');
+    put(t, 1, WOLF, 2);
+    put(t, 2, RAT, 1);
+    bite(t, new Seq([0.4]), p, 1, 2, false); // шанс 0,5
     expect(tier(t, 1)).toBe(3);
   });
 
@@ -298,7 +324,7 @@ describe('орудия замены', () => {
     expect(inmates(t)).toBe(1);
   });
 
-  it('Отсечённая железная дева: выше нового столько же, сколько ниже — +3', () => {
+  it('Рассечённый саркофаг: выше нового столько же, сколько ниже — +3', () => {
     const s = withTools('maiden');
     put(s, 1, LION, 1);
     manageAt(s, 1, YES);
@@ -344,6 +370,8 @@ describe('утренние орудия', () => {
     manageAt(s, 3, YES);
     act(s, { type: 'swap' }, YES);
     expect([tier(s, 3), tier(s, 5), tier(s, 6), tier(s, 7), tier(s, 8)]).toEqual([1, 1, 1, 1, 1]);
+    // «Бивень» — метка камеры (tlidb): после замены остаётся, сходит, когда камера пустеет
+    expect(s.m[FLAGS + 3]! & F_TUSK).toBeTruthy();
   });
 
   it('Грязные когти: царапина показывает редкость, волк той же редкости ест сквозь дверь, прирост 3', () => {
@@ -396,20 +424,35 @@ describe('утренние орудия', () => {
     expect(tier(s, 7)).toBe(1);
   });
 
-  it('Окровавленный капкан: лев метит добычу, 3 утра оба +1', () => {
+  it('Окровавленный капкан: «Выслеживание» в камере льва, «Добыча» 3 хода — оба +1 каждое утро', () => {
     const s = withTools('trap');
     put(s, 2, LION, 0);
     put(s, 3, WOLF, 0);
     put(s, 9, RAT, 2);
-    s.m[NEXT] = P_MORNING;
-    settle(s, YES, P);
-    expect(s.m[PHASE]).toBe(P_HUNT);
-    expect(legal(s)).toEqual([{ type: 'hunt', to: 3 }]);
+    manageAt(s, 9);
+    expect(legal(s).some((a) => a.type === 'hunt')).toBe(false); // не лев
+    manageAt(s, 2);
+    expect(legal(s).filter((a) => a.type === 'hunt')).toEqual([{ type: 'hunt', to: 3 }]);
     act(s, { type: 'hunt', to: 3 }, YES);
-    expect(s.m[HUNT_LEFT]).toBe(3);
+    // это действие дня: день кончился, первое утро уже прошло
     expect(s.m[PHASE]).toBe(P_PATROL);
-    for (let i = 0; i < 4; i++) morning(s, YES, P);
+    expect(s.m[HUNT_LEFT]).toBe(2);
+    for (let i = 0; i < 3; i++) morning(s, YES, P);
     expect([tier(s, 2), tier(s, 3), tier(s, 9)]).toEqual([3, 3, 2]);
+  });
+
+  it('«Добыча» сходит, когда лев или добыча сменили кодовое имя', () => {
+    const s = withTools('trap');
+    put(s, 2, LION, 0);
+    put(s, 3, WOLF, 0);
+    put(s, 4, RAT, 0);
+    manageAt(s, 2);
+    act(s, { type: 'hunt', to: 3 }, YES);
+    expect(s.m[HUNT_LEFT]).toBe(2);
+    // волк съедает крысу и меняет зверя (Seq: прирост без шансов, новый зверь — мамонт)
+    bite(s, new Seq([0]), P, 3, 4, false);
+    expect(beast(s, 3)).toBe(MAMMOTH);
+    expect(s.m[HUNT_LEFT]).toBe(0);
   });
 });
 

@@ -17,7 +17,7 @@ import {
 } from './rules.js';
 import {
   CHAIN_EATER, DAY, DOORS, DOORS_N, NEXT, OFFER, OFFER_GIFT, OFFER_KIND, OFFER_N, OFFER_NONE, OFFER_TOOL, PHASE,
-  PICK_GIFTS, PICK_TOOLS, P_CHAIN, P_DAYEND, P_END, P_EVENT, P_HUNT, P_MANAGE, P_MORNING, P_OFFICE, P_PATROL,
+  PICK_GIFTS, PICK_TOOLS, P_CHAIN, P_DAYEND, P_END, P_EVENT, P_MANAGE, P_MORNING, P_OFFICE, P_PATROL,
   P_PICK, P_RATWAY, REROLLS, State, TIER, USED, WARDEN, EVT, copy, score,
 } from './state.js';
 
@@ -113,17 +113,11 @@ export function settle(s: State, r: Rng, p: Params): void {
       case P_CHAIN: {
         const e = m[CHAIN_EATER]!;
         if (e < 0 || targets(s, e) === 0) {
-          finishDevour(s, r, p, e);
+          finishDevour(s);
           continue;
         }
         break;
       }
-      case P_HUNT:
-        if (huntTargets(s) === 0) {
-          m[NEXT] = P_PATROL;
-          continue;
-        }
-        break;
       case P_EVENT:
         if (m[EVT + m[WARDEN]!] === 0) {
           m[NEXT] = P_MANAGE;
@@ -138,7 +132,7 @@ export function settle(s: State, r: Rng, p: Params): void {
 
 // ── легальные ходы ──────────────────────────────────────────────────────────
 
-/** Записать коды легальных ходов в out, вернуть их число. Буфер — не меньше 24. */
+/** Записать коды легальных ходов в out, вернуть их число. Буфер — не меньше 32. */
 export function legalCodes(s: State, out: Int32Array): number {
   const m = s.m;
   let n = 0;
@@ -147,11 +141,6 @@ export function legalCodes(s: State, out: Int32Array): number {
       const kind = m[OFFER_KIND] === OFFER_GIFT ? A_GIFT : A_TOOL;
       for (let i = 0; i < m[OFFER_N]!; i++) out[n++] = code(kind, m[OFFER + i]!);
       if (kind === A_TOOL && m[REROLLS]! > 0) out[n++] = code(A_REROLL);
-      break;
-    }
-    case P_HUNT: {
-      const mask = huntTargets(s);
-      for (let c = 1; c < CELLS; c++) if ((mask >>> c) & 1) out[n++] = code(A_HUNT, c);
       break;
     }
     case P_PATROL:
@@ -173,6 +162,8 @@ export function legalCodes(s: State, out: Int32Array): number {
     case P_MANAGE: {
       const mask = targets(s, m[WARDEN]!);
       for (let c = 1; c < CELLS; c++) if ((mask >>> c) & 1) out[n++] = code(A_DEVOUR, c);
+      const prey = huntTargets(s);
+      for (let c = 1; c < CELLS; c++) if ((prey >>> c) & 1) out[n++] = code(A_HUNT, c);
       out[n++] = code(A_SWAP);
       out[n++] = code(A_END);
       break;
@@ -227,7 +218,7 @@ export function applyCode(s: State, c: number, r: Rng, p: Params, check = true):
       break;
     case A_STOPCHAIN:
       if (ph !== P_CHAIN) illegal(s, c);
-      finishDevour(s, r, p, m[CHAIN_EATER]!);
+      finishDevour(s);
       break;
     case A_SWAP:
       if (ph !== P_MANAGE) illegal(s, c);
@@ -238,7 +229,7 @@ export function applyCode(s: State, c: number, r: Rng, p: Params, check = true):
       m[NEXT] = P_DAYEND;
       break;
     case A_HUNT:
-      if (ph !== P_HUNT || !((huntTargets(s) >>> arg) & 1)) illegal(s, c);
+      if (ph !== P_MANAGE || !((huntTargets(s) >>> arg) & 1)) illegal(s, c);
       hunt(s, arg, p);
       break;
     case A_BESTOW:
@@ -292,7 +283,7 @@ function applyTrusted(s: State, c: number, r: Rng, p: Params): void {
       chainBite(s, r, p, arg);
       break;
     case A_STOPCHAIN:
-      finishDevour(s, r, p, m[CHAIN_EATER]!);
+      finishDevour(s);
       break;
     case A_SWAP:
       swap(s, r, p);

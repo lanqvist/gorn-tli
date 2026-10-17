@@ -206,7 +206,7 @@ describe('допросная', () => {
     expect(s.m[PHASE]).toBe(P_PATROL);
   });
 
-  it('Подстрекнуть: 2 запертые двери без события получают событие', () => {
+  it('Подстрекнуть: одна запертая дверь без события получает событие (tlidb)', () => {
     const s = blank();
     s.m[EVT + 1] = EVENT.raven + 1;
     doorTo(s, 12, 0);
@@ -214,7 +214,7 @@ describe('допросная', () => {
     act(s, { type: 'office', choice: 'instigate' }, YES);
     let n = 0;
     for (let c = 1; c < 16; c++) if (s.m[EVT + c] !== 0) n++;
-    expect(n).toBe(3);
+    expect(n).toBe(2);
     expect(s.m[EVT + 1]).toBe(EVENT.raven + 1);
   });
 
@@ -242,7 +242,8 @@ describe('кто кого ест', () => {
     expect(canEat(s, 2, 3)).toBe(true);
     expect(canEat(s, 3, 4)).toBe(true);
     expect(canEat(s, 4, 1)).toBe(true);
-    expect(canEat(s, 1, 3)).toBe(false);
+    expect(canEat(s, 3, 1)).toBe(false);
+    expect(canEat(s, 4, 2)).toBe(false);
     expect(canEat(s, 2, 1)).toBe(false);
   });
 
@@ -254,17 +255,17 @@ describe('кто кого ест', () => {
     expect(targets(s, 1)).toBe(0);
   });
 
-  it('вторая еда от Легендарной: мамонт ест волка, лев — крысу', () => {
+  it('вторая еда на любой редкости (tlidb «Преимущество»): мамонт ест волка, лев — крысу', () => {
     const s = blank();
-    put(s, 1, MAMMOTH, 3);
-    put(s, 2, WOLF, 3);
-    put(s, 3, LION, 3);
-    put(s, 4, RAT, 3);
-    put(s, 5, MAMMOTH, 2);
-    put(s, 6, WOLF, 2);
+    put(s, 1, MAMMOTH, 0);
+    put(s, 2, WOLF, 0);
+    put(s, 3, LION, 2);
+    put(s, 4, RAT, 2);
+    put(s, 5, WOLF, 3);
+    put(s, 6, MAMMOTH, 3);
     expect(canEat(s, 1, 2)).toBe(true);
     expect(canEat(s, 3, 4)).toBe(true);
-    expect(canEat(s, 5, 6)).toBe(false);
+    expect(canEat(s, 5, 6)).toBe(false); // у волка и крысы второй еды нет
   });
 
   it('Призматический никого не ест', () => {
@@ -427,11 +428,11 @@ describe('призматические и сокровищница', () => {
   it('подарок «Клеймо первородного греха»: узники без еды меняют зверя, чтобы еда появилась', () => {
     const s = blank();
     put(s, 1, MAMMOTH, 0);
-    put(s, 2, WOLF, 0);
+    put(s, 2, MAMMOTH, 0);
     takeGift(s, YES, P, 3);
-    expect(beast(s, 1)).toBe(LION);
+    expect(beast(s, 1)).toBe(RAT);
     expect(targets(s, 1)).not.toBe(0);
-    expect(beast(s, 2)).toBe(WOLF); // любая смена оставила бы льва без еды
+    expect(beast(s, 2)).toBe(MAMMOTH); // любая смена оставила бы крысу без еды
   });
 });
 
@@ -495,7 +496,7 @@ describe('события', () => {
     expect(tier(s, 5)).toBe(0);
   });
 
-  it('За закрытыми дверями: Величайший, зверь из самых редких на поле', () => {
+  it('Закулисные махинации: Величайший, дефицитное кодовое имя', () => {
     const s = blank();
     put(s, 1, RAT, 0);
     put(s, 2, MAMMOTH, 1);
@@ -508,7 +509,7 @@ describe('события', () => {
     expect([beast(s, 1), tier(s, 1)]).toEqual([LION, 4]);
   });
 
-  it('Ненасытный аппетит: случайный узник самой низкой редкости, 5 попыток +1', () => {
+  it('Зверский аппетит: случайный узник самой низкой редкости, 5 попыток +1', () => {
     const s = blank();
     put(s, 1, MAMMOTH, 2);
     put(s, 2, LION, 0);
@@ -517,7 +518,7 @@ describe('события', () => {
     expect([tier(s, 1), tier(s, 2), tier(s, 3)]).toEqual([2, 1, 0]);
   });
 
-  it('Опасный каторжник: запертая камера открывается с Легендарным или Величайшим', () => {
+  it('Каторжник: запертая камера открывается с Легендарным или Величайшим', () => {
     const s = blank();
     runEvent(s, YES, P, 5, EVENT.convict);
     expect(tier(s, 1)).toBe(3);
@@ -545,16 +546,70 @@ describe('события', () => {
     expect(inmates(s)).toBe(3);
   });
 
-  it('Узурпация: рост узника, следующая ступень — за случайной дверью', () => {
+  it('Узурпация: случайный узник растёт на 1/2/3/4, следующая ступень — за случайной дверью', () => {
     const s = blank();
     put(s, 3, WOLF, 1);
-    runEvent(s, YES, P, 3, EVENT.usurp1);
-    expect(tier(s, 3)).toBe(2);
+    put(s, 5, RAT, 0);
+    runEvent(s, YES, P, 5, EVENT.usurp1);
+    expect([tier(s, 3), tier(s, 5)]).toEqual([2, 0]); // не узник события, а случайный
     expect(s.m[EVT + 1]).toBe(EVENT.usurp2 + 1);
+    runEvent(s, YES, P, 5, EVENT.usurp2);
+    expect(tier(s, 3)).toBe(4);
     runEvent(s, YES, P, 3, EVENT.usurp4);
     let n = 0;
     for (let c = 1; c < 16; c++) if (s.m[EVT + c] !== 0) n++;
-    expect(n).toBe(1);
+    expect(n).toBe(2); // ступени II и III от I и II; IV новой не ставит
+  });
+
+  it('Заклятый враг: открывается камера с едой текущего узника его редкости', () => {
+    const s = blank();
+    put(s, 3, WOLF, 2);
+    runEvent(s, YES, P, 3, EVENT.rival);
+    expect([beast(s, 1), tier(s, 1)]).toEqual([RAT, 2]);
+    expect(canEat(s, 3, 1)).toBe(true);
+  });
+
+  it('Делим удачу: +1 за каждого другого узника с тем же кодовым именем', () => {
+    const s = blank();
+    put(s, 3, WOLF, 0);
+    put(s, 5, WOLF, 2);
+    put(s, 7, WOLF, 1);
+    put(s, 9, RAT, 0);
+    runEvent(s, YES, P, 3, EVENT.luck);
+    expect(tier(s, 3)).toBe(2);
+  });
+
+  it('Этапирование сообщников: копия узника в случайной неоткрытой камере', () => {
+    const s = blank();
+    put(s, 3, LION, 2);
+    runEvent(s, YES, P, 3, EVENT.escort);
+    expect([beast(s, 1), tier(s, 1)]).toEqual([LION, 2]);
+    expect(locked(s, 1)).toBe(false);
+  });
+
+  it('Добавка: до 3 случайных узников +1', () => {
+    const s = blank();
+    put(s, 3, LION, 0);
+    put(s, 5, WOLF, 0);
+    runEvent(s, YES, P, 3, EVENT.extra);
+    expect([tier(s, 3), tier(s, 5)]).toEqual([1, 1]);
+    const t = blank();
+    for (let c = 2; c <= 6; c++) put(t, c, RAT, 0);
+    runEvent(t, YES, P, 2, EVENT.extra);
+    let up = 0;
+    for (let c = 2; c <= 6; c++) up += tier(t, c);
+    expect(up).toBe(3);
+  });
+
+  it('Закулисные махинации: дефицитное кодовое имя считает и самого узника', () => {
+    const s = blank();
+    put(s, 3, RAT, 1);
+    put(s, 5, MAMMOTH, 0);
+    put(s, 6, LION, 0);
+    put(s, 7, WOLF, 0);
+    runEvent(s, YES, P, 3, EVENT.behind);
+    // все звери по одному (крыса — сам узник): выбор из всех четырёх, YES берёт первого
+    expect([beast(s, 3), tier(s, 3)]).toEqual([MAMMOTH, 4]);
   });
 
   it('Крысиная тропа: переход в любую камеру, кроме допросной, без шагов', () => {
@@ -576,7 +631,7 @@ describe('события', () => {
     expect(s.m[PHASE]).toBe(P_MANAGE);
   });
 
-  it('«Охота за сокровищем»: Обычные и Магические видны, остальные — «не ниже Редкой»', () => {
+  it('Поиск «сокровищ»: Обычные и Магические разведаны, остальные — «не ниже Редкой»', () => {
     const s = blank();
     runEvent(s, new Rng(8), P, 0, EVENT.treasure);
     for (let c = 1; c < 16; c++) {

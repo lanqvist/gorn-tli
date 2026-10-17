@@ -52,7 +52,7 @@ export const DAY_LIMIT = S0 + 2;
 export const PHASE = S0 + 3;
 /** Куда вернуться после выборов (орудие, подарок). */
 export const NEXT = S0 + 4;
-/** Действие дня в камере надзирателя уже сделано (1 — Пожирание, 2 — Замена). */
+/** Действие дня в камере надзирателя уже сделано (1 — Пожирание, 2 — Замена, 3 — Выслеживание). */
 export const USED = S0 + 5;
 /** Едок в цепочке пожирания, −1 — цепочки нет. */
 export const CHAIN_EATER = S0 + 6;
@@ -84,7 +84,7 @@ export const DOORS = S0 + 24;
 export const CHAIN_REACTION = S0 + 27;
 /** Сколько ещё выборов в допросной за этот визит. */
 export const OFFICE_LEFT = S0 + 28;
-/** «Охота»: лев, добыча, сколько утр осталось (0 — охоты нет). */
+/** Метка «Добыча»: лев, добыча, сколько утр осталось (0 — метки нет). */
 export const HUNT_LION = S0 + 29;
 export const HUNT_PREY = S0 + 30;
 export const HUNT_LEFT = S0 + 31;
@@ -101,7 +101,7 @@ export const SIZE = S0 + 37;
 
 /** Выбор орудия или подарка. */
 export const P_PICK = 0;
-/** «Охота»: лев выбирает добычу. */
+/** Не используется: «Выслеживание» — ход в ряду решений (P_MANAGE). Номер оставлен, чтобы не сдвигать фазы. */
 export const P_HUNT = 1;
 /** Выбор пункта назначения. */
 export const P_PATROL = 2;
@@ -111,7 +111,7 @@ export const P_EVENT = 3;
 export const P_OFFICE = 4;
 /** «Крысиная тропа»: переход в любую камеру. */
 export const P_RATWAY = 5;
-/** «Примите решение»: Пожирание, Замена, Завершить день. */
+/** «Примите решение»: Пожирание, Замена, Выслеживание, Завершить день. */
 export const P_MANAGE = 6;
 /** «Выберите узника для пожирания». */
 export const P_CHAIN = 7;
@@ -131,6 +131,7 @@ export const OFFER_GIFT = 2;
 
 export const USED_DEVOUR = 1;
 export const USED_SWAP = 2;
+export const USED_HUNT = 3;
 
 // ── состояние ───────────────────────────────────────────────────────────────
 

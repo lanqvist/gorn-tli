@@ -27,7 +27,7 @@ import {
 import {
   BEAST, CHAIN_EATER, DAY, DAY_LIMIT, DOORS, DOORS_N, EVT, FLAGS, F_TUSK, F_VIS_BEAST, F_VIS_RARE, F_VIS_TIER, LOCK,
   OFFER, OFFER_GIFT, OFFER_KIND, OFFER_N, PHASE, PICK_GIFTS, PICK_TOOLS, PRE_BEAST, PRE_TIER, P_CHAIN, P_END,
-  P_EVENT, P_HUNT, P_MANAGE, P_OFFICE, P_PATROL, P_PICK, P_RATWAY, REROLLS, START, STORAGE, State, TIER, TOOLS,
+  P_EVENT, P_MANAGE, P_OFFICE, P_PATROL, P_PICK, P_RATWAY, REROLLS, START, STORAGE, State, TIER, TOOLS,
   WARDEN, copy, dist,
 } from '../engine/state.js';
 import {
@@ -184,7 +184,7 @@ function hasFood(u: number, f1: number, f2: number): boolean {
 /** Лучший вариант укуса для едока (t, b) по составу доски; −∞, если есть некого. */
 function bestBite(t: number, b: number, c: number): number {
   const f1 = FIRST_FOOD[b]!;
-  const f2 = t >= LEGENDARY ? SECOND_FOOD[b]! : -1;
+  const f2 = SECOND_FOOD[b]!;
   let best = -Infinity;
   const row = t * 4;
   if (hasFood(t, f1, f2)) best = biteOption(t, b, c, t, true);
@@ -238,7 +238,7 @@ function biteGain(e: number, j: number, chain: number): number {
   } else {
     const tt = m[TIER + j]!;
     const bt = m[BEAST + j]!;
-    const food = bt === FIRST_FOOD[be] || (te >= LEGENDARY && bt === SECOND_FOOD[be]);
+    const food = bt === FIRST_FOOD[be] || bt === SECOND_FOOD[be];
     cost = val[tt]! - cageBonus;
     base = baseGain(be, te, food, tt);
   }
@@ -377,13 +377,13 @@ function fedCount(x: Int32Array): number {
     const b = x[BEAST + c]!;
     let ok = false;
     if (anyTier) {
-      for (let u = 0; u < 5 && !ok; u++) ok = cnt2[u * 4 + FIRST_FOOD[b]!]! > 0 || (t >= LEGENDARY && SECOND_FOOD[b]! >= 0 && cnt2[u * 4 + SECOND_FOOD[b]!]! > 0);
+      for (let u = 0; u < 5 && !ok; u++) ok = cnt2[u * 4 + FIRST_FOOD[b]!]! > 0 || (SECOND_FOOD[b]! >= 0 && cnt2[u * 4 + SECOND_FOOD[b]!]! > 0);
     } else {
       const row = t * 4;
-      ok = cnt2[row + FIRST_FOOD[b]!]! > 0 || (t >= LEGENDARY && SECOND_FOOD[b]! >= 0 && cnt2[row + SECOND_FOOD[b]!]! > 0);
+      ok = cnt2[row + FIRST_FOOD[b]!]! > 0 || (SECOND_FOOD[b]! >= 0 && cnt2[row + SECOND_FOOD[b]!]! > 0);
       if (!ok && b === LION && crown) ok = cnt2[row]! + cnt2[row + 1]! + cnt2[row + 2]! + cnt2[row + 3]! > 1;
       if (!ok && b === RAT && skewer) ok = cnt2[row + RAT]! > 1;
-      if (!ok && b === MAMMOTH && maul) for (let u = t + 1; u < 5 && !ok; u++) ok = cnt2[u * 4 + LION]! > 0;
+      if (!ok && b === MAMMOTH && maul) for (let u = t + 1; u < 5 && !ok; u++) ok = cnt2[u * 4 + LION]! + cnt2[u * 4 + WOLF]! > 0;
     }
     if (ok) fed++;
   }
@@ -472,27 +472,25 @@ function pickGift(s: State): number {
   return code(A_GIFT, best);
 }
 
-function pickHunt(s: State): number {
+/** Лучшая добыча для «Выслеживания» львом надзирателя: камера и выгода (в huntJ / huntGain). */
+let huntJ = -1;
+let huntGain = -Infinity;
+function bestHunt(s: State): void {
+  huntJ = -1;
+  huntGain = -Infinity;
   const mask = huntTargets(s);
-  let best = -1;
-  let bestV = -Infinity;
+  if (mask === 0) return;
+  const tl = m[TIER + m[WARDEN]!]!;
+  const n = P.trapMornings;
   for (let c = 1; c < CELLS; c++) {
     if (!((mask >>> c) & 1)) continue;
-    let lion = -1;
-    for (let l = 1; l < CELLS; l++) {
-      if (m[BEAST + l] === LION && ((targets(s, l) >>> c) & 1) && (lion < 0 || m[TIER + l]! > m[TIER + lion]!)) lion = l;
-    }
     const tp = m[TIER + c]!;
-    const tl = m[TIER + lion]!;
-    const n = P.trapMornings;
     const v = riseV(tp, n) - val[tp]! + riseV(tl, n) - val[tl]!;
-    if (v > bestV) {
-      bestV = v;
-      best = c;
+    if (v > huntGain) {
+      huntGain = v;
+      huntJ = c;
     }
   }
-  why = R_HUNT;
-  return code(A_HUNT, best);
 }
 
 function pickDoor(): number {
@@ -562,6 +560,11 @@ function pickManage(s: State): number {
   const t = m[TIER + e]!;
   bestTarget(s, e, 0); // и таблицы
   const sw = swapGain(t, e);
+  bestHunt(s);
+  if (huntJ >= 0 && huntGain > bestGain && huntGain > sw && huntGain > 0) {
+    why = R_HUNT;
+    return code(A_HUNT, huntJ);
+  }
   if (bestJ >= 0 && bestGain >= sw && bestGain >= 0) {
     why = t + 1 >= 5 || (m[LOCK + bestJ] === 1 && t + P.clawsGain >= 5) ? R_DEVOUR_PRISM : R_DEVOUR;
     return code(A_DEVOUR, bestJ);
@@ -609,8 +612,6 @@ export function instantCode(s: State, p: Params = DEFAULT_PARAMS, w: Float64Arra
   switch (m[PHASE]) {
     case P_PICK:
       return m[OFFER_KIND] === OFFER_GIFT ? pickGift(s) : pickTool();
-    case P_HUNT:
-      return pickHunt(s);
     case P_PATROL:
       return pickDoor();
     case P_EVENT:
@@ -657,7 +658,7 @@ export function advise(s: State, p: Params = DEFAULT_PARAMS, w: Float64Array = D
     case R_TOOL: text = `Взять «${SHORT_TOOL[arg]}»`; break;
     case R_REROLL: text = 'Обновить: все три карты слабые'; break;
     case R_GIFT: text = `Подарок: ${GIFT_NAMES[arg]}`; break;
-    case R_HUNT: text = `Охота на узника в камере ${n}`; break;
+    case R_HUNT: text = `Выслеживание: узник в камере ${n}`; break;
     case R_DOOR_PRISM: text = `Камера ${n}: цепочка к призматическому`; break;
     case R_DOOR_EAT: text = `Камера ${n}: узник съест соседа`; break;
     case R_DOOR_EVENT: text = `Камера ${n}: событие`; break;
