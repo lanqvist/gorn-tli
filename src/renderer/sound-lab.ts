@@ -1,30 +1,60 @@
-/**
+﻿/**
  * Дев-страница прослушивания звуков (только `npm run dev`, в сборку
- * не входит). Рендерит ассеты тем же движком, что и генератор,
- * и проигрывает их через такую же шину, как слой плашек.
+ * не входит — её нет среди входов vite.config.ts).
+ *
+ * Ступени рендерятся прямо здесь тем же движком, что и генератор ассетов.
+ * Эталон — локальная запись чужого звука из out/ (папка вне Git): он нужен
+ * только чтобы сравнивать на слух, никогда не импортируется кодом
+ * приложения и не попадает ни в ассеты, ни в сборку. Нет файла — нет кнопки.
  */
-import { SR, measure } from '../sfx/dsp.js';
+import { SR, measureStereo, type Stereo } from '../sfx/dsp.js';
 import { TIERS, VARIANTS, renderSound, type Tier } from '../sfx/kit.js';
 
+const REFERENCE = Object.values(
+  import.meta.glob<string>('../../out/poe2-edits/divine-space.wav', {
+    query: '?url',
+    import: 'default',
+    eager: true,
+  }),
+)[0];
+
 const LABELS: Record<Tier, string> = {
-  pickup: 'Мелкий подбор',
+  pickup: 'Подбор',
   pickupBig: 'Ценный подбор',
   whistle: 'Свист',
-  jackpot: 'Золотая находка',
-  jackpotHot: 'Вторая подряд',
+  jackpot: 'Джекпот',
+  jackpotHot: 'Стрик',
   runEnd: 'Итог карты',
   runLoss: 'Карта в минус',
   record: 'Рекорд',
 };
 
+/** Лестница ценности: от частого к редкому, с паузами под хвосты. */
+const LADDER: ReadonlyArray<readonly [number, Tier]> = [
+  [0, 'pickup'], [1.2, 'pickupBig'], [2.8, 'whistle'], [5, 'jackpot'], [8, 'jackpotHot'], [11, 'record'],
+];
+
+/** Сессия фарма, 20 с: как на карте, подборы не чаще раза в 1.8 с. */
+const FARM: ReadonlyArray<readonly [number, Tier]> = [
+  [0, 'pickup'], [1.8, 'pickup'], [3.6, 'pickupBig'], [5.4, 'pickup'], [7.2, 'pickup'],
+  [9, 'whistle'], [11, 'pickup'], [12.8, 'pickup'], [14, 'jackpot'], [17.5, 'runEnd'],
+];
+
 let ctx: AudioContext | null = null;
 let bus: DynamicsCompressorNode | null = null;
+const playing = new Set<AudioBufferSourceNode>();
+const timers: Array<ReturnType<typeof setTimeout>> = [];
 const cache = new Map<string, AudioBuffer>();
-const turn = new Map<string, number>();
+const turn = new Map<Tier, number>();
+let referenceBuffer: Promise<AudioBuffer | null> | null = null;
+
+const statusEl = document.getElementById('status')!;
+const volume = () => Number((document.getElementById('vol') as HTMLInputElement).value) / 100;
 
 function audio(): AudioContext {
   if (!ctx) {
     ctx = new AudioContext();
+    // Та же шина, что у слоя плашек в приложении.
     bus = ctx.createDynamicsCompressor();
     bus.threshold.value = -18;
     bus.knee.value = 12;
@@ -37,64 +67,125 @@ function audio(): AudioContext {
   return ctx;
 }
 
-function play(tier: Tier, stat?: HTMLElement): void {
+function toBuffer(st: Stereo): AudioBuffer {
+  const b = audio().createBuffer(2, st.l.length, SR);
+  b.copyToChannel(st.l, 0);
+  b.copyToChannel(st.r, 1);
+  return b;
+}
+
+function start(buffer: AudioBuffer, card?: HTMLElement): void {
   const a = audio();
-  const key = tier;
-  const v = (turn.get(key) ?? 0) % VARIANTS[tier];
-  turn.set(key, v + 1);
-  const id = `${key}:${v}`;
-  let buffer = cache.get(id);
-  if (!buffer) {
-    const sig = renderSound(tier, v);
-    buffer = a.createBuffer(1, sig.length, SR);
-    buffer.copyToChannel(sig, 0);
-    cache.set(id, buffer);
-    if (stat) {
-      const m = measure(sig);
-      stat.textContent = `${LABELS[tier]}, вариант ${v + 1}/${VARIANTS[tier]}: ${m.durationSec.toFixed(2)} с, пик ${m.peakDb.toFixed(1)} дБ, громкость ${m.rmsDb.toFixed(1)} дБ`;
-    }
-  } else if (stat) {
-    stat.textContent = `${LABELS[tier]}, вариант ${v + 1}/${VARIANTS[tier]}`;
-  }
   const src = a.createBufferSource();
   src.buffer = buffer;
-  // Лёгкий разброс высоты, как в приложении: повтор не звучит копией.
-  src.playbackRate.value = 1 + (Math.random() * 2 - 1) * 0.015;
   const g = a.createGain();
-  g.gain.value = Number((document.getElementById('vol') as HTMLInputElement).value) / 100;
+  g.gain.value = volume();
   src.connect(g).connect(bus!);
+  playing.add(src);
+  card?.classList.add('playing');
+  src.onended = () => {
+    playing.delete(src);
+    if (playing.size === 0) card?.classList.remove('playing');
+  };
   src.start();
 }
 
-function simulate(): void {
-  const plan: Array<[number, Tier]> = [
-    [0, 'pickup'], [1.8, 'pickup'], [3.6, 'whistle'], [5.4, 'pickupBig'],
-    [7.2, 'pickup'], [9, 'jackpot'], [11.5, 'runEnd'],
-  ];
-  audio();
-  for (const [t, tier] of plan) setTimeout(() => play(tier), t * 1000);
+function stop(): void {
+  for (const t of timers.splice(0)) clearTimeout(t);
+  for (const s of playing) s.stop();
+  playing.clear();
+  document.querySelectorAll('.playing').forEach((el) => el.classList.remove('playing'));
+  statusEl.textContent = '';
 }
 
-const grid = document.getElementById('grid')!;
+/** Очередной вариант ступени (повторы перебирают варианты, как в приложении). */
+function next(tier: Tier): AudioBuffer {
+  const v = (turn.get(tier) ?? 0) % VARIANTS[tier];
+  turn.set(tier, v + 1);
+  const id = `${tier}:${v}`;
+  let buffer = cache.get(id);
+  if (!buffer) {
+    const st = renderSound(tier, v);
+    buffer = toBuffer(st);
+    cache.set(id, buffer);
+    const m = measureStereo(st);
+    statusEl.textContent = `${LABELS[tier]} ${v + 1}/${VARIANTS[tier]}: ${m.durationSec.toFixed(2)} с, пик ${m.peakDb.toFixed(1)} дБ, громкость ${m.rmsDb.toFixed(1)} дБ, энергия ${m.energyDb.toFixed(1)} дБ`;
+  } else {
+    statusEl.textContent = `${LABELS[tier]} ${v + 1}/${VARIANTS[tier]}`;
+  }
+  return buffer;
+}
+
+function loadReference(): Promise<AudioBuffer | null> {
+  if (!referenceBuffer) {
+    referenceBuffer = REFERENCE
+      ? fetch(REFERENCE)
+          .then((r) => r.arrayBuffer())
+          .then((data) => audio().decodeAudioData(data))
+          .catch(() => null)
+      : Promise.resolve(null);
+  }
+  return referenceBuffer;
+}
+
+function schedule(plan: ReadonlyArray<readonly [number, Tier]>, card: HTMLElement, title: string): void {
+  stop();
+  // Рендерим всё заранее, чтобы план шёл ровно по времени.
+  const buffers = plan.map(([t, tier]) => [t, next(tier)] as const);
+  statusEl.textContent = title;
+  for (const [t, buffer] of buffers) timers.push(setTimeout(() => start(buffer, card), t * 1000));
+}
+
+// ── разметка ────────────────────────────────────────────────────
+
+function button(parent: Element, label: string, onClick: () => void, main = false): void {
+  const b = document.createElement('button');
+  b.textContent = label;
+  if (main) b.className = 'main';
+  b.onclick = onClick;
+  parent.appendChild(b);
+}
+
+const refCard = document.getElementById('ref')!;
+refCard.innerHTML =
+  '<h2>Эталон · дивайн с космосом</h2><p>Локальная запись, только для сравнения на слух.</p><div class="btns"></div>';
+const refBtns = refCard.querySelector('.btns')!;
+
 const card = document.createElement('div');
 card.className = 'card';
-card.style.setProperty('--k', '#ff8a3d');
 card.innerHTML =
-  '<h2>Пепельный фонк</h2><p>Мемфисский ковбелл 808 во фригийском ре, рычащий 808 со слайдами, ' +
-  'вокальный чоп, кассетная пыль, тейп-стоп на минусе. Свист — на дорогой предмет, как в PoE.</p>' +
-  '<div class="btns"></div><div class="stat"></div>';
+  '<h2>Подпись Горна</h2><p>Один тембр — разный вес находки: от короткого тона подбора до полной подписи с аккордом на рекорде.</p><div class="btns"></div>';
 const btns = card.querySelector('.btns')!;
-const stat = card.querySelector<HTMLElement>('.stat')!;
-for (const tier of TIERS) {
-  const b = document.createElement('button');
-  b.innerHTML =
-    VARIANTS[tier] > 1 ? `${LABELS[tier]}<small>×${VARIANTS[tier]}</small>` : LABELS[tier];
-  b.onclick = () => play(tier, stat);
-  btns.appendChild(b);
+document.getElementById('grid')!.appendChild(card);
+
+if (REFERENCE) {
+  button(refBtns, '▶ Эталон', () => {
+    stop();
+    void loadReference().then((b) => b && start(b, refCard));
+  }, true);
+  button(refBtns, '▶ A/B: эталон → джекпот', () => {
+    stop();
+    void loadReference().then((b) => {
+      if (!b) return;
+      start(b, refCard);
+      timers.push(setTimeout(() => start(next('jackpot'), card), (b.duration + 0.6) * 1000));
+    });
+  });
+} else {
+  refBtns.textContent = 'Эталона нет: out/poe2-edits/divine-space.wav не найден.';
 }
-const sim = document.createElement('button');
-sim.className = 'sim';
-sim.textContent = '▶ Сессия фарма (13 с)';
-sim.onclick = simulate;
-card.appendChild(sim);
-grid.appendChild(card);
+
+button(btns, '▶ Лестница ценности', () => schedule(LADDER, card, 'Лестница ценности'), true);
+button(btns, '▶ Сессия фарма · 20 с', () => schedule(FARM, card, 'Сессия фарма'), true);
+for (const tier of TIERS) {
+  const n = VARIANTS[tier];
+  button(btns, n > 1 ? `${LABELS[tier]} ×${n}` : LABELS[tier], () => {
+    stop();
+    start(next(tier), card);
+  });
+}
+
+document.getElementById('stop')!.onclick = stop;
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') stop();
+});

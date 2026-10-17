@@ -255,17 +255,22 @@ export function echo(sig: Signal, time: number, feedback: number, wet: number, t
 }
 
 /**
- * Короткий зал по схеме Freeverb: восемь гребенчатых фильтров и четыре
- * всепропускающих. size 0..1, damp 0..1 — гашение верхов в хвосте.
+ * Хвост зала по схеме Freeverb: восемь гребенчатых фильтров и четыре
+ * всепропускающих, только «мокрый» сигнал. size 0..1, damp 0..1 — гашение
+ * верхов в хвосте. spread сдвигает длины линий: два хвоста с разным
+ * spread некоррелированы — так из одного входа получается стерео.
  */
-export function reverb(sig: Signal, size: number, damp: number, wet: number, tail: number): Signal {
+function freeverbWet(sig: Signal, size: number, damp: number, tail: number, spread = 0): Signal {
   const k = SR / 44100;
   const combs = [1116, 1188, 1277, 1356, 1422, 1491, 1557, 1617].map((n) => ({
-    buf: new Float32Array(Math.round(n * k)),
+    buf: new Float32Array(Math.round((n + spread) * k)),
     idx: 0,
     lp: 0,
   }));
-  const allpasses = [556, 441, 341, 225].map((n) => ({ buf: new Float32Array(Math.round(n * k)), idx: 0 }));
+  const allpasses = [556, 441, 341, 225].map((n) => ({
+    buf: new Float32Array(Math.round((n + spread) * k)),
+    idx: 0,
+  }));
   const feedback = 0.7 + size * 0.28;
   const out = new Float32Array(sig.length + samples(tail));
   for (let i = 0; i < out.length; i++) {
@@ -284,8 +289,15 @@ export function reverb(sig: Signal, size: number, damp: number, wet: number, tai
       a.idx = (a.idx + 1) % a.buf.length;
       acc = y - acc;
     }
-    out[i] = (sig[i] ?? 0) + acc * wet;
+    out[i] = acc;
   }
+  return out;
+}
+
+/** Короткий зал: сухой сигнал плюс хвост Freeverb. */
+export function reverb(sig: Signal, size: number, damp: number, wet: number, tail: number): Signal {
+  const out = freeverbWet(sig, size, damp, tail);
+  for (let i = 0; i < out.length; i++) out[i] = (sig[i] ?? 0) + out[i]! * wet;
   return out;
 }
 
@@ -325,6 +337,24 @@ export function duck(sig: Signal, hits: readonly number[], depth: number, releas
 
 export const db = (x: number): number => 20 * Math.log10(Math.max(1e-9, x));
 export const fromDb = (d: number): number => Math.pow(10, d / 20);
+
+/** Края по приподнятому косинусу, ровно в ноль на концах; длина не меняется. */
+export function softEdges(sig: Signal, attack = 0.008, release = 0.04): Signal {
+  const a = samples(attack);
+  const r = samples(release);
+  for (let i = 0; i < sig.length; i++) {
+    const k = Math.min(1, i / a, (sig.length - 1 - i) / r);
+    sig[i] = sig[i]! * (0.5 - 0.5 * Math.cos(Math.PI * k));
+  }
+  return sig;
+}
+
+/** Полная энергия сигнала, дБ: длинный хвост не должен «давить» сильнее прежних звуков. */
+export function energyDb(sig: Signal): number {
+  let sum = 0;
+  for (const x of sig) sum += (x * x) / SR;
+  return 10 * Math.log10(Math.max(1e-18, sum));
+}
 
 /** Пик и максимальная громкость в окне 50 мс — так же, как замеряли прежние звуки. */
 export function measure(sig: Signal): { peakDb: number; rmsDb: number; durationSec: number } {
@@ -412,6 +442,143 @@ export function toWav(sig: Signal, rate = SR): Uint8Array {
   for (let i = 0; i < sig.length; i++) {
     const v = Math.max(-1, Math.min(1, sig[i]!));
     view.setInt16(44 + i * 2, Math.round(v * 32767), true);
+  }
+  return bytes;
+}
+
+// ── стерео ──────────────────────────────────────────────────────
+
+/**
+ * Стерео-сигнал. Ширина — часть характера дорогой находки: искры и хвост
+ * «космоса» расходятся по сторонам, а удар и основной тон стоят в центре.
+ */
+export interface Stereo {
+  l: Signal;
+  r: Signal;
+}
+
+/** Стерео-сумма: моно-источники с панорамой (−1 лево … +1 право) и готовые стерео. */
+export class StereoMix {
+  private readonly left: Mix;
+  private readonly right: Mix;
+  constructor(dur: number) {
+    this.left = new Mix(dur);
+    this.right = new Mix(dur);
+  }
+  /** Закон равной мощности: центр — по 0.71 в каждый канал. */
+  add(sig: Signal, at = 0, g = 1, pan = 0): this {
+    const angle = ((Math.max(-1, Math.min(1, pan)) + 1) * Math.PI) / 4;
+    this.left.add(sig, at, g * Math.cos(angle));
+    this.right.add(sig, at, g * Math.sin(angle));
+    return this;
+  }
+  addStereo(st: Stereo, at = 0, g = 1): this {
+    this.left.add(st.l, at, g);
+    this.right.add(st.r, at, g);
+    return this;
+  }
+  get data(): Stereo {
+    const n = Math.max(this.left.data.length, this.right.data.length);
+    const pad = (s: Signal): Signal => {
+      if (s.length === n) return s;
+      const out = new Float32Array(n);
+      out.set(s);
+      return out;
+    };
+    return { l: pad(this.left.data), r: pad(this.right.data) };
+  }
+}
+
+/** Стерео-зал: два некоррелированных хвоста Freeverb из одного входа, только «мокрое». */
+export function hall(sig: Signal, size: number, damp: number, tail: number): Stereo {
+  return { l: freeverbWet(sig, size, damp, tail, 0), r: freeverbWet(sig, size, damp, tail, 23) };
+}
+
+/** Замер стерео: громкость — по средней мощности двух каналов, пик — по худшему. */
+export function measureStereo(st: Stereo): {
+  peakDb: number;
+  rmsDb: number;
+  durationSec: number;
+  energyDb: number;
+} {
+  const n = Math.min(st.l.length, st.r.length);
+  const power = new Float32Array(n);
+  let peak = 0;
+  for (let i = 0; i < n; i++) {
+    power[i] = Math.sqrt((st.l[i]! * st.l[i]! + st.r[i]! * st.r[i]!) / 2);
+    peak = Math.max(peak, Math.abs(st.l[i]!), Math.abs(st.r[i]!));
+  }
+  const m = measure(power);
+  return { peakDb: db(peak), rmsDb: m.rmsDb, durationSec: n / SR, energyDb: energyDb(power) };
+}
+
+/**
+ * Мастер стерео-ассета: срез инфранизов и верха выше cutoff, громкость —
+ * к цели по замеру, пики — под потолок связанным лимитером (оба канала
+ * приседают вместе, панорама не плывёт), тишина в хвосте — обрезается.
+ */
+export function masterStereo(st: Stereo, targetRmsDb: number, ceilingDb: number, cutoff = 8500): Stereo {
+  let l = biquad(biquad(st.l, 'highpass', 30, 0.7), 'lowpass', cutoff, 0.6);
+  let r = biquad(biquad(st.r, 'highpass', 30, 0.7), 'lowpass', cutoff, 0.6);
+  const ceiling = fromDb(ceilingDb);
+  const look = samples(0.003);
+  const release = Math.exp(-1 / (SR * 0.08));
+  for (let pass = 0; pass < 3; pass++) {
+    const g0 = fromDb(targetRmsDb - measureStereo({ l, r }).rmsDb);
+    scale(l, g0);
+    scale(r, g0);
+    const ol = new Float32Array(l.length);
+    const or = new Float32Array(r.length);
+    let g = 1;
+    for (let i = 0; i < l.length; i++) {
+      let m = 0;
+      for (let j = i; j < Math.min(l.length, i + look); j++) {
+        m = Math.max(m, Math.abs(l[j]!), Math.abs(r[j]!));
+      }
+      const target = m > ceiling ? ceiling / m : 1;
+      g = target < g ? target : target - (target - g) * release;
+      ol[i] = Math.max(-ceiling, Math.min(ceiling, l[i]! * g));
+      or[i] = Math.max(-ceiling, Math.min(ceiling, r[i]! * g));
+    }
+    l = ol;
+    r = or;
+  }
+  // Общая обрезка хвоста: ниже −50 дБ от пика в обоих каналах.
+  let peak = 0;
+  for (let i = 0; i < l.length; i++) peak = Math.max(peak, Math.abs(l[i]!), Math.abs(r[i]!));
+  const floor = peak * fromDb(-50);
+  let end = l.length;
+  while (end > 1 && Math.abs(l[end - 1]!) < floor && Math.abs(r[end - 1]!) < floor) end--;
+  end = Math.min(l.length, end + samples(0.01));
+  return { l: softEdges(l.slice(0, end), 0.001, 0.03), r: softEdges(r.slice(0, end), 0.001, 0.03) };
+}
+
+/** WAV: 16 бит, стерео, отсчёты чередуются L, R. */
+export function toWavStereo(st: Stereo, rate = SR): Uint8Array {
+  const n = Math.min(st.l.length, st.r.length);
+  const bytes = new Uint8Array(44 + n * 4);
+  const view = new DataView(bytes.buffer);
+  const text = (off: number, s: string) => {
+    for (let i = 0; i < s.length; i++) view.setUint8(off + i, s.charCodeAt(i));
+  };
+  text(0, 'RIFF');
+  view.setUint32(4, 36 + n * 4, true);
+  text(8, 'WAVE');
+  text(12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 2, true);
+  view.setUint32(24, rate, true);
+  view.setUint32(28, rate * 4, true);
+  view.setUint16(32, 4, true);
+  view.setUint16(34, 16, true);
+  text(36, 'data');
+  view.setUint32(40, n * 4, true);
+  for (let i = 0; i < n; i++) {
+    const vl = Math.max(-1, Math.min(1, st.l[i]!));
+    const vr = Math.max(-1, Math.min(1, st.r[i]!));
+    view.setInt16(44 + i * 4, Math.round(vl * 32767), true);
+    view.setInt16(46 + i * 4, Math.round(vr * 32767), true);
   }
   return bytes;
 }

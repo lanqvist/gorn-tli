@@ -1,0 +1,89 @@
+{
+  "description": "Original PCM16 WAV measurements, 2026-10-17. rmsDb = maximum 50 ms RMS (25 ms hop); energyDb = integral of squared amplitude in seconds.",
+  "files": {
+    "jackpot-1.wav": {
+      "peakDb": -4.500027330452397,
+      "rmsDb": -13.510807624162153,
+      "durationSec": 1.1087083333333334,
+      "energyDb": -21.1883523159138
+    },
+    "jackpot-2.wav": {
+      "peakDb": -4.500027330452397,
+      "rmsDb": -13.503534473500263,
+      "durationSec": 1.109125,
+      "energyDb": -21.19516422981427
+    },
+    "jackpotHot-1.wav": {
+      "peakDb": -4.500472347721093,
+      "rmsDb": -13.499986878065119,
+      "durationSec": 1.4338333333333333,
+      "energyDb": -20.62105618178192
+    },
+    "pickup-1.wav": {
+      "peakDb": -11.401331320284985,
+      "rmsDb": -22.00002173241601,
+      "durationSec": 0.2945,
+      "energyDb": -34.76780112416935
+    },
+    "pickup-2.wav": {
+      "peakDb": -11.293649999053272,
+      "rmsDb": -22.00004786103664,
+      "durationSec": 0.28029166666666666,
+      "energyDb": -34.778231178201516
+    },
+    "pickup-3.wav": {
+      "peakDb": -11.728534295604977,
+      "rmsDb": -22.0000223106217,
+      "durationSec": 0.27958333333333335,
+      "energyDb": -34.772603990281496
+    },
+    "pickupBig-1.wav": {
+      "peakDb": -8.528303334303475,
+      "rmsDb": -17.000000969113792,
+      "durationSec": 0.408625,
+      "energyDb": -26.897302872974645
+    },
+    "pickupBig-2.wav": {
+      "peakDb": -9.218770908613909,
+      "rmsDb": -16.999996782914245,
+      "durationSec": 0.39766666666666667,
+      "energyDb": -26.872148651938783
+    },
+    "record-1.wav": {
+      "peakDb": -4.500027330452397,
+      "rmsDb": -12.499998401844003,
+      "durationSec": 1.5569583333333334,
+      "energyDb": -18.867633802704283
+    },
+    "runEnd-1.wav": {
+      "peakDb": -4.500027330452397,
+      "rmsDb": -12.757484181625468,
+      "durationSec": 0.8100416666666667,
+      "energyDb": -20.086720833248325
+    },
+    "runEnd-2.wav": {
+      "peakDb": -4.500027330452397,
+      "rmsDb": -12.690510448862195,
+      "durationSec": 0.8100416666666667,
+      "energyDb": -20.06418431325981
+    },
+    "runLoss-1.wav": {
+      "peakDb": -9.46037353149938,
+      "rmsDb": -18.000018909283423,
+      "durationSec": 0.9099583333333333,
+      "energyDb": -26.3531520910584
+    },
+    "whistle-1.wav": {
+      "peakDb": -9.386637504615203,
+      "rmsDb": -16.000015630213273,
+      "durationSec": 0.479625,
+      "energyDb": -23.627345318521556
+    },
+    "whistle-2.wav": {
+      "peakDb": -9.015082077967602,
+      "rmsDb": -16.00000621939894,
+      "durationSec": 0.8845,
+      "energyDb": -20.563195789326613
+    }
+  }
+}

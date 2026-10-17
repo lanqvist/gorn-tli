@@ -1,9 +1,18 @@
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-import { SR, master, measure, osc, rng, toWav } from '../src/sfx/dsp.js';
-import { TIERS, VARIANTS, assetName, renderSound } from '../src/sfx/kit.js';
+import {
+  SR,
+  master,
+  measure,
+  measureStereo,
+  osc,
+  rng,
+  toWav,
+  toWavStereo,
+} from '../src/sfx/dsp.js';
+import { LOUDNESS, TIERS, VARIANTS, assetName, limitsFor, renderSound } from '../src/sfx/kit.js';
 
 describe('офлайн-движок звуков', () => {
   it('генератор случайности детерминирован по сиду', () => {
@@ -34,6 +43,17 @@ describe('офлайн-движок звуков', () => {
     expect(view.getUint32(40, true)).toBe(8);
     expect(view.getInt16(44 + 2 * 2, true)).toBe(-32767);
   });
+
+  it('WAV стерео: каналы чередуются, левый — первым', () => {
+    const wav = toWavStereo({ l: new Float32Array([1, 0]), r: new Float32Array([-1, 0.5]) });
+    const view = new DataView(wav.buffer);
+    expect(view.getUint16(22, true)).toBe(2);
+    expect(view.getUint16(32, true)).toBe(4);
+    expect(view.getUint32(40, true)).toBe(8);
+    expect(view.getInt16(44, true)).toBe(32767);
+    expect(view.getInt16(46, true)).toBe(-32767);
+    expect(view.getInt16(50, true)).toBe(Math.round(0.5 * 32767));
+  });
 });
 
 describe('звуки Горна', () => {
@@ -45,21 +65,40 @@ describe('звуки Горна', () => {
     expect(renderSound('pickup', 0)).toEqual(renderSound('pickup', 0));
   });
 
-  it.each(all)('%s #%i: короткий, не громче прежних, без клиппинга', (tier, v) => {
-    const sig = renderSound(tier, v);
-    const m = measure(sig);
+  it.each(all)('%s #%i: не громче прежнего звука по пику, громкости и энергии', (tier, v) => {
+    const st = renderSound(tier, v);
+    const m = measureStereo(st);
+    const old = limitsFor(tier);
     let finite = true;
-    for (const x of sig) if (!Number.isFinite(x)) finite = false;
+    for (const x of st.l) if (!Number.isFinite(x)) finite = false;
+    for (const x of st.r) if (!Number.isFinite(x)) finite = false;
     expect(finite).toBe(true);
-    // Потолок пиков мастера — −4.5 дБFS; самый громкий прежний звук был −4.4.
-    expect(m.peakDb).toBeLessThanOrEqual(-4.49);
-    // Громче прежнего итога карты (≈ −10.7 дБ RMS на полной громкости) — нельзя.
-    expect(m.rmsDb).toBeLessThan(-12);
-    expect(m.durationSec).toBeLessThan(1.7);
+    expect(m.peakDb).toBeLessThanOrEqual(old.peakDb + 0.01);
+    expect(m.rmsDb).toBeLessThanOrEqual(old.rmsDb);
+    expect(m.energyDb).toBeLessThanOrEqual(old.energyDb);
+    expect(m.durationSec).toBeLessThan(3.2);
   });
 
-  it('у каждой ступени и варианта есть файл в ассетах (npm run sounds)', () => {
+  it('лесенка: чем весомее событие, тем громче', () => {
+    const loud = (tier: (typeof TIERS)[number]) => measureStereo(renderSound(tier, 0)).rmsDb;
+    expect(loud('pickup')).toBeLessThan(loud('pickupBig'));
+    expect(loud('pickupBig')).toBeLessThan(loud('whistle'));
+    expect(loud('whistle')).toBeLessThan(loud('jackpot'));
+    expect(loud('runEnd')).toBeLessThan(loud('jackpot'));
+    expect(loud('runLoss')).toBeLessThan(loud('runEnd'));
+    expect(LOUDNESS.record).toBeGreaterThanOrEqual(LOUDNESS.jackpot);
+  });
+
+  it('ассеты — ровно наши файлы: все ступени и варианты, стерео 24 кГц, ничего лишнего', () => {
     const dir = join(import.meta.dirname, '../src/renderer/assets/sfx');
-    for (const [tier, v] of all) expect(existsSync(join(dir, assetName(tier, v)))).toBe(true);
+    const expected = all.map(([tier, v]) => assetName(tier, v)).sort();
+    expect(readdirSync(dir).sort()).toEqual(expected);
+    for (const name of expected) {
+      const path = join(dir, name);
+      expect(existsSync(path)).toBe(true);
+      const bytes = readFileSync(path);
+      expect(bytes.readUInt16LE(22)).toBe(2);
+      expect(bytes.readUInt32LE(24)).toBe(SR);
+    }
   });
 });

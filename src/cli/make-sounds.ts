@@ -5,14 +5,15 @@
  *   npm run sounds
  *
  * Звуки — наши собственные: каждый собран из синусов, шума и фильтров,
- * без сэмплов из игр и библиотек. Файлы лежат в репозитории, так что
- * сборке генератор не нужен; запускать его — только после правки рецептов.
+ * без сэмплов из игр и библиотек и без чьих-либо записей на входе.
+ * Файлы лежат в репозитории (стерео, 16 бит, 24 кГц), так что сборке
+ * генератор не нужен; запускать его — только после правки рецептов.
  */
 import { mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { measure, toWav } from '../sfx/dsp.js';
+import { measureStereo, toWavStereo } from '../sfx/dsp.js';
 import { TIERS, VARIANTS, assetName, renderSound } from '../sfx/kit.js';
 
 const outDir = join(dirname(fileURLToPath(import.meta.url)), '../renderer/assets/sfx');
@@ -26,12 +27,12 @@ let totalBytes = 0;
 for (const tier of TIERS) {
   for (let v = 0; v < VARIANTS[tier]; v++) {
     const sig = renderSound(tier, v);
-    const wav = toWav(sig);
+    const wav = toWavStereo(sig);
     writeFileSync(join(outDir, assetName(tier, v)), wav);
     totalBytes += wav.length;
-    const m = measure(sig);
+    const m = measureStereo(sig);
     console.log(
-      `${assetName(tier, v).padEnd(18)} ${m.durationSec.toFixed(2)} с  пик ${m.peakDb.toFixed(1)} дБ  громкость ${m.rmsDb.toFixed(1)} дБ`,
+      `${assetName(tier, v).padEnd(18)} ${m.durationSec.toFixed(2)} с  пик ${m.peakDb.toFixed(1)} дБ  громкость ${m.rmsDb.toFixed(1)} дБ  энергия ${m.energyDb.toFixed(1)} дБ`,
     );
   }
 }
