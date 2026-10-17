@@ -4,7 +4,7 @@ import { tr } from '../../core/i18n.js';
 import type { Snapshot } from '../../main/engine.js';
 import { Fe, FeIcon } from '../components/Fe.js';
 import { clock } from '../format.js';
-import { playCoinRain, playJackpot, playPickup, playRunEnd } from './sound.js';
+import { playCoinRain, playJackpot, playPickup, playRunEnd, playWhistle } from './sound.js';
 
 /**
  * Всплывающий доход в оверлее.
@@ -66,6 +66,8 @@ export interface ToastOptions {
   soundImportantOnly: boolean;
   /** Порог «золотой» находки, в ФЕ. */
   jackpotFe: number;
+  /** Свист на предмет дороже этого порога, в ФЕ. 0 — без свиста. */
+  whistleFe: number;
 }
 
 interface RunFingerprint {
@@ -110,7 +112,7 @@ export function useIncomeToasts(snapshot: Snapshot | null, opts: ToastOptions): 
         }
       : null;
 
-    const { popups, sound, volume, soundImportantOnly, jackpotFe } = optsRef.current;
+    const { popups, sound, volume, soundImportantOnly, jackpotFe, whistleFe } = optsRef.current;
     if (!popups && !sound) return;
 
     const commit = (list: Toast[]): void => {
@@ -191,10 +193,12 @@ export function useIncomeToasts(snapshot: Snapshot | null, opts: ToastOptions): 
     // Дорогая находка определяется по конкретному предмету, а не по сумме
     // дельты: пачка мелочи на 60 ФЕ — обычный подбор, а не джекпот.
     let jackpot: { name: string; icon: string | null; fe: number } | null = null;
+    let priciest = 0;
     for (const d of current.drops) {
       const gainedQty = d.qty - (before.qtyByItem.get(d.configBaseId) ?? 0);
       if (gainedQty <= 0 || d.unitFe === null) continue;
       const value = gainedQty * d.unitFe;
+      priciest = Math.max(priciest, value);
       if (value >= goldFe && (jackpot === null || value > jackpot.fe)) {
         jackpot = { name: d.name, icon: d.icon, fe: value };
       }
@@ -220,10 +224,12 @@ export function useIncomeToasts(snapshot: Snapshot | null, opts: ToastOptions): 
     const merged = now - lastPickupAt.current < MERGE_WINDOW_MS;
     lastPickupAt.current = now;
 
-    // Темп и громкость ударов сглаживает сам sound.ts (троттлинг
-    // с накоплением) — дельта уходит туда как есть, без ослабления.
-    // В режиме «только важное» обычные подборы молчат.
-    if (sound && !soundImportantOnly) playPickup(gained, volume);
+    // Дорогой, но не золотой предмет — свист, как в фильтрах PoE. Он
+    // сам по себе важный сигнал, поэтому звучит и в режиме «только важное».
+    // Остальное — удар подбора: темп и громкость сглаживает sound.ts
+    // (троттлинг с накоплением), дельта уходит туда как есть.
+    if (sound && whistleFe > 0 && priciest >= whistleFe) playWhistle(volume);
+    else if (sound && !soundImportantOnly) playPickup(gained, volume);
     if (!popups) return;
 
     if (merged) {

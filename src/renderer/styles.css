@@ -1462,6 +1462,11 @@ button {
   border-color: var(--muted);
 }
 
+.set-btn:disabled {
+  cursor: default;
+  border-color: var(--line);
+}
+
 .set-update {
   display: flex;
   align-items: center;

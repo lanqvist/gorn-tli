@@ -18,6 +18,7 @@
     "dist": "npm run build && electron-builder --win",
     "analyze": "tsx src/cli/analyze.ts",
     "scan": "tsx src/cli/scan.ts",
+    "sounds": "tsx src/cli/make-sounds.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit"

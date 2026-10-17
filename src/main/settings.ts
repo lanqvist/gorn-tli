@@ -74,6 +74,8 @@ export interface Settings {
     soundImportantOnly: boolean;
     /** Порог «золотой» находки, в ФЕ. */
     jackpotFe: number;
+    /** Свист на предмет дороже этого порога, в ФЕ. 0 — без свиста. */
+    whistleFe: number;
     /** Первое включение оверлея уже было — больше не открывать открепленным. */
     introShown: boolean;
     /** Цель сессии в ФЕ: оверлей показывает прогресс. 0 — выключено. */
@@ -104,6 +106,7 @@ const DEFAULTS: Settings = {
     volume: 0.5,
     soundImportantOnly: false,
     jackpotFe: 50,
+    whistleFe: 10,
     introShown: false,
     goalFe: 0,
   },

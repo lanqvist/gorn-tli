@@ -5,6 +5,11 @@ interface ImportMetaEnv {
 
 interface ImportMeta {
   readonly env: ImportMetaEnv;
+  /** Vite собирает файлы по шаблону на этапе сборки. */
+  glob<T>(
+    pattern: string,
+    options: { query?: string; import?: string; eager: true },
+  ): Record<string, T>;
 }
 
 declare module '*.css' {

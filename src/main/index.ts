@@ -379,6 +379,7 @@ app.whenReady().then(async () => {
         volume?: number;
         soundImportantOnly?: boolean;
         jackpotFe?: number;
+        whistleFe?: number;
         fontScale?: number;
         goalFe?: number;
       },

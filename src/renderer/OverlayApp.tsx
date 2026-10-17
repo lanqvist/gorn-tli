@@ -34,6 +34,7 @@ export function OverlayApp() {
     volume: 0.5,
     soundImportantOnly: false,
     jackpotFe: 50,
+    whistleFe: 10,
     fontScale: 1,
     goalFe: 0,
   });
@@ -120,6 +121,7 @@ export function OverlayApp() {
         volume: s.volume ?? 0.5,
         soundImportantOnly: s.soundImportantOnly ?? false,
         jackpotFe: s.jackpotFe ?? 50,
+        whistleFe: s.whistleFe ?? 10,
         fontScale: s.fontScale ?? 1,
         goalFe: s.goalFe ?? 0,
       });

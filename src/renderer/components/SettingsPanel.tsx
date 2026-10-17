@@ -3,7 +3,24 @@ import { useEffect, useState } from 'react';
 import type { UpdateState } from '../../main/updater.js';
 import { tr, uiLanguage, type UiLanguage } from '../../core/i18n.js';
 import { num } from '../format.js';
-import { playTest } from '../overlay/sound.js';
+import { playPreview, playTest, type SoundPreview } from '../overlay/sound.js';
+
+/**
+ * Кнопки прослушивания: каждый звук как в игре — громкость и режим
+ * подбираются на слух, без ожидания золотой находки на карте.
+ */
+const SOUND_PREVIEWS: ReadonlyArray<readonly [SoundPreview, string, string]> = [
+  ['pickup', 'Подбор', 'Pickup'],
+  ['whistle', 'Свист', 'Whistle'],
+  ['jackpot', 'Золотая находка', 'Golden drop'],
+  ['jackpotHot', 'Вторая подряд', 'Streak'],
+  ['runEnd', 'Итог карты', 'Map total'],
+  ['runLoss', 'Карта в минус', 'Map at a loss'],
+  ['record', 'Рекорд', 'Record'],
+];
+
+/** Пороги свиста: от «почти всё ценное» до «только дорогое». */
+const WHISTLE_STEPS: readonly number[] = [5, 10, 20, 50, 100];
 
 /**
  * Язык названий предметов.
@@ -105,6 +122,7 @@ export function SettingsPanel({
     volume: 0.5,
     soundImportantOnly: false,
     jackpotFe: 50,
+    whistleFe: 10,
     fontScale: 1,
     opacity: 0.9,
     goalFe: 0,
@@ -129,6 +147,7 @@ export function SettingsPanel({
         volume: s.volume ?? 0.5,
         soundImportantOnly: s.soundImportantOnly ?? false,
         jackpotFe: s.jackpotFe ?? 50,
+        whistleFe: s.whistleFe ?? 10,
         fontScale: s.fontScale ?? 1,
         opacity: s.opacity ?? 0.9,
         goalFe: s.goalFe ?? 0,
@@ -221,8 +240,8 @@ export function SettingsPanel({
             <button
               className={soundMode === 'important' ? 'on' : ''}
               title={tr(
-                'Удар молота на золотую находку и итог карты; обычные подборы молчат',
-                'Hammer strike on a golden drop and the map total; regular pickups stay silent',
+                'Звучат только свист, золотая находка и итог карты; обычные подборы молчат',
+                'Only the whistle, a golden drop and the map total play a sound; regular pickups stay silent',
               )}
               onClick={() => setSoundMode('important')}
             >
@@ -244,6 +263,51 @@ export function SettingsPanel({
               onPointerUp={() => playTest(prefs.volume)}
             />
           </label>
+          <label
+            className={`set-row ${prefs.sound ? '' : 'set-disabled'}`}
+            title={tr(
+              'Свист, как в фильтрах PoE: предмет дороже порога слышно не глядя. Золотая находка звучит своим звуком',
+              'A whistle like PoE loot filters: you hear a pricey item without looking. Golden drops keep their own sound',
+            )}
+          >
+            <span>{tr('Свист на предмет дороже', 'Whistle for items over')}</span>
+            <select
+              value={String(prefs.whistleFe)}
+              disabled={!prefs.sound}
+              onChange={(e) => {
+                const whistleFe = Number(e.target.value);
+                patch({ whistleFe });
+                if (whistleFe > 0) playPreview('whistle', prefs.volume);
+              }}
+            >
+              <option value="0">{tr('не свистеть', 'off')}</option>
+              {WHISTLE_STEPS.map((fe) => (
+                <option key={fe} value={String(fe)}>
+                  {tr(`${fe} ФЕ`, `${fe} FE`)}
+                </option>
+              ))}
+              {prefs.whistleFe > 0 && !WHISTLE_STEPS.includes(prefs.whistleFe) && (
+                <option value={String(prefs.whistleFe)}>
+                  {tr(`${prefs.whistleFe} ФЕ`, `${prefs.whistleFe} FE`)}
+                </option>
+              )}
+            </select>
+          </label>
+          <div className={`set-dir ${prefs.sound ? '' : 'set-disabled'}`}>
+            <span className="muted small">{tr('Прослушать', 'Preview')}</span>
+            <div className="set-actions">
+              {SOUND_PREVIEWS.map(([kind, ru, en]) => (
+                <button
+                  key={kind}
+                  className="set-btn"
+                  disabled={!prefs.sound}
+                  onClick={() => playPreview(kind, prefs.volume)}
+                >
+                  {tr(ru, en)}
+                </button>
+              ))}
+            </div>
+          </div>
         </section>
 
         <section className="set-section">
@@ -257,7 +321,7 @@ export function SettingsPanel({
             />
           </label>
           <label className="set-row">
-            <span>{tr('Золотая плашка и удар молота', 'Golden popup and hammer strike')}</span>
+            <span>{tr('Золотая плашка и её звук', 'Golden popup and its sound')}</span>
             <select
               value={String(prefs.jackpotFe)}
               onChange={(e) => patch({ jackpotFe: Number(e.target.value) })}

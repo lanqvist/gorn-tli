@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Звуковая лаборатория</title>
+    <style>
+      :root { --bg: #14110f; --card: #1f1a17; --line: #3a302a; --text: #eee3d6; --muted: #a8968a; }
+      * { box-sizing: border-box; }
+      body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 system-ui, 'Segoe UI', sans-serif; padding: 20px 16px 40px; }
+      h1 { font-size: 20px; margin: 0 0 4px; }
+      .sub { color: var(--muted); margin: 0 0 14px; max-width: 900px; }
+      .vol { display: flex; gap: 10px; align-items: center; margin-bottom: 18px; color: var(--muted); }
+      .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; }
+      .card { background: var(--card); border: 1px solid var(--line); border-top: 3px solid var(--k); border-radius: 12px; padding: 14px; }
+      .card h2 { margin: 0 0 2px; font-size: 16px; color: var(--k); }
+      .card p { margin: 0 0 12px; color: var(--muted); font-size: 13px; }
+      .btns { display: flex; flex-wrap: wrap; gap: 6px; }
+      button { background: #2a231f; color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; font: inherit; font-size: 13px; cursor: pointer; }
+      button:hover { border-color: var(--k, var(--muted)); }
+      button small { color: var(--muted); margin-left: 4px; }
+      .sim { width: 100%; margin-top: 8px; }
+      .stat { margin-top: 8px; color: var(--muted); font-size: 12px; min-height: 1.4em; font-variant-numeric: tabular-nums; }
+    </style>
+  </head>
+  <body>
+    <h1>Звуковая лаборатория</h1>
+    <p class="sub">
+      Ассеты рендерит офлайн-движок src/sfx: те же самые файлы попадут в приложение. Повторное
+      нажатие на частые ступени перебирает варианты по кругу, как в игре. «Сессия фарма»
+      проигрывает 13 секунд карты.
+    </p>
+    <div class="vol">Громкость <input id="vol" type="range" min="0" max="100" value="60" /></div>
+    <div class="grid" id="grid"></div>
+    <script type="module" src="./sound-lab.ts"></script>
+  </body>
+</html>

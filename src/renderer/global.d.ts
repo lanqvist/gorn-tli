@@ -16,6 +16,7 @@ declare global {
     volume: number;
     soundImportantOnly: boolean;
     jackpotFe: number;
+    whistleFe: number;
     fontScale: number;
     goalFe: number;
   }
@@ -32,6 +33,7 @@ declare global {
       volume: number;
       soundImportantOnly: boolean;
       jackpotFe: number;
+      whistleFe: number;
       goalFe: number;
     }>;
     toggle: () => Promise<boolean>;
