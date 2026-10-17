@@ -41,6 +41,7 @@ function run(opts: Partial<Run> & { startedAt: number; endedAt: number }): Run {
     isHub: false,
     durationMs: opts.endedAt - opts.startedAt,
     playerId: null,
+    seasonId: null,
     drops: [],
     costs: [],
     ...opts,

@@ -52,9 +52,12 @@ contextBridge.exposeInMainWorld('gorn', {
     return () => ipcRenderer.removeListener('ui:language', handler);
   },
 
-  /** Фильтр по персонажу: null — все. Выбор запоминается. */
-  setPlayerFilter: (playerId: string | null) =>
-    ipcRenderer.invoke('settings:setPlayerFilter', playerId),
+  /**
+   * Чьи забеги показывать: персонаж (null — все) и все ли сезоны.
+   * Выбор запоминается.
+   */
+  setRunScope: (scope: { playerId: string | null; allSeasons: boolean }) =>
+    ipcRenderer.invoke('settings:setRunScope', scope),
 
   update: {
     get: () => ipcRenderer.invoke('update:get'),

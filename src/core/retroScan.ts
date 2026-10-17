@@ -2,7 +2,7 @@ import { statSync } from 'node:fs';
 
 import type { SlotState } from './inventory.js';
 import { listLogFiles } from './locate.js';
-import { analyzeLogFile } from './pipeline.js';
+import { analyzeLogFile, type AnalyzeOptions } from './pipeline.js';
 import { PriceStore } from './priceStore.js';
 import { TradeLedger, mergeByKey } from './trade.js';
 import { mergePlayerProfile, type ConfigBaseId, type PlayerProfile, type Run } from './types.js';
@@ -66,6 +66,7 @@ export interface RetroScanProgress {
 export async function retroScan(
   logDir: string,
   onProgress?: (p: RetroScanProgress) => void,
+  options: AnalyzeOptions = {},
 ): Promise<RetroScanResult> {
   const started = Date.now();
   const files = listLogFiles(logDir);
@@ -87,7 +88,7 @@ export async function retroScan(
   const receiptsByFile: Array<TradeLedger['receipts']> = [];
   const purchasesByFile: Array<TradeLedger['purchases']> = [];
 
-  // Цены складываем в один store: они общие для сезона.
+  // Цены складываем в один store; сезон у каждой пробивки свой.
   const prices = new PriceStore(null);
 
   const failed: Array<{ path: string; reason: string }> = [];
@@ -99,7 +100,7 @@ export async function retroScan(
     // Один недочитанный файл не должен ронять разбор остальных.
     let result: Awaited<ReturnType<typeof analyzeLogFile>>;
     try {
-      result = await analyzeLogFile(file.path);
+      result = await analyzeLogFile(file.path, options);
     } catch (err) {
       failed.push({ path: file.path, reason: (err as Error).message });
       continue;
@@ -114,7 +115,9 @@ export async function retroScan(
       seasonId = result.seasonId;
     }
 
-    for (const observation of result.prices) prices.observe(observation);
+    // Сезон пробивки — сезон её файла: иначе после смены сезона цены
+    // прошлого записывались в базу как цены без сезона.
+    for (const observation of result.prices) prices.observe(observation, result.seasonId);
 
     listingsByFile.push(result.trade.listings);
     receiptsByFile.push(result.trade.receipts);

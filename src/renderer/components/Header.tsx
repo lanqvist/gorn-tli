@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 
 import { tr } from '../../core/i18n.js';
 import { RUN, pluralize } from '../../core/plural.js';
+import { seasonShort } from '../../core/seasons.js';
 import type { Snapshot } from '../../main/engine.js';
 import { ago } from '../format.js';
 import { FeIcon } from './Fe.js';
@@ -59,9 +60,15 @@ export function Header({
         >
           ⚙ {tr('Настройки', 'Settings')}
         </button>
-        {snapshot.seasonId && (
-          <span className="season">
-            {tr(`Сезон ${snapshot.seasonId}`, `Season ${snapshot.seasonId}`)}
+        {snapshot.seasonId !== null && (
+          <span
+            className="season"
+            title={tr(
+              `Сезон из профиля персонажа в логе (SeasonId ${snapshot.seasonId}). Цены и цифры — этого сезона.`,
+              `Season from the character profile in the log (SeasonId ${snapshot.seasonId}). Prices and numbers are for this season.`,
+            )}
+          >
+            {snapshot.seasonName ?? tr(`Сезон ${snapshot.seasonId}`, `Season ${snapshot.seasonId}`)}
           </span>
         )}
       </div>
@@ -97,44 +104,64 @@ function PlayerChip({ player }: { player: Snapshot['player'] }) {
 }
 
 /**
- * Фильтр по персонажу: медиана, стратегии и история — только его забеги.
+ * Чьи забеги показывать: текущий сезон, все сезоны или один персонаж.
  *
- * У разных героев разные билды и дроп; смешивать их медианы — то самое
- * «среднее по больнице», против которого весь проект. Показывается только
- * когда персонажей больше одного: единственному фильтровать нечего.
+ * С началом сезона экономика обнуляется, и медиана прошлого сезона
+ * описывает другую игру — поэтому по умолчанию виден только текущий.
+ * У разных героев разные билды и дроп, смешивать их медианы — то самое
+ * «среднее по больнице». Выпадашка появляется, только когда есть что
+ * выбирать: второй персонаж или забеги других сезонов.
  */
 function PlayerFilter({ snapshot }: { snapshot: Snapshot }) {
-  const { players, playerFilter } = snapshot;
-  if (players.length < 2 && playerFilter === null) return null;
+  const { players, playerFilter, allSeasons, otherSeasonRuns, seasonId } = snapshot;
+  if (players.length < 2 && otherSeasonRuns === 0 && playerFilter === null && !allSeasons) {
+    return null;
+  }
 
   // У персонажа из оборванного лога может не быть профиля — только id.
   // Голое 18-значное число в выпадашке нечитаемо, показываем хвост.
+  // Сезон подписывается только у прошлых персонажей: текущие — по умолчанию.
   const label = (p: Snapshot['players'][number]) =>
     [
       p.heroName ??
         p.name ??
         tr(`Персонаж …${p.playerId.slice(-5)}`, `Character …${p.playerId.slice(-5)}`),
       p.level !== null ? tr(`${p.level} ур.`, `lvl ${p.level}`) : null,
+      p.seasonId !== null && p.seasonId !== seasonId ? seasonShort(p.seasonId) : null,
     ]
       .filter(Boolean)
       .join(' · ');
 
+  const current = seasonShort(seasonId);
+  const value = playerFilter !== null ? `p:${playerFilter}` : allSeasons ? 'all' : 'season';
+
   return (
     <select
       className="player-filter"
-      value={playerFilter ?? ''}
+      value={value}
       title={tr(
-        'Чьи забеги показывать. Влияет на все цифры, кроме Торгового дома. Забеги из логов до этой версии видны только в «Все персонажи».',
-        'Whose runs to show. Affects every number except the Exchange. Runs from logs before this version only appear under “All characters”.',
+        'Чьи забеги показывать. Влияет на все цифры; Торговый дом — в границах выбранного сезона. Забеги прошлых сезонов — в «Все сезоны».',
+        'Whose runs to show. Affects every number; the Exchange is limited to the chosen season. Runs from past seasons are under “All seasons”.',
       )}
       onChange={(e) => {
-        const value = e.target.value === '' ? null : e.target.value;
-        void window.gorn?.setPlayerFilter(value);
+        const v = e.target.value;
+        void window.gorn?.setRunScope(
+          v.startsWith('p:')
+            ? { playerId: v.slice(2), allSeasons: false }
+            : { playerId: null, allSeasons: v === 'all' },
+        );
       }}
     >
-      <option value="">{tr('Все персонажи', 'All characters')}</option>
+      <option value="season">
+        {current
+          ? tr(`${current} · все персонажи`, `${current} · all characters`)
+          : tr('Все персонажи', 'All characters')}
+      </option>
+      {(otherSeasonRuns > 0 || allSeasons) && (
+        <option value="all">{tr('Все сезоны', 'All seasons')}</option>
+      )}
       {players.map((p) => (
-        <option key={p.playerId} value={p.playerId}>
+        <option key={p.playerId} value={`p:${p.playerId}`}>
           {label(p)} — {pluralize(p.runs, RUN)}
         </option>
       ))}

@@ -16,6 +16,7 @@ function run(startedAt: number, areaId: number, drops: Array<[number, number]> =
     durationMs: 84_000,
     isHub: false,
     playerId: null,
+    seasonId: null,
     drops: drops.map(([configBaseId, qty]) => ({
       ts: startedAt + 1000,
       configBaseId,

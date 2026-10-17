@@ -3,8 +3,13 @@
  *
  *   node scripts/build-items.mjs <seed.json> [translations.json]
  *
- *   seed.json         — выгрузка tlidb: id, name_en, name_cn, type_cn, img
- *   translations.json — словарь ETor кит.→англ., нужен для перевода типов
+ *   seed.json         — выгрузка tlidb: id, name_en, name_cn, type_cn, img.
+ *                       Свежая лежит у TITrack (MIT): tlidb_items_seed_en.json
+ *                       в github.com/astockman99/TITrack — её обновляют
+ *                       к старту каждого сезона.
+ *   translations.json — словарь ETor кит.→англ. для перевода типов (необязателен:
+ *                       без него типы берутся из прежнего data/items.json
+ *                       и ручного data/types-en.json)
  *
  * Русские названия берутся из словаря локализации tlidb, который скачивается
  * при сборке. Первоисточник — pak-файлы игры — недоступен: формат изменён
@@ -33,8 +38,25 @@ if (!Array.isArray(seed)) {
   process.exit(1);
 }
 
-// Словарь ETor вложенный по секциям — расплющиваем в одну мапу.
+// Прежняя сборка: из неё берутся переводы типов (без словаря ETor
+// пересборка иначе откатила бы все типы на китайский) и русские названия,
+// пропавшие из словаря tlidb, — если английское название не изменилось.
+const previous = existsSync('data/items.json')
+  ? JSON.parse(readFileSync('data/items.json', 'utf8'))
+  : [];
+const previousById = new Map(previous.map((it) => [it.id, it]));
 const cnToEn = new Map();
+for (const it of previous) {
+  if (it.typeCn && it.type && it.type !== it.typeCn) cnToEn.set(it.typeCn, it.type);
+}
+// Ручные переводы типов, которых нет ни в ETor, ни в прежних сборках.
+if (existsSync('data/types-en.json')) {
+  for (const [cn, en] of Object.entries(JSON.parse(readFileSync('data/types-en.json', 'utf8')))) {
+    if (!cn.startsWith('_')) cnToEn.set(cn, en);
+  }
+}
+
+// Словарь ETor вложенный по секциям — расплющиваем в одну мапу.
 if (translationsPath) {
   const flatten = (obj) => {
     for (const key of Object.keys(obj)) {
@@ -90,6 +112,7 @@ const items = seed.map((it) => ({
 
 const byId = new Map(items.map((i) => [i.id, i]));
 
+let kept = 0;
 for (const item of items) {
   const manualEntry = manual[String(item.id)];
   if (manualEntry) {
@@ -102,6 +125,16 @@ for (const item of items) {
     item.nameRu = found.label;
     // desc — это категория предмета на русском, если она не осталась английской.
     item.typeRu = /[а-яё]/i.test(found.desc ?? '') ? found.desc : null;
+    continue;
+  }
+  // Словарь tlidb между сезонами теряет записи. Тот же предмет под тем же
+  // английским именем сохраняет прежнее русское; переиспользованный id
+  // (имя другое) — нет: фитили SS13 в SS14 стали компасами.
+  const before = previousById.get(item.id);
+  if (before?.nameRu && before.name === item.name) {
+    item.nameRu = before.nameRu;
+    item.typeRu = before.typeRu ?? null;
+    kept++;
   }
 }
 
@@ -129,7 +162,8 @@ console.log(`\nпредметов: ${items.length}`);
 console.log(`с иконкой: ${items.filter((i) => i.icon).length}`);
 console.log(
   `с русским названием: ${withRu} (${Math.round((withRu / items.length) * 100)}%), ` +
-    `из них выведено от базового: ${derived}, вручную: ${Object.keys(manual).length - 1}`,
+    `из них выведено от базового: ${derived}, вручную: ${Object.keys(manual).length - 1}, ` +
+    `из прежней сборки: ${kept}`,
 );
 console.log(`с русским типом: ${withTypeRu}`);
 

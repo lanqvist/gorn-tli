@@ -16,6 +16,7 @@ import {
   formatNumber,
 } from '../core/format.js';
 import { findLogDirectory } from '../core/locate.js';
+import { isMapKeyType } from '../core/patterns.js';
 import { pluralize, RUN } from '../core/plural.js';
 import { isBoundName } from '../core/priceStore.js';
 import { retroScan, runCost, runValue } from '../core/retroScan.js';
@@ -28,6 +29,7 @@ interface ItemRow {
   name: string;
   nameRu?: string | null;
   type: string;
+  typeCn?: string | null;
 }
 
 function loadItems(): Map<ConfigBaseId, ItemRow> {
@@ -53,9 +55,13 @@ async function main(): Promise<void> {
   const items = loadItems();
   console.log(`Папка логов: ${dir}\n`);
 
-  const result = await retroScan(dir, (p) => {
-    console.log(`  [${p.index + 1}/${p.total}] ${basename(p.file)}`);
-  });
+  const result = await retroScan(
+    dir,
+    (p) => {
+      console.log(`  [${p.index + 1}/${p.total}] ${basename(p.file)}`);
+    },
+    { isMapKey: (id) => isMapKeyType(items.get(id)?.typeCn) },
+  );
 
   const bound: ConfigBaseId[] = [];
   for (const [id, it] of items) {

@@ -17,6 +17,7 @@ import {
 import { EventParser } from '../core/eventParser.js';
 import { InventoryTracker } from '../core/inventory.js';
 import { findLogDirectory } from '../core/locate.js';
+import { isMapKeyType } from '../core/patterns.js';
 import { bagValue } from '../core/bag.js';
 import { toCsv } from '../core/csv.js';
 import {
@@ -37,6 +38,7 @@ import {
   type PriceTrend,
 } from '../core/priceStore.js';
 import { heroName } from '../core/heroes.js';
+import { seasonName } from '../core/seasons.js';
 import { tr, uiLanguage } from '../core/i18n.js';
 import { retroScan, runCost, runValue } from '../core/retroScan.js';
 import { RunSegmenter } from '../core/runSegmenter.js';
@@ -138,6 +140,9 @@ export interface PlayerView {
   /** Имя класса или «Герой N», если id ещё не в словаре. */
   heroName: string | null;
   level: number | null;
+  /** Сезон персонажа: в новом сезоне — новый персонаж. */
+  seasonId: number | null;
+  seasonName: string | null;
 }
 
 /** Пункт фильтра по персонажам. */
@@ -157,7 +162,18 @@ export interface Snapshot {
   lastActivityAt: number;
   /** Папка логов, с которой работает движок. null — игра не найдена. */
   logDir: string | null;
+  /** Текущий сезон — по последнему профилю персонажа в логе. */
   seasonId: number | null;
+  /** «SS14 Tartarus» — для шапки; null, пока сезон неизвестен. */
+  seasonName: string | null;
+  /**
+   * Показывать забеги всех сезонов. false — только текущего: экономика
+   * каждый сезон начинается заново, и медиана прошлого сезона описывает
+   * другую игру.
+   */
+  allSeasons: boolean;
+  /** Фарм-забегов других сезонов — без них переключатель не нужен. */
+  otherSeasonRuns: number;
   /** Кем зашли в игру. null — вход ещё не видели (или игра перезапущена). */
   player: PlayerView | null;
   /** Все известные персонажи — для фильтра. */
@@ -272,8 +288,12 @@ export class Engine extends EventEmitter {
     slotRebases: 0,
   };
 
+  /** Ключи от карт по справочнику: их серверное списание — вложение в карту. */
+  private mapKeys = new Set<ConfigBaseId>();
+  private isMapKey = (id: ConfigBaseId): boolean => this.mapKeys.has(id);
+
   private parser = new EventParser();
-  private inventory = new InventoryTracker(this.diagnostics);
+  private inventory = new InventoryTracker(this.diagnostics, this.isMapKey);
   private segmenter = new RunSegmenter();
   private trade = new TradeLedger();
 
@@ -287,6 +307,10 @@ export class Engine extends EventEmitter {
   private knownPlayers = new Map<string, PlayerProfile>();
   /** Фильтр интерфейса: показывать только забеги этого персонажа. */
   private playerFilter: string | null = null;
+  /** Показывать забеги всех сезонов, а не только текущего. */
+  private allSeasons = false;
+  /** Связанные предметы — нужны каждому новому хранилищу цен сезона. */
+  private boundIds: ConfigBaseId[] = [];
   /** Начало активной сессии. 0 — считаем всю историю (сброса не было). */
   private sessionStartedAt = 0;
   /** Границы последней закрытой сессии — для итоговой строки. */
@@ -305,11 +329,18 @@ export class Engine extends EventEmitter {
 
   constructor(
     dataDir: string,
-    items: Array<{ id: number; name: string; nameRu?: string | null; icon: string | null }>,
+    items: Array<{
+      id: number;
+      name: string;
+      nameRu?: string | null;
+      typeCn?: string | null;
+      icon: string | null;
+    }>,
     language: NameLanguage = 'ru',
     options: {
       communityPrices?: boolean;
       playerFilter?: string | null;
+      allSeasons?: boolean;
       excludedItems?: number[];
       minDropFe?: number;
     } = {},
@@ -318,18 +349,19 @@ export class Engine extends EventEmitter {
     this.storage = new Storage(join(dataDir, 'gorn.db'));
     for (const it of items) {
       this.items.set(it.id, { name: it.name, nameRu: it.nameRu ?? null, icon: it.icon });
+      if (isMapKeyType(it.typeCn)) this.mapKeys.add(it.id);
     }
     // Связанность — по названию из справочника. Арифметика «id + 1000»
     // ложно записывала в связанные 224 обычных предмета и обнуляла им цены.
-    const bound: ConfigBaseId[] = [];
     for (const it of items) {
-      if (isBoundName(it.name) || isBoundName(it.nameRu)) bound.push(it.id);
+      if (isBoundName(it.name) || isBoundName(it.nameRu)) this.boundIds.push(it.id);
     }
-    this.prices.registerBoundIds(bound);
+    this.prices.registerBoundIds(this.boundIds);
     this.language = language;
 
     this.communityEnabled = options.communityPrices ?? true;
     this.playerFilter = options.playerFilter ?? null;
+    this.allSeasons = options.allSeasons ?? false;
     this.excluded = new Set(options.excludedItems ?? []);
     this.minDropFe = options.minDropFe ?? 0;
     this.community = new CommunityPriceFeed(dataDir);
@@ -399,13 +431,12 @@ export class Engine extends EventEmitter {
     // поэтому база — единственный источник истории старше пары часов.
     const stored = this.storage.loadRuns();
     const storedTrade = this.storage.loadTrade();
-    for (const record of this.storage.loadPrices()) {
-      this.prices.set(record.configBaseId, record.fe, record.observedAt);
-    }
 
     // Прогресс уходит наверх: на большой пачке логов статичная заглушка
     // неотличима от зависания.
-    const scan = await retroScan(this.logDir, (p) => this.emit('scanProgress', p));
+    const scan = await retroScan(this.logDir, (p) => this.emit('scanProgress', p), {
+      isMapKey: this.isMapKey,
+    });
     // Сезон — из ПОСЛЕДНЕГО файла. Первый элемент seasonIds — самый старый:
     // после смены сезона со старыми логами на диске трекер целый сезон
     // писал бы данные в прошлый.
@@ -414,10 +445,6 @@ export class Engine extends EventEmitter {
     // Разбор логов точнее сохранённого (мог улучшиться парсер), поэтому
     // при совпадении забега берём свежий разбор.
     this.history = mergeRuns(stored, scan.runs);
-
-    for (const record of scan.prices.all()) {
-      this.prices.set(record.configBaseId, record.fe, record.observedAt);
-    }
 
     // Слияние со счётчиком вхождений: две одинаковые выплаты в одну
     // миллисекунду — это две выплаты, а один и тот же лог, прочитанный
@@ -437,6 +464,8 @@ export class Engine extends EventEmitter {
 
     this.storage.saveRuns(scan.runs, this.seasonId);
     this.storage.savePrices(scan.prices.observations());
+    // Свои пробивки — только текущего сезона: база уже знает сезон каждой.
+    this.loadSeasonPrices();
     this.storage.saveTrade(scan.trade.listings, scan.trade.receipts);
     this.storage.savePlayers(scan.players);
     for (const p of this.storage.loadPlayers()) this.knownPlayers.set(p.playerId, p);
@@ -446,6 +475,7 @@ export class Engine extends EventEmitter {
     if (scan.lastPlayerId !== null) {
       this.currentPlayer = this.knownPlayers.get(scan.lastPlayerId) ?? null;
       this.segmenter.setPlayer(scan.lastPlayerId);
+      this.segmenter.setSeason(this.currentPlayer?.seasonId ?? this.seasonId);
     }
 
     // Передаём живому трекеру состояние сумки, полученное при разборе.
@@ -531,7 +561,7 @@ export class Engine extends EventEmitter {
     // Состояние сумки и забегов начинается заново. Персонаж тоже:
     // после перезапуска игры кем зайдут — неизвестно до следующего входа.
     this.parser = new EventParser();
-    this.inventory = new InventoryTracker(this.diagnostics);
+    this.inventory = new InventoryTracker(this.diagnostics, this.isMapKey);
     this.segmenter = new RunSegmenter();
     this.currentPlayer = null;
     this.emit('snapshot', this.buildSnapshot());
@@ -546,8 +576,10 @@ export class Engine extends EventEmitter {
       if (m) {
         const season = Number(m[1]);
         if (season !== this.seasonId) {
-          // Смена сезона на лету: цены прошлого сезона неприменимы.
+          // Смена сезона на лету: цены прошлого сезона неприменимы —
+          // ни сообщества, ни свои.
           this.seasonId = season;
+          this.loadSeasonPrices();
           if (this.communityEnabled) this.community.start(season);
         }
       }
@@ -605,6 +637,7 @@ export class Engine extends EventEmitter {
           this.currentPlayer = mergePlayerInfo(this.knownPlayers.get(ev.playerId), ev);
           this.knownPlayers.set(ev.playerId, this.currentPlayer);
           this.segmenter.setPlayer(ev.playerId);
+          if (ev.seasonId !== undefined) this.segmenter.setSeason(ev.seasonId);
           this.storage.savePlayers([this.currentPlayer]);
           break;
         }
@@ -614,6 +647,19 @@ export class Engine extends EventEmitter {
     }
 
     if (changed) this.emit('snapshot', this.buildSnapshot());
+  }
+
+  /**
+   * Хранилище своих пробивок текущего сезона. Цены прошлого сезона
+   * не подмешиваются: свежая экономика стартует с нуля, и старая цена
+   * хуже, чем никакой, — она молча подменяла бы цену сообщества.
+   */
+  private loadSeasonPrices(): void {
+    this.prices = new PriceStore(this.seasonId);
+    this.prices.registerBoundIds(this.boundIds);
+    for (const record of this.storage.loadPrices(this.seasonId)) {
+      this.prices.set(record.configBaseId, record.fe, record.observedAt);
+    }
   }
 
   /** Закрытые забеги сразу уходят в базу: лог может ротироваться в любой момент. */
@@ -714,9 +760,39 @@ export class Engine extends EventEmitter {
    * их медианы — то самое «среднее по больнице». Торговый дом остаётся
    * общим: у выплат биржи нет пометки, чьи они.
    */
-  setPlayerFilter(playerId: string | null): void {
-    this.playerFilter = playerId;
+  /**
+   * Что показывать: персонажа, текущий сезон или все сезоны — одним
+   * действием, чтобы интерфейс не мигал промежуточным срезом.
+   */
+  setRunScope(scope: { playerId: string | null; allSeasons: boolean }): void {
+    this.playerFilter = scope.playerId;
+    this.allSeasons = scope.allSeasons;
     this.emit('snapshot', this.buildSnapshot());
+  }
+
+  /** Сезон забега: свой, а у старых записей — сезон их персонажа. */
+  private seasonOf(run: Run): number | null {
+    if (run.seasonId !== null) return run.seasonId;
+    if (run.playerId === null) return null;
+    return this.knownPlayers.get(run.playerId)?.seasonId ?? null;
+  }
+
+  /**
+   * Сезон, в границах которого считаются цифры: сезон выбранного персонажа,
+   * текущий или null — все сезоны.
+   */
+  private scopeSeason(): number | null {
+    if (this.playerFilter !== null) {
+      return this.knownPlayers.get(this.playerFilter)?.seasonId ?? null;
+    }
+    return this.allSeasons ? null : this.seasonId;
+  }
+
+  /** Виден ли забег при текущем фильтре. */
+  private inScope(run: Run): boolean {
+    if (this.playerFilter !== null) return run.playerId === this.playerFilter;
+    if (this.allSeasons || this.seasonId === null) return true;
+    return this.seasonOf(run) === this.seasonId;
   }
 
   /**
@@ -921,7 +997,7 @@ export class Engine extends EventEmitter {
         fe: picked?.fe ?? null,
         source: picked?.source ?? null,
         ownObservedAt: own?.observedAt ?? null,
-        trend: priceTrend(this.storage.priceHistory(id)),
+        trend: priceTrend(this.storage.priceHistory(id, undefined, this.seasonId)),
         seenQty: seen.get(id) ?? 0,
       };
     });
@@ -1009,16 +1085,10 @@ export class Engine extends EventEmitter {
       live.filter((r) => r.endedAt !== null),
     );
 
-    // Фильтр по персонажу режет всё, что построено на забегах. Забеги
-    // без атрибуции (старые логи) видны только в режиме «все».
-    const visible =
-      this.playerFilter === null
-        ? allRuns
-        : allRuns.filter((r) => r.playerId === this.playerFilter);
-    const open =
-      liveOpen && (this.playerFilter === null || liveOpen.playerId === this.playerFilter)
-        ? liveOpen
-        : null;
+    // Фильтр по персонажу и сезону режет всё, что построено на забегах.
+    // Забеги без атрибуции (старые логи) видны только в режиме «все сезоны».
+    const visible = allRuns.filter((r) => this.inScope(r));
+    const open = liveOpen && this.inScope(liveOpen) ? liveOpen : null;
     const farming = visible.filter(isFarmingRun);
     return { allRuns, liveOpen, open, farming };
   }
@@ -1031,7 +1101,11 @@ export class Engine extends EventEmitter {
     const netRates = farming.map((r) => perHour(runNet(r, this.priceOf), activeDuration(r)));
     const feRates = farming.map((r) => perHour(runFe(r), activeDuration(r)));
 
-    const realized = this.trade.summarize(this.priceOf);
+    // У выплат биржи нет пометки сезона — границы сезона берём по его
+    // забегам. Иначе коэффициент реализации смешивал бы старые лоты
+    // с ценами новой экономики.
+    const bounds = this.seasonBounds(allRuns, liveOpen);
+    const realized = this.trade.summarize(this.priceOf, bounds.from, bounds.to);
 
     // Текущий забег обязан попадать в итоги: иначе подобранное «сейчас»
     // не видно нигде до выхода из карты, и экран кажется замершим.
@@ -1069,6 +1143,12 @@ export class Engine extends EventEmitter {
       lastActivityAt: this.lastActivityAt,
       logDir: this.logDir,
       seasonId: this.seasonId,
+      seasonName: seasonName(this.seasonId),
+      allSeasons: this.allSeasons,
+      otherSeasonRuns:
+        this.seasonId === null
+          ? 0
+          : allRuns.filter((r) => isFarmingRun(r) && this.seasonOf(r) !== this.seasonId).length,
       player: this.playerView(),
       players: this.playerOptions(allRuns),
       playerFilter: this.playerFilter,
@@ -1132,6 +1212,26 @@ export class Engine extends EventEmitter {
     };
   }
 
+  /**
+   * Границы выбранного сезона во времени — по его забегам. Текущий сезон
+   * открыт справа; все сезоны — без границ.
+   */
+  private seasonBounds(allRuns: Run[], liveOpen: Run | null): { from: number; to: number } {
+    const season = this.scopeSeason();
+    if (season === null) return { from: -Infinity, to: Infinity };
+    let from = Infinity;
+    let to = -Infinity;
+    for (const r of liveOpen ? [...allRuns, liveOpen] : allRuns) {
+      if (this.seasonOf(r) !== season) continue;
+      from = Math.min(from, r.startedAt);
+      to = Math.max(to, runEnd(r));
+    }
+    // У сезона ещё нет забегов — значит, и торговли в его границах не видно:
+    // иначе в первые минуты сезона блок биржи показывал бы прошлый.
+    if (from === Infinity) return { from: Infinity, to: Infinity };
+    return { from, to: season === this.seasonId ? Infinity : to };
+  }
+
   /** Итог последней закрытой сессии по её границам во времени. */
   private previousSummary(
     farming: Run[],
@@ -1162,8 +1262,11 @@ export class Engine extends EventEmitter {
       if (!isFarmingRun(r) || r.playerId === null) continue;
       counts.set(r.playerId, (counts.get(r.playerId) ?? 0) + 1);
     }
+    // Сначала персонажи текущего сезона: прошлые остаются в списке,
+    // но ниже — к ним возвращаются редко.
+    const current = (p: PlayerProfile) => (p.seasonId === this.seasonId ? 1 : 0);
     return [...this.knownPlayers.values()]
-      .sort((a, b) => b.lastSeenAt - a.lastSeenAt)
+      .sort((a, b) => current(b) - current(a) || b.lastSeenAt - a.lastSeenAt)
       .map((p) => ({ ...toPlayerView(p), runs: counts.get(p.playerId) ?? 0 }));
   }
 
@@ -1175,7 +1278,7 @@ export class Engine extends EventEmitter {
    * список каждые 300 мс незачем.
    */
   private jackpotAutoFe(): number {
-    const key = `${this.prices.size}:${this.communityEnabled ? this.community.size : 0}`;
+    const key = `${this.seasonId}:${this.prices.size}:${this.communityEnabled ? this.community.size : 0}`;
     if (this.jackpotAutoCache?.key === key) return this.jackpotAutoCache.value;
 
     const values = this.prices.all().map((r) => r.fe);
@@ -1240,6 +1343,8 @@ function toPlayerView(p: PlayerProfile): PlayerView {
     name: p.name ? p.name.replace(/#\d+$/, '') : null,
     heroName: heroName(p.heroId),
     level: p.level,
+    seasonId: p.seasonId,
+    seasonName: seasonName(p.seasonId),
   };
 }
 

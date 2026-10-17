@@ -61,7 +61,7 @@ declare global {
     session: {
       reset: () => Promise<void>;
     };
-    setPlayerFilter: (playerId: string | null) => Promise<string | null>;
+    setRunScope: (scope: { playerId: string | null; allSeasons: boolean }) => Promise<void>;
     prices: {
       query: (query: string) => Promise<PriceRow[]>;
       setExcluded: (configBaseId: number, excluded: boolean) => Promise<number[]>;

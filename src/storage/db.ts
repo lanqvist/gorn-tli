@@ -167,7 +167,31 @@ export class Storage {
       this.db.exec('ALTER TABLE run ADD COLUMN player_id TEXT');
     }
 
-    // 3. Выплаты: добавилась колонка seq. UNIQUE-ограничение старой таблицы
+    // 3. Сезон забега: старые версии писали NULL, если в файле не было
+    //    профиля. Персонаж живёт ровно в одном сезоне — сезон берём у него.
+    //    Только для NULL: уже проставленный сезон не трогаем.
+    this.db.exec(`
+      UPDATE run SET season_id = (
+        SELECT p.season_id FROM player p WHERE p.player_id = run.player_id
+      )
+      WHERE season_id IS NULL AND player_id IS NOT NULL`);
+
+    // 4. Свои пробивки цен писались без сезона (0), и цена прошлого сезона
+    //    тихо подставлялась в новом. Сезон пробивки — сезон последнего
+    //    забега, начатого до неё; пробивки старше всех забегов остаются 0
+    //    и в оценку текущего сезона не попадают.
+    this.db.exec(`
+      UPDATE OR REPLACE price SET season_id = (
+        SELECT r.season_id FROM run r
+        WHERE r.season_id IS NOT NULL AND r.started_at <= price.observed_at
+        ORDER BY r.started_at DESC LIMIT 1
+      )
+      WHERE season_id = 0 AND EXISTS (
+        SELECT 1 FROM run r
+        WHERE r.season_id IS NOT NULL AND r.started_at <= price.observed_at
+      )`);
+
+    // 5. Выплаты: добавилась колонка seq. UNIQUE-ограничение старой таблицы
     //    снять нельзя, поэтому таблица пересоздаётся.
     const cols = this.db.prepare('PRAGMA table_info(receipt)').all() as Array<{
       name: string;
@@ -192,8 +216,12 @@ export class Storage {
   /**
    * Сохраняет забеги. Повторный скан того же лога не создаёт дублей:
    * забег опознаётся по времени старта и зоне.
+   *
+   * Сезон — собственный у забега; `fallbackSeasonId` нужен только забегам
+   * без профиля в логе. Раньше сезон передавался один на всю пачку,
+   * и пересканирование логов прошлого сезона переписывало их в текущий.
    */
-  saveRuns(runs: Run[], seasonId: number | null): number {
+  saveRuns(runs: Run[], fallbackSeasonId: number | null): number {
     const insertRun = this.db.prepare(`
       INSERT OR IGNORE INTO run
         (season_id, area_id, asset, level_type, started_at, ended_at, duration_ms, is_hub,
@@ -205,7 +233,7 @@ export class Storage {
     );
     const updateRun = this.db.prepare(`
       UPDATE run SET
-        season_id  = COALESCE(?, season_id),
+        season_id  = COALESCE(?, season_id, ?),
         asset      = COALESCE(?, asset),
         level_type = COALESCE(?, level_type),
         ended_at   = ?,
@@ -227,7 +255,7 @@ export class Storage {
     try {
       for (const run of runs) {
         insertRun.run(
-          seasonId,
+          run.seasonId ?? fallbackSeasonId,
           run.areaId,
           run.asset,
           run.levelType,
@@ -252,7 +280,8 @@ export class Storage {
         if (!better) continue;
 
         updateRun.run(
-          seasonId,
+          run.seasonId,
+          fallbackSeasonId,
           run.asset,
           run.levelType,
           run.endedAt,
@@ -345,7 +374,7 @@ export class Storage {
     const rows = this.db
       .prepare(
         `SELECT id, area_id, asset, level_type, started_at, ended_at, duration_ms, is_hub,
-                player_id
+                player_id, season_id
          FROM run ORDER BY started_at`,
       )
       .all() as Array<{
@@ -358,6 +387,7 @@ export class Storage {
       duration_ms: number | null;
       is_hub: number;
       player_id: string | null;
+      season_id: number | null;
     }>;
 
     const dropStmt = this.db.prepare(
@@ -376,6 +406,7 @@ export class Storage {
       durationMs: row.duration_ms,
       isHub: row.is_hub === 1,
       playerId: row.player_id,
+      seasonId: row.season_id,
       drops: (
         dropStmt.all(row.id) as Array<{
           config_base_id: number;
@@ -474,17 +505,23 @@ export class Storage {
     return { listings, receipts };
   }
 
-  /** Сохранённые цены — чтобы не терять их вместе с логами. */
-  loadPrices(): PriceRecord[] {
+  /**
+   * Сохранённые цены — чтобы не терять их вместе с логами. Только своего
+   * сезона: экономика каждый сезон начинается заново, и цена прошлого
+   * сезона хуже, чем никакой. null — сезон неизвестен, отдаются все.
+   */
+  loadPrices(seasonId: number | null = null): PriceRecord[] {
+    const scope = seasonId === null ? '' : 'AND season_id = :season';
     const rows = this.db
       .prepare(
         `SELECT config_base_id, season_id, fe, median, min_price, sample_size, observed_at
          FROM price p
          WHERE observed_at = (
-           SELECT MAX(observed_at) FROM price WHERE config_base_id = p.config_base_id
-         )`,
+           SELECT MAX(observed_at) FROM price
+           WHERE config_base_id = p.config_base_id ${scope}
+         ) ${scope}`,
       )
-      .all() as Array<{
+      .all(seasonId === null ? {} : { season: seasonId }) as Array<{
       config_base_id: number;
       season_id: number | null;
       fe: number;
@@ -510,14 +547,23 @@ export class Storage {
    * от свежей пробивки, а не от сегодняшнего дня: после перерыва в игре
    * история иначе выглядела бы пустой.
    */
-  priceHistory(configBaseId: ConfigBaseId, limit = 60): Array<{ t: number; fe: number }> {
+  priceHistory(
+    configBaseId: ConfigBaseId,
+    limit = 60,
+    seasonId: number | null = null,
+  ): Array<{ t: number; fe: number }> {
+    // Тренд — внутри сезона: старт новой экономики выглядел бы обвалом цены.
+    const scope = seasonId === null ? '' : 'AND season_id = :season';
     return (
       this.db
         .prepare(
           `SELECT observed_at AS t, fe FROM price
-           WHERE config_base_id = ? ORDER BY observed_at DESC LIMIT ?`,
+           WHERE config_base_id = :id ${scope} ORDER BY observed_at DESC LIMIT :limit`,
         )
-        .all(configBaseId, limit) as Array<{ t: number; fe: number }>
+        .all({ id: configBaseId, limit, ...(seasonId === null ? {} : { season: seasonId }) }) as Array<{
+        t: number;
+        fe: number;
+      }>
     )
       .map((r) => ({ t: r.t, fe: r.fe }))
       .reverse();

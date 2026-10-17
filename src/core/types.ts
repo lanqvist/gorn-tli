@@ -211,6 +211,12 @@ export interface Run {
   isHub: boolean;
   /** Персонаж, которым бежали. null — лог старее этой фичи. */
   playerId: string | null;
+  /**
+   * Сезон (SeasonId из профиля), в котором бежали. Свой у каждого забега:
+   * разбор логов двух сезонов разом иначе записывал все забеги в последний.
+   * null — профиль в логе не встретился.
+   */
+  seasonId: number | null;
   drops: ItemDelta[];
   costs: ItemDelta[];
 }

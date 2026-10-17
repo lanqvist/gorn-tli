@@ -21,6 +21,8 @@ export class RunSegmenter {
   private pendingLevelType: number | null = null;
   /** Кем зашли в игру. Все последующие забеги — его. */
   private playerId: string | null = null;
+  /** Сезон персонажа из профиля. Все последующие забеги — этого сезона. */
+  private seasonId: number | null = null;
 
   noteAsset(asset: string): void {
     this.pendingAsset = asset;
@@ -36,6 +38,11 @@ export class RunSegmenter {
    */
   setPlayer(playerId: string | null): void {
     this.playerId = playerId;
+  }
+
+  /** Сезон приходит с профилем персонажа, чуть позже самого входа. */
+  setSeason(seasonId: number | null): void {
+    this.seasonId = seasonId;
   }
 
   /**
@@ -67,6 +74,7 @@ export class RunSegmenter {
       durationMs: null,
       isHub,
       playerId: this.playerId,
+      seasonId: this.seasonId,
       drops: [],
       // Вложения, сделанные в городе перед входом, принадлежат этой карте.
       costs: isHub ? [] : this.takePendingCosts(ev.ts),

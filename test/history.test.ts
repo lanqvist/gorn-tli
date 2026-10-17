@@ -21,6 +21,7 @@ function run(endedAt: number, fe: number, asset = 'YL_MaNeiLaYuLin100'): Run {
     durationMs: 60_000,
     isHub: false,
     playerId: null,
+    seasonId: null,
     drops: [
       {
         ts: startedAt + 30_000,

@@ -42,6 +42,45 @@ describe('разбор строк', () => {
     expect(ev).toMatchObject({ kind: 'levelPath', asset: 'SD_YuanGuTongDao201' });
   });
 
+  it('SS14: сезонная зона лежит в собственном дереве Season/S16', () => {
+    const parser = new EventParser();
+    // Подлинная строка SS14: прежний шаблон требовал Content/Art/Maps/<папка>/
+    // и оставлял забег безымянной «Зоной 235501».
+    const ev = parser.parse(
+      "[2026.10.16-18.37.43:136][ 43]TLLua: Display: [Game] LevelMgr@:LevelPath, Model = Content/Art/Season/S16/Maps/ZhongZuiDiYu/ZhongZuiDiYu.umap World'/Game/Art/Season/S16/Maps/ZhongZuiDiYu/ZhongZuiDiYu.ZhongZuiDiYu'",
+    );
+    expect(ev).toMatchObject({ kind: 'levelPath', asset: 'ZhongZuiDiYu' });
+  });
+
+  it('боссы и корабли Sandlord по-прежнему опознаются', () => {
+    const parser = new EventParser();
+    const boss = parser.parse(
+      "[2026.10.16-18.01.56:749][474]TLLua: Display: [Game] LevelMgr@:LevelPath, Model = Content/Art/Maps/Boss/ChiGuiWuShi/ChiGuiWuShi.umap World'/Game/Art/Maps/Boss/ChiGuiWuShi/ChiGuiWuShi.ChiGuiWuShi'",
+    );
+    const ship = parser.parse(
+      "[2026.10.16-18.55.13:130][307]TLLua: Display: [Game] LevelMgr@:LevelPath, Model = Content/Art/Maps/S2/XuHaiZhongGang/XuHaiZhongGang.umap World'/Game/Art/Maps/S2/XuHaiZhongGang/XuHaiZhongGang.XuHaiZhongGang'",
+    );
+    expect(boss).toMatchObject({ asset: 'ChiGuiWuShi' });
+    expect(ship).toMatchObject({ asset: 'XuHaiZhongGang' });
+  });
+
+  it('SS14: городские операции не попадают в «незнакомые»', () => {
+    for (const proto of [
+      'ChooseForgeItem',
+      'ReCostItem',
+      'TalentBlockEquip',
+      'TalentBlockUnequip',
+      'TalentBlockEnhance',
+      'TalentBlockReshape',
+      'TalentBlockRotate',
+      'UnequipSkill',
+      'OpenRewardBox',
+      'Spv3RefreshAffix',
+    ]) {
+      expect(protoKind(proto), proto).toBe('neutral');
+    }
+  });
+
   it('SS13 переименовал PickItems в PickItem — понимаем оба', () => {
     expect(protoKind('PickItems')).toBe('loot');
     expect(protoKind('PickItem')).toBe('loot');

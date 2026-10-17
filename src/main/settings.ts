@@ -39,6 +39,12 @@ export interface Settings {
    */
   playerFilter: string | null;
   /**
+   * Показывать забеги всех сезонов. По умолчанию — только текущего:
+   * с началом сезона экономика обнуляется, и прошлые цифры описывают
+   * другую игру.
+   */
+  allSeasons: boolean;
+  /**
    * Предметы, исключённые из учёта: их добыча стоит ноль. Для того, что
    * формально имеет цену, но не продаётся, — и чтобы «Пробить цену»
    * перестало напоминать про мусор.
@@ -81,6 +87,7 @@ const DEFAULTS: Settings = {
   communityPrices: true,
   logDir: null,
   playerFilter: null,
+  allSeasons: false,
   excludedItems: [],
   minDropFe: 0,
   closeToTray: false,
@@ -147,6 +154,7 @@ export class SettingsStore {
         communityPrices: raw.settings.communityPrices ?? DEFAULTS.communityPrices,
         logDir: raw.settings.logDir ?? DEFAULTS.logDir,
         playerFilter: raw.settings.playerFilter ?? DEFAULTS.playerFilter,
+        allSeasons: raw.settings.allSeasons === true,
         excludedItems: Array.isArray(raw.settings.excludedItems)
           ? raw.settings.excludedItems.filter((id) => Number.isInteger(id))
           : DEFAULTS.excludedItems,
@@ -208,8 +216,13 @@ export class SettingsStore {
     return this.data.playerFilter;
   }
 
-  setPlayerFilter(playerId: string | null): void {
-    this.data.playerFilter = playerId;
+  get allSeasons(): boolean {
+    return this.data.allSeasons;
+  }
+
+  setRunScope(scope: { playerId: string | null; allSeasons: boolean }): void {
+    this.data.playerFilter = scope.playerId;
+    this.data.allSeasons = scope.allSeasons;
     this.save();
   }
 

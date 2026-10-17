@@ -1,4 +1,4 @@
-import { protoKind } from './patterns.js';
+import { deltaKind, protoKind, type MapKeyLookup } from './patterns.js';
 import type {
   BagAddEvent,
   BagInitEvent,
@@ -42,7 +42,14 @@ export class InventoryTracker {
   /** Текущий ProtoName между start и end. */
   private currentProto: string | null = null;
 
-  constructor(private readonly diag: Diagnostics) {}
+  /**
+   * @param isMapKey — ключ ли предмет от карты (по справочнику). Нужен,
+   *   чтобы серверное списание сезонных компасов считалось вложением.
+   */
+  constructor(
+    private readonly diag: Diagnostics,
+    private readonly isMapKey: MapKeyLookup = () => false,
+  ) {}
 
   beginTransaction(proto: string): void {
     this.currentProto = proto;
@@ -89,7 +96,7 @@ export class InventoryTracker {
       configBaseId: prev.configBaseId,
       qty: -prev.qty,
       proto,
-      kind: protoKind(proto),
+      kind: deltaKind(proto, prev.configBaseId, -prev.qty, this.isMapKey),
       pageId: ev.pageId,
       slotId: ev.slotId,
     };
@@ -151,7 +158,7 @@ export class InventoryTracker {
       configBaseId: ev.configBaseId,
       qty,
       proto,
-      kind: protoKind(proto),
+      kind: deltaKind(proto, ev.configBaseId, qty, this.isMapKey),
       pageId: ev.pageId,
       slotId: ev.slotId,
     };

@@ -117,8 +117,17 @@ export class PriceStore {
 
   constructor(private readonly seasonId: number | null = null) {}
 
-  /** Принимает наблюдение из лога. Более свежее вытесняет более старое. */
-  observe(ev: PriceObservationEvent): PriceRecord | null {
+  /** Сезон, к которому относятся цены этого хранилища. */
+  get season(): number | null {
+    return this.seasonId;
+  }
+
+  /**
+   * Принимает наблюдение из лога. Более свежее вытесняет более старое.
+   * `seasonId` — сезон файла, из которого пришла пробивка, если он
+   * известнее сезона хранилища: ретроскан читает логи разных сезонов.
+   */
+  observe(ev: PriceObservationEvent, seasonId: number | null = this.seasonId): PriceRecord | null {
     // Лоты за другую валюту к оценке в ФЕ не приводятся.
     if (ev.currency !== FE_ID) return null;
 
@@ -132,7 +141,7 @@ export class PriceStore {
       min: sorted[0]!,
       sampleSize: sorted.length,
       observedAt: ev.ts,
-      seasonId: this.seasonId,
+      seasonId,
     };
 
     const existing = this.prices.get(ev.configBaseId);

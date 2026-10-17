@@ -1,4 +1,4 @@
-import type { ProtoKind } from './types.js';
+import type { ConfigBaseId, ProtoKind } from './types.js';
 
 /**
  * Категория лога НЕ фиксирована и меняется от сезона к сезону.
@@ -57,9 +57,17 @@ export const ENTER_LEVEL_RE = new RegExp(
   CATEGORY + String.raw`LevelMgr:_EnterLevelSuccess\(\)\s*(\d+)`,
 );
 
-/** LevelMgr@:LevelPath, Model = Content/Art/Maps/01SD/SD_YuanGuTongDao201/... */
+/**
+ * LevelMgr@:LevelPath, Model = Content/Art/Maps/01SD/SD_YuanGuTongDao201/SD_YuanGuTongDao201.umap
+ *
+ * Ассет — папка, в которой лежит .umap, а не «второй уровень после Maps»:
+ * с SS14 сезонные зоны живут в собственном дереве
+ *   Content/Art/Season/S16/Maps/ZhongZuiDiYu/ZhongZuiDiYu.umap
+ * и прежний шаблон их не видел — забег показывался как «Зона 235501».
+ */
 export const LEVEL_PATH_RE = new RegExp(
-  CATEGORY + String.raw`LevelMgr@:LevelPath,\s*Model\s*=\s*Content/Art/Maps/[^/]+/([^/]+)/`,
+  CATEGORY +
+    String.raw`LevelMgr@:LevelPath,\s*Model\s*=\s*Content/Art/(?:[^\s/]+/)*([^\s/]+)/[^\s/]+\.umap`,
 );
 
 export const LEVEL_IDS_RE = new RegExp(
@@ -123,10 +131,59 @@ const PROTO_KINDS: Record<string, ProtoKind> = {
   MoveWareHouseItems: 'neutral',
   ResetItemsLayout: 'neutral',
   WashGeniusAllPoint: 'neutral',
+  // SS14: всё это происходит в укрытии и к фарму карт не относится —
+  // ковка, сезонная доска (ReCostItem тратит Energy Core), плиты талантов,
+  // снятие навыка, сундук наград. Перебор аффиксов карты сумку не трогает.
+  ChooseForgeItem: 'neutral',
+  ReCostItem: 'neutral',
+  TalentBlockEquip: 'neutral',
+  TalentBlockUnequip: 'neutral',
+  TalentBlockEnhance: 'neutral',
+  TalentBlockReshape: 'neutral',
+  TalentBlockRotate: 'neutral',
+  UnequipSkill: 'neutral',
+  OpenRewardBox: 'neutral',
+  Spv3RefreshAffix: 'neutral',
 };
 
 export function protoKind(proto: string): ProtoKind {
   return PROTO_KINDS[proto] ?? 'unknown';
+}
+
+/**
+ * Типы предметов-ключей от карт по type_cn справочника: компас, сезонный
+ * компас, маяк. Ни на что, кроме открытия карт и сезонных зон, они
+ * не тратятся.
+ */
+const MAP_KEY_TYPES_CN = new Set(['罗盘', '赛季罗盘', '信标']);
+
+export function isMapKeyType(typeCn: string | null | undefined): boolean {
+  return typeCn != null && MAP_KEY_TYPES_CN.has(typeCn);
+}
+
+/** Является ли предмет ключом от карты — знает справочник, а не ядро. */
+export type MapKeyLookup = (id: ConfigBaseId) => boolean;
+
+/**
+ * Смысл конкретного изменения сумки: протокол плюс то, что изменилось.
+ *
+ * Push2 — серверная правка сумки — в общем случае нейтрален: им приходят
+ * награды за задания и сезонную доску. Но с SS14 им же списываются
+ * сезонные компасы («Оковы») при старте сезонной механики: кнопка
+ * Btn_S16GamePlay_Start → Push2 «Darkiron Shackles 7 → 4» → через пару
+ * минут вход в зону ZhongZuiDiYu. Без этого правила сезонная зона
+ * выглядела бесплатной, и её доход был завышен ровно на компасы.
+ * Перекладывания компасов Push2 в логах SS14 не встречается ни разу —
+ * только списания, поэтому минус по ключу от карты — это вложение.
+ */
+export function deltaKind(
+  proto: string,
+  configBaseId: ConfigBaseId,
+  qty: number,
+  isMapKey?: MapKeyLookup,
+): ProtoKind {
+  if (proto === 'Push2' && qty < 0 && isMapKey?.(configBaseId)) return 'mapCost';
+  return protoKind(proto);
 }
 
 /**

@@ -87,7 +87,7 @@
   "typeCn": "通用道具",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Item/128/UI_Item_Echo_01_Icon_128.webp",
   "nameRu": "Резонанс Преисподней",
-  "typeRu": "Предмет Преисподней"
+  "typeRu": null
  },
  {
   "id": 5029,
@@ -137,7 +137,7 @@
   "typeCn": "通用道具",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Item/128/UI_Item_Core_01_Icon_128.webp",
   "nameRu": "Энергоядро",
-  "typeRu": "Предмет для улучшения показателя энергии на снаряжении"
+  "typeRu": null
  },
  {
   "id": 5140,
@@ -207,7 +207,7 @@
   "typeCn": "神威辉石",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Item/128/UI_Item_SixGodsChallenge_PowerStone_Icon_128.webp",
   "nameRu": "Божественный самородок",
-  "typeRu": "Божественный самородок"
+  "typeRu": null
  },
  {
   "id": 5220,
@@ -257,7 +257,7 @@
   "typeCn": "永恒迷城",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/GamePlay/UI_Item_S4Gameplay_TalentCost_Icon_128.webp",
   "nameRu": "Страница вечности",
-  "typeRu": "Страница вечности"
+  "typeRu": null
  },
  {
   "id": 5310,
@@ -267,7 +267,7 @@
   "typeCn": "迷城残响",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/GamePlay/UI_S4GameplayTicket1_Icon_128.webp",
   "nameRu": "Эхо Тайнограда - Мгновение",
-  "typeRu": "Эхо Тайнограда"
+  "typeRu": null
  },
  {
   "id": 5311,
@@ -277,7 +277,7 @@
   "typeCn": "迷城残响",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/GamePlay/UI_S4GameplayTicket2_Icon_128.webp",
   "nameRu": "Эхо Тайнограда - Вечность",
-  "typeRu": "Эхо Тайнограда"
+  "typeRu": null
  },
  {
   "id": 5401,
@@ -827,7 +827,7 @@
   "typeCn": "记忆荧光",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/FateCard/128/UI_Memory_6111_Icon_128.webp",
   "nameRu": "Взрыв сверхновой",
-  "typeRu": "Свет памяти"
+  "typeRu": null
  },
  {
   "id": 6118,
@@ -937,7 +937,7 @@
   "typeCn": "记忆荧光",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/FateCard/128/UI_Memory_6153_Icon_128.webp",
   "nameRu": "Завтрашний курс",
-  "typeRu": "Свет памяти"
+  "typeRu": null
  },
  {
   "id": 6216,
@@ -1097,7 +1097,7 @@
   "typeCn": "主动技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/Icon_Skill_FocusedStrike_128.webp",
   "nameRu": "Вердикт ревнителя",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7020,
@@ -1137,7 +1137,7 @@
   "typeCn": "主动技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/Icon_Skill_Strafe_128.webp",
   "nameRu": "Бомбежка",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7028,
@@ -1147,7 +1147,7 @@
   "typeCn": "主动技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/Icon_Skill_Shadowbolt_128.webp",
   "nameRu": "Теневой выстрел",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7029,
@@ -1157,7 +1157,7 @@
   "typeCn": "主动技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/Icon_Skill_Shadowswamp_128.webp",
   "nameRu": "Теневое болото",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7030,
@@ -1167,7 +1167,7 @@
   "typeCn": "主动技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_MarkerArrow_Icon_128.webp",
   "nameRu": "Маркирующие стрелы",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7031,
@@ -1177,7 +1177,7 @@
   "typeCn": "主动技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/Icon_Skill_WildRage_128.webp",
   "nameRu": "Гнев быка",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7032,
@@ -1227,7 +1227,7 @@
   "typeCn": "主动技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/Icon_Skill_Blizzard_128.webp",
   "nameRu": "Метель",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7039,
@@ -1357,7 +1357,7 @@
   "typeCn": "主动技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/Icon_Skill_FrostSlash_128.webp",
   "nameRu": "Ледяной клинок",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7054,
@@ -1496,8 +1496,8 @@
   "type": "Active Skill",
   "typeCn": "主动技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_SkillIcon_Skill_FirePile_Icon_128.webp",
-  "nameRu": "Пироядро",
-  "typeRu": null
+  "nameRu": "Ядро пламени",
+  "typeRu": "Навык"
  },
  {
   "id": 7069,
@@ -1517,7 +1517,7 @@
   "typeCn": "主动技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/Icon_Skill_FlameBlast_128.webp",
   "nameRu": "Пламенная струя",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7071,
@@ -1527,7 +1527,7 @@
   "typeCn": "主动技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/Icon_Skill_IceArea_128.webp",
   "nameRu": "Морозный пруд",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7072,
@@ -1557,7 +1557,7 @@
   "typeCn": "主动技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/Icon_Skill_IceBlink_128.webp",
   "nameRu": "Передача холода",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7078,
@@ -1627,7 +1627,7 @@
   "typeCn": "主动技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_SkillIcon_Skill_BurningWave_Icon_128.webp",
   "nameRu": "Обжигающий пульс",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7087,
@@ -1647,7 +1647,7 @@
   "typeCn": "主动技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_SkillIcon_Skill_ArcaneSurge_Icon_128.webp",
   "nameRu": "Тайное происхождение",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7089,
@@ -1697,7 +1697,7 @@
   "typeCn": "主动技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_SkillIcon_Skill_FireBlast_Icon_128.webp",
   "nameRu": "Огненный всплеск",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7094,
@@ -1717,7 +1717,7 @@
   "typeCn": "被动技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_SkillIcon_Skill_Rabid_Icon_128.webp",
   "nameRu": "Бесстрашный",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7102,
@@ -1727,7 +1727,7 @@
   "typeCn": "被动技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_SkillIcon_Skill_Weapon_Icon_128.webp",
   "nameRu": "Усиление оружия",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7103,
@@ -1737,7 +1737,7 @@
   "typeCn": "被动技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_SkillIcon_Skill_Regen_Icon_128.webp",
   "nameRu": "Омоложение",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7104,
@@ -1747,7 +1747,7 @@
   "typeCn": "被动技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_SkillIcon_Skill_LightingAura_Icon_128.webp",
   "nameRu": "Электрическая конверсия",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7105,
@@ -1757,7 +1757,7 @@
   "typeCn": "被动技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_SkillIcon_Skill_IceAura_Icon_128.webp",
   "nameRu": "Холодные владения",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7106,
@@ -1767,7 +1767,7 @@
   "typeCn": "被动技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_SkillIcon_Skill_Agility_Icon_128.webp",
   "nameRu": "Живость",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7107,
@@ -1777,7 +1777,7 @@
   "typeCn": "被动技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_SkillIcon_Skill_ElementalEnhance_Icon_128.webp",
   "nameRu": "Усиление заклинания",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7108,
@@ -1787,7 +1787,7 @@
   "typeCn": "被动技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_SkillIcon_Skill_EnergyFort_Icon_128.webp",
   "nameRu": "Энергетическая крепость",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7109,
@@ -1797,7 +1797,7 @@
   "typeCn": "被动技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_SkillIcon_Skill_SourceOfMana_Icon_128.webp",
   "nameRu": "Источник магии",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7110,
@@ -1807,7 +1807,7 @@
   "typeCn": "被动技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_SkillIcon_Skill_PreciseProjectile_Icon_128.webp",
   "nameRu": "Точные снаряды",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7111,
@@ -1817,7 +1817,7 @@
   "typeCn": "被动技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_SkillIcon_Skill_ElementalResistance_Icon_128.webp",
   "nameRu": "Cопротивляемость стихиям",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7112,
@@ -1827,7 +1827,7 @@
   "typeCn": "被动技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_SkillIcon_Skill_Haste_Icon_128.webp",
   "nameRu": "Быстрота",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7113,
@@ -1837,7 +1837,7 @@
   "typeCn": "被动技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_SkillIcon_Skill_DeepPain_Icon_128.webp",
   "nameRu": "Глубокая боль",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7114,
@@ -1847,7 +1847,7 @@
   "typeCn": "被动技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_SkillIcon_Skill_ChaosEnhance_Icon_128.webp",
   "nameRu": "Усиление эрозии",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7115,
@@ -1857,7 +1857,7 @@
   "typeCn": "被动技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_SkillIcon_Skill_FireAura_Icon_128.webp",
   "nameRu": "Заряженное пламя",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7116,
@@ -1867,7 +1867,7 @@
   "typeCn": "被动技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_SkillIcon_Skill_Solid_Icon_128.webp",
   "nameRu": "Устойчивый",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7120,
@@ -1907,7 +1907,7 @@
   "typeCn": "主动技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/Icon_Skill_BlackHole_128.webp",
   "nameRu": "Чёрная дыра",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7125,
@@ -1967,7 +1967,7 @@
   "typeCn": "主动技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_SkillIcon_Skill_ElementBreak_Icon_128.webp",
   "nameRu": "Трусость",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7131,
@@ -1977,7 +1977,7 @@
   "typeCn": "主动技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_SkillIcon_Skill_Conductivity_Icon_128.webp",
   "nameRu": "Электрошок",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7132,
@@ -1987,7 +1987,7 @@
   "typeCn": "主动技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_SkillIcon_Skill_Vulnerable_Icon_128.webp",
   "nameRu": "Уязвимость",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7133,
@@ -1996,8 +1996,8 @@
   "type": "Active Skill",
   "typeCn": "主动技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_SkillIcon_Skill_Blazing_Icon_128.webp",
-  "nameRu": "Ожог",
-  "typeRu": "Навык"
+  "nameRu": "Обжиг",
+  "typeRu": null
  },
  {
   "id": 7134,
@@ -2017,7 +2017,7 @@
   "typeCn": "主动技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_SkillIcon_Skill_EntanglingPain_Icon_128.webp",
   "nameRu": "Спутанная боль",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7136,
@@ -2037,7 +2037,7 @@
   "typeCn": "主动技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_SkillIcon_Skill_ErodingEvil_Icon_128.webp",
   "nameRu": "Испорченность",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7138,
@@ -2067,7 +2067,7 @@
   "typeCn": "被动技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/Icon_Skill_IceBless_128.webp",
   "nameRu": "Средоточение льда",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7141,
@@ -2077,7 +2077,7 @@
   "typeCn": "被动技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/Icon_Skill_ThunderBless_128.webp",
   "nameRu": "Средоточение грома",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7142,
@@ -2147,7 +2147,7 @@
   "typeCn": "主动技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_SkillIcon_Skill_DarkPortal_Icon_128.webp",
   "nameRu": "Темные врата",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7153,
@@ -2157,7 +2157,7 @@
   "typeCn": "主动技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_ThunderArea_Icon_128.webp",
   "nameRu": "Громовые оковы",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7154,
@@ -2167,7 +2167,7 @@
   "typeCn": "主动技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_SoulStealArea_Icon_128.webp",
   "nameRu": "Круг арканы",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7155,
@@ -2177,7 +2177,7 @@
   "typeCn": "主动技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_FrostTether_Icon_128.webp",
   "nameRu": "Ледяные узы",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7156,
@@ -2237,7 +2237,7 @@
   "typeCn": "主动技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_DesperateFormation_Icon_128.webp",
   "nameRu": "Кольцо-оберег",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7167,
@@ -2397,7 +2397,7 @@
   "typeCn": "主动技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_SkillIcon_Skill_SummonMechanicalGuard_Icon_128.webp",
   "nameRu": "Стальной кулак",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7185,
@@ -2407,7 +2407,7 @@
   "typeCn": "主动技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_SkillIcon_Skill_SummonIceSpiderTank_Icon_128.webp",
   "nameRu": "Прицельный выстрел",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7186,
@@ -2427,7 +2427,7 @@
   "typeCn": "主动技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_SkillIcon_Skill_SummonFireElement_Icon_128.webp",
   "nameRu": "Пылающий волчок",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7188,
@@ -2537,7 +2537,7 @@
   "typeCn": "主动技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_SummonPhantom_Icon_128.webp",
   "nameRu": "Боевой лазер",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7199,
@@ -2547,7 +2547,7 @@
   "typeCn": "主动技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_SummonPhantom_Icon_128.webp",
   "nameRu": "Пушка аннигиляции",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7200,
@@ -2827,7 +2827,7 @@
   "typeCn": "主动技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_Revenge_Icon_128.webp",
   "nameRu": "Месть",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7228,
@@ -2847,7 +2847,7 @@
   "typeCn": "主动技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_EndlessRevenge_Icon_128.webp",
   "nameRu": "Бесконечная месть",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7230,
@@ -2860,6 +2860,186 @@
   "typeRu": "Навык"
  },
  {
+  "id": 7339,
+  "name": "Thornfield",
+  "nameCn": "荆棘之域",
+  "type": "Active Skill",
+  "typeCn": "主动技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_PhysicalLastGround_Icon_128.webp",
+  "nameRu": "Тернистая зона",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 7340,
+  "name": "Tidewell",
+  "nameCn": "潮汐之泉",
+  "type": "Active Skill",
+  "typeCn": "主动技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_Torrent_Icon_128.webp",
+  "nameRu": "Источник приливов",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 7341,
+  "name": "Fallen Star",
+  "nameCn": "陨星",
+  "type": "Active Skill",
+  "typeCn": "主动技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CoreTalentIcon/128/UI_Skill_cometGround_Icon_128.webp",
+  "nameRu": "Метеорит",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 7342,
+  "name": "Storm Field",
+  "nameCn": "雷暴地带",
+  "type": "Active Skill",
+  "typeCn": "主动技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_CurrentField_Icon_128.webp",
+  "nameRu": "Грозовая зона",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 7343,
+  "name": "Nether Grasp",
+  "nameCn": "冥渊之手",
+  "type": "Active Skill",
+  "typeCn": "主动技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CoreTalentIcon/128/UI_Skill_Nethergrasp_Icon_128.webp",
+  "nameRu": "Рука бездны",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 7344,
+  "name": "Commanding Warcry",
+  "nameCn": "统帅战吼",
+  "type": "Active Skill",
+  "typeCn": "主动技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_CommanderCry_Icon_128.webp",
+  "nameRu": "Боевой клич командующего",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 7345,
+  "name": "Agony Dew",
+  "nameCn": "痛楚滴露",
+  "type": "Active Skill",
+  "typeCn": "主动技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_tongchudilu_Icon_128.webp",
+  "nameRu": "Роса боли",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 7346,
+  "name": "Prism Butterfly Distillate",
+  "nameCn": "幻彩蝶凝萃",
+  "type": "Active Skill",
+  "typeCn": "主动技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_hongcaidieningcui_Icon_128.webp",
+  "nameRu": "Концентрат иллюзорной бабочки",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 7347,
+  "name": "Voltaic Ripple",
+  "nameCn": "电光涟漪",
+  "type": "Active Skill",
+  "typeCn": "主动技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_LightingLastGround_Icon_128.webp",
+  "nameRu": "Электрическая рябь",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 7348,
+  "name": "Psionic Missile",
+  "nameCn": "灵视飞弹",
+  "type": "Active Skill",
+  "typeCn": "主动技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_InsightMissile_Icon_128.webp",
+  "nameRu": "Снаряд прозрения",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 7349,
+  "name": "Homing Frost Bolt",
+  "nameCn": "追迹冰矢",
+  "type": "Active Skill",
+  "typeCn": "主动技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_TrackingIceArrow_Icon_128.webp",
+  "nameRu": "Ищущая ледяная стрела",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 7350,
+  "name": "Forking Thunder",
+  "nameCn": "裂相电矢",
+  "type": "Active Skill",
+  "typeCn": "主动技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_SplitSpear_Icon_128.webp",
+  "nameRu": "Расщепляющий молниевый болт",
+  "typeRu": null
+ },
+ {
+  "id": 7351,
+  "name": "Moon's Dawn",
+  "nameCn": "月之黎明",
+  "type": "Active Skill",
+  "typeCn": "主动技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_DawnOfMoon_Icon_128.webp",
+  "nameRu": "Лунный рассвет",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 7353,
+  "name": "Blazing Meteor",
+  "nameCn": "爆裂燧星",
+  "type": "Active Skill",
+  "typeCn": "主动技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_StarExplosion_Icon_128.webp",
+  "nameRu": "Разрывная искра",
+  "typeRu": null
+ },
+ {
+  "id": 7354,
+  "name": "Hound's Fangs",
+  "nameCn": "猎犬獠牙",
+  "type": "Active Skill",
+  "typeCn": "主动技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_BoneSting_Icon_128.webp",
+  "nameRu": "Клык гончей",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 7355,
+  "name": "Stasis Vault",
+  "nameCn": "静滞天穹",
+  "type": "Active Skill",
+  "typeCn": "主动技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_jingzhitianqiong_Icon_128.webp",
+  "nameRu": "Застывший небосвод",
+  "typeRu": null
+ },
+ {
+  "id": 7356,
+  "name": "Supreme Descent",
+  "nameCn": "至高降临",
+  "type": "Active Skill",
+  "typeCn": "主动技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_zhigaojianglin_Icon_128.webp",
+  "nameRu": "Высшее пришествие",
+  "typeRu": null
+ },
+ {
+  "id": 7357,
+  "name": "Selves of All Realms",
+  "nameCn": "诸我之我",
+  "type": "Active Skill",
+  "typeCn": "主动技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_zhuwozhiwo_Icon_128.webp",
+  "nameRu": "Я всех своих я",
+  "typeRu": null
+ },
+ {
   "id": 7401,
   "name": "Multiple Projectiles",
   "nameCn": "散射",
@@ -2867,7 +3047,7 @@
   "typeCn": "辅助技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/Icon_Support_ExtraProjectiles_128.webp",
   "nameRu": "Несколько снарядов",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7405,
@@ -2877,7 +3057,7 @@
   "typeCn": "辅助技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/Icon_Support_Multistrike_128.webp",
   "nameRu": "Мультиудар",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7406,
@@ -2917,7 +3097,7 @@
   "typeCn": "辅助技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_Overload_Icon_128.webp",
   "nameRu": "Перегрузка",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7411,
@@ -2927,7 +3107,7 @@
   "typeCn": "辅助技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_HighEnergyCrash_Icon_128.webp",
   "nameRu": "Подрезка сухожилий",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7412,
@@ -2936,7 +3116,7 @@
   "type": "Support Skill",
   "typeCn": "辅助技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/Icon_Support_Frozen_128.webp",
-  "nameRu": null,
+  "nameRu": "Пронизывающий холод",
   "typeRu": null
  },
  {
@@ -2947,7 +3127,7 @@
   "typeCn": "辅助技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/Icon_Support_Rekindle_128.webp",
   "nameRu": "Доп. поджог",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7414,
@@ -2957,7 +3137,7 @@
   "typeCn": "辅助技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/Icon_Support_HighVoltage_128.webp",
   "nameRu": "Высокое напряжение",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7415,
@@ -2967,7 +3147,7 @@
   "typeCn": "辅助技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/Icon_Support_FasterTravel_128.webp",
   "nameRu": "Быстрая мобильность",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7416,
@@ -2977,7 +3157,7 @@
   "typeCn": "辅助技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/Icon_Support_IncreasedDuration_128.webp",
   "nameRu": "Увеличенная длительность",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7417,
@@ -3007,7 +3187,7 @@
   "typeCn": "辅助技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/Icon_Support_IncreasedCriticalRate_128.webp",
   "nameRu": "Повышение крита",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7420,
@@ -3017,7 +3197,7 @@
   "typeCn": "辅助技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/Icon_Support_IncreasedCriticalDamage_128.webp",
   "nameRu": "Повышенный урон от крита",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7421,
@@ -3047,7 +3227,7 @@
   "typeCn": "辅助技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/Icon_Support_DeeperWound_128.webp",
   "nameRu": "Глубокие раны",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7424,
@@ -3057,7 +3237,7 @@
   "typeCn": "辅助技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/Icon_Support_Hypertoxin_128.webp",
   "nameRu": "Улучшенная коррозия",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7426,
@@ -3077,7 +3257,7 @@
   "typeCn": "辅助技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/Icon_Support_FasterCasting_128.webp",
   "nameRu": "Быстрое решение",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7428,
@@ -3097,7 +3277,7 @@
   "typeCn": "辅助技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/Icon_Support_Bounce_128.webp",
   "nameRu": "Прыжок",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7430,
@@ -3147,7 +3327,7 @@
   "typeCn": "辅助技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/Icon_Support_ControlledSpell_128.webp",
   "nameRu": "Управляемое заклинание",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7435,
@@ -3187,7 +3367,7 @@
   "typeCn": "辅助技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_Grudge_Icon_128.webp",
   "nameRu": "Неприязнь",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7442,
@@ -3217,7 +3397,7 @@
   "typeCn": "辅助技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/Icon_Support_Catalyst_128.webp",
   "nameRu": "Катаклизм",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7445,
@@ -3237,7 +3417,7 @@
   "typeCn": "辅助技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_MultifacetedGuard_Icon_128.webp",
   "nameRu": "Многогранный страж",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7448,
@@ -3257,7 +3437,7 @@
   "typeCn": "辅助技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/Icon_Support_FireBurst_128.webp",
   "nameRu": "Огненный взрыв",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7450,
@@ -3287,7 +3467,7 @@
   "typeCn": "辅助技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_SkillIcon_Support_PhantomStab_Icon_128.webp",
   "nameRu": "Преследование",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7454,
@@ -3317,7 +3497,7 @@
   "typeCn": "辅助技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_FurySlah_Icon_128.webp",
   "nameRu": "Яростное разрубание",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7458,
@@ -3327,7 +3507,7 @@
   "typeCn": "辅助技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_FastReturn_Icon_128.webp",
   "nameRu": "Быстрое возвращение",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7463,
@@ -3347,7 +3527,7 @@
   "typeCn": "辅助技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/Icon_Support_AttackFocusing_128.webp",
   "nameRu": "Ревностные атаки",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7469,
@@ -3357,7 +3537,7 @@
   "typeCn": "辅助技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/Icon_Support_WindShoot_128.webp",
   "nameRu": "Ураганные снаряды",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7472,
@@ -3367,7 +3547,7 @@
   "typeCn": "辅助技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_SkillIcon_Support_PainIntensify_Icon_128.webp",
   "nameRu": "Усиление боли",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7473,
@@ -3377,7 +3557,7 @@
   "typeCn": "辅助技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/Icon_Support_Blind_128.webp",
   "nameRu": "Ослепление",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7474,
@@ -3407,7 +3587,7 @@
   "typeCn": "辅助技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/Icon_Support_AilmentEnhance_128.webp",
   "nameRu": "Усиленный недуг",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7477,
@@ -3427,7 +3607,7 @@
   "typeCn": "辅助技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/Icon_Support_CooldownReduce_128.webp",
   "nameRu": "Сокращение перезарядки",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7479,
@@ -3457,7 +3637,7 @@
   "typeCn": "辅助技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_AreaSplit_Icon_128.webp",
   "nameRu": "Раскол земли",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7487,
@@ -3497,7 +3677,7 @@
   "typeCn": "辅助技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_SkillIcon_Support_MinionDamage_Icon_128.webp",
   "nameRu": "Урон прислужника",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7491,
@@ -3597,7 +3777,7 @@
   "typeCn": "辅助技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_AtADash_Icon_128.webp",
   "nameRu": "Все на кон",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7510,
@@ -3627,7 +3807,7 @@
   "typeCn": "辅助技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_TogatherBattleCry_Icon_128.webp",
   "nameRu": "Созывающий рёв",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7513,
@@ -3647,7 +3827,7 @@
   "typeCn": "辅助技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_IntermittentBursts_Icon_128.webp",
   "nameRu": "Периодический всплеск",
-  "typeRu": "Навык"
+  "typeRu": null
  },
  {
   "id": 7515,
@@ -3796,8 +3976,8 @@
   "type": "Support Skill",
   "typeCn": "辅助技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_SkillIcon_Skill_BarrierDetonate_Icon_128.webp",
-  "nameRu": "Устранение",
-  "typeRu": "Точка основного таланта"
+  "nameRu": "Готовность",
+  "typeRu": null
  },
  {
   "id": 7603,
@@ -3806,8 +3986,8 @@
   "type": "Support Skill",
   "typeCn": "辅助技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_Gathering_Icon_128.webp",
-  "nameRu": "Зарядить",
-  "typeRu": null
+  "nameRu": "На изготовку",
+  "typeRu": "Навык"
  },
  {
   "id": 7605,
@@ -3927,6 +4107,346 @@
   "typeCn": "辅助技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Item/UI_S12_LengJing_White01.webp",
   "nameRu": "Множественное сплетение",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 7624,
+  "name": "Channeled Depths",
+  "nameCn": "深层引导",
+  "type": "Support Skill",
+  "typeCn": "辅助技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CoreTalentIcon/128/UI_Skill_DeepChanneling_Icon_128.webp",
+  "nameRu": "Глубинное наведение",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 7625,
+  "name": "Turmoil Burst",
+  "nameCn": "紊乱迸发",
+  "type": "Support Skill",
+  "typeCn": "辅助技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_ChaosBurst_Icon_128.webp",
+  "nameRu": "Выброс сумбура",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 7626,
+  "name": "Tangle Surge",
+  "nameCn": "纠缠聚势",
+  "type": "Support Skill",
+  "typeCn": "辅助技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_EntangledMight_Icon_128.webp",
+  "nameRu": "Наращивание сплетений",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 7627,
+  "name": "Elemental Conversion",
+  "nameCn": "多元转化",
+  "type": "Support Skill",
+  "typeCn": "辅助技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_MultiformConversion_Icon_128.webp",
+  "nameRu": "Множественное преобразование",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 7628,
+  "name": "Frostbloom",
+  "nameCn": "霜华",
+  "type": "Support Skill",
+  "typeCn": "辅助技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_FrostBloom_Icon_128.webp",
+  "nameRu": "Морозное цветение",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 7629,
+  "name": "Blazing Scorch",
+  "nameCn": "烈焰灼燃",
+  "type": "Support Skill",
+  "typeCn": "辅助技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_BlazingBurn_Icon_128.webp",
+  "nameRu": "Пламенное опаление",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 7630,
+  "name": "Rising Evil",
+  "nameCn": "邪恶滋长",
+  "type": "Support Skill",
+  "typeCn": "辅助技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_VileGrowth_Icon_128.webp",
+  "nameRu": "Разрастание скверны",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 7631,
+  "name": "Honed Edge",
+  "nameCn": "砥砺锋刃",
+  "type": "Support Skill",
+  "typeCn": "辅助技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_HonedBlade_Icon_128.webp",
+  "nameRu": "Отточенное лезвие",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 7632,
+  "name": "Vigilant Guard",
+  "nameCn": "戒备护卫",
+  "type": "Support Skill",
+  "typeCn": "辅助技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_VigilantGuard_Icon_128.webp",
+  "nameRu": "Бдительная защита",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 7633,
+  "name": "Dual Onslaught",
+  "nameCn": "双锋变攻",
+  "type": "Support Skill",
+  "typeCn": "辅助技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_TwinEdgeShift_Icon_128.webp",
+  "nameRu": "Чередование клинков",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 7634,
+  "name": "Blessed Leap",
+  "nameCn": "激跃",
+  "type": "Support Skill",
+  "typeCn": "辅助技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_AgileLeap_Icon_128.webp",
+  "nameRu": "Порыв",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 7635,
+  "name": "Phantom Trace",
+  "nameCn": "诡踪迷影",
+  "type": "Support Skill",
+  "typeCn": "辅助技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_PhantomTrail_Icon_128.webp",
+  "nameRu": "След затуманенности",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 7636,
+  "name": "Mana Convergence",
+  "nameCn": "魔力聚效",
+  "type": "Support Skill",
+  "typeCn": "辅助技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_ManaFocus_Icon_128.webp",
+  "nameRu": "Концентрация маны",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 7637,
+  "name": "Vigor Restitution",
+  "nameCn": "活力偿还",
+  "type": "Support Skill",
+  "typeCn": "辅助技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_VitalityRepaid_Icon_128.webp",
+  "nameRu": "Расплата жизнью",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 7638,
+  "name": "Exhaustion",
+  "nameCn": "力竭",
+  "type": "Support Skill",
+  "typeCn": "辅助技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_Exhaustion_Icon_128.webp",
+  "nameRu": "Изнеможение",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 7639,
+  "name": "Sluggish",
+  "nameCn": "迟缓",
+  "type": "Support Skill",
+  "typeCn": "辅助技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_Slowing_Icon_128.webp",
+  "nameRu": "Промедление",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 7640,
+  "name": "Still Charge",
+  "nameCn": "静势蓄能",
+  "type": "Support Skill",
+  "typeCn": "辅助技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_StillnessCharge_Icon_128.webp",
+  "nameRu": "Накопление силы покоя",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 7641,
+  "name": "Empowered Channeling",
+  "nameCn": "引导增效",
+  "type": "Support Skill",
+  "typeCn": "辅助技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_ChannelingBoost_Icon_128.webp",
+  "nameRu": "Усиленное наведение",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 7642,
+  "name": "Target Projection",
+  "nameCn": "标靶投射",
+  "type": "Support Skill",
+  "typeCn": "辅助技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_TargetedProjectile_Icon_128.webp",
+  "nameRu": "Прицельный снаряд",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 7643,
+  "name": "Windbolt",
+  "nameCn": "逐风飞弹",
+  "type": "Support Skill",
+  "typeCn": "辅助技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_WindborneMissile_Icon_128.webp",
+  "nameRu": "Ветровой снаряд",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 7644,
+  "name": "Finisher Combo",
+  "nameCn": "尾式连携",
+  "type": "Support Skill",
+  "typeCn": "辅助技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_FinishingLink_Icon_128.webp",
+  "nameRu": "Завершающее комбо",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 7645,
+  "name": "Empowered Insight",
+  "nameCn": "洞悉先机",
+  "type": "Support Skill",
+  "typeCn": "辅助技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_Foresight_Icon_128.webp",
+  "nameRu": "Предвидение",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 7646,
+  "name": "Swiftstep Spell",
+  "nameCn": "疾行咒法",
+  "type": "Support Skill",
+  "typeCn": "辅助技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_MovingSpell_Icon_128.webp",
+  "nameRu": "Чары на бегу",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 7647,
+  "name": "Seize",
+  "nameCn": "攫握",
+  "type": "Support Skill",
+  "typeCn": "辅助技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_GraspingForce_Icon_128.webp",
+  "nameRu": "Хватка",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 7648,
+  "name": "Reckless Aggression",
+  "nameCn": "鲁莽激进",
+  "type": "Support Skill",
+  "typeCn": "辅助技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_RecklessAggression_Icon_128.webp",
+  "nameRu": "Грубый экстремизм",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 7649,
+  "name": "Weakness Infiltration",
+  "nameCn": "弱点渗透",
+  "type": "Support Skill",
+  "typeCn": "辅助技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_WeaknessPenetration_Icon_128.webp",
+  "nameRu": "Пробитие слабостей",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 7650,
+  "name": "Resurgence",
+  "nameCn": "苏生",
+  "type": "Support Skill",
+  "typeCn": "辅助技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_Revival_Icon_128.webp",
+  "nameRu": "Восстановление",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 7651,
+  "name": "Mighty Bulwark",
+  "nameCn": "强敌壁垒",
+  "type": "Support Skill",
+  "typeCn": "辅助技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_MightyFoeBarrier_Icon_128.webp",
+  "nameRu": "Оплот против сильных врагов",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 7652,
+  "name": "Dulled Edge",
+  "nameCn": "锋芒消解",
+  "type": "Support Skill",
+  "typeCn": "辅助技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_CriticalGuard_Icon_128.webp",
+  "nameRu": "Притупление острия",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 7653,
+  "name": "Resilient",
+  "nameCn": "顽强",
+  "type": "Support Skill",
+  "typeCn": "辅助技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_Tenacity_Icon_128.webp",
+  "nameRu": "Стойкость",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 7654,
+  "name": "Thrive in Adversity",
+  "nameCn": "逢强愈盛",
+  "type": "Support Skill",
+  "typeCn": "辅助技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_RisingAgainstMight_Icon_128.webp",
+  "nameRu": "Мощь против сильных",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 7655,
+  "name": "Empowered Element",
+  "nameCn": "塑能激发",
+  "type": "Support Skill",
+  "typeCn": "辅助技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_ElementalEmpowerment_Icon_128.webp",
+  "nameRu": "Активация стихий",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 7656,
+  "name": "Inspiring Warcry",
+  "nameCn": "鼓舞战吼",
+  "type": "Support Skill",
+  "typeCn": "辅助技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_InspiringWarcry_Icon_128.webp",
+  "nameRu": "Воодушевляющий боевой клич",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 7657,
+  "name": "Deepened Curse",
+  "nameCn": "深化诅咒",
+  "type": "Support Skill",
+  "typeCn": "辅助技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_DeepenedCurse_Icon_128.webp",
+  "nameRu": "Усиленное проклятие",
   "typeRu": "Навык"
  },
  {
@@ -5006,7 +5526,7 @@
   "type": "Magnificent Support Skill",
   "typeCn": "华贵辅助技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_SparkBullet_support01_Icon_128.webp",
-  "nameRu": "Всполох: Магнит (роскошный)",
+  "nameRu": "Всполох: Магнитное поле (роскошный)",
   "typeRu": "Навык"
  },
  {
@@ -6640,6 +7160,56 @@
   "typeRu": "Навык"
  },
  {
+  "id": 7995,
+  "name": "Thornfield: Sacrifice (Magnificent)",
+  "nameCn": "荆棘之域：献祭（华贵）",
+  "type": "Magnificent Support Skill",
+  "typeCn": "华贵辅助技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_PhysicalLastGround_support01_Icon_128.webp",
+  "nameRu": "Тернистая зона: жертвоприношение (роскошный)",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 7996,
+  "name": "Thornfield: Retribution (Noble)",
+  "nameCn": "荆棘之域：反噬（崇高）",
+  "type": "Noble Support Skill",
+  "typeCn": "崇高辅助技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_PhysicalLastGround_support02_Icon_128.webp",
+  "nameRu": "Тернистая зона: ответный удар (величие)",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 7997,
+  "name": "Tidewell: Torrent (Magnificent)",
+  "nameCn": "潮汐之泉：飞瀑（华贵）",
+  "type": "Magnificent Support Skill",
+  "typeCn": "华贵辅助技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_Torrent_support01_Icon_128.webp",
+  "nameRu": "Источник приливов: водопад (роскошный)",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 7998,
+  "name": "Tidewell: Undertow (Noble)",
+  "nameCn": "潮汐之泉：寒流（崇高）",
+  "type": "Noble Support Skill",
+  "typeCn": "崇高辅助技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_Torrent_support02_Icon_128.webp",
+  "nameRu": "Источник приливов: холодное течение (величие)",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 7999,
+  "name": "Haunting Abomination: Ravage (Magnificent)",
+  "nameCn": "恶煞缠身：肆虐（华贵）",
+  "type": "Magnificent Support Skill",
+  "typeCn": "华贵辅助技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_Doom_support04_Icon_128.webp",
+  "nameRu": "Хватка нечисти: свирепость (роскошный)",
+  "typeRu": "Навык"
+ },
+ {
   "id": 8000,
   "name": "Activation Medium: Preparation",
   "nameCn": "触媒：预备",
@@ -6917,6 +7487,286 @@
   "typeCn": "触媒技能",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Item/UI_S12_LengJing_White01.webp",
   "nameRu": "Эфир: сплетение",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 8100,
+  "name": "Fallen Star: Crush (Magnificent)",
+  "nameCn": "陨星：倾轧（华贵）",
+  "type": "Magnificent Support Skill",
+  "typeCn": "华贵辅助技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CoreTalentIcon/128/UI_Skill_cometGround_support01_Icon_128.webp",
+  "nameRu": "Метеорит: сокрушение (роскошный)",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 8101,
+  "name": "Fallen Star: Starfall (Noble)",
+  "nameCn": "陨星：歼星（崇高）",
+  "type": "Noble Support Skill",
+  "typeCn": "崇高辅助技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CoreTalentIcon/128/UI_Skill_cometGround_support01_Icon_128.webp",
+  "nameRu": "Метеорит: уничтожение звёзд (величие)",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 8102,
+  "name": "Fallen Star: Gravity (Noble)",
+  "nameCn": "陨星：引力（崇高）",
+  "type": "Noble Support Skill",
+  "typeCn": "崇高辅助技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CoreTalentIcon/128/UI_Skill_cometGround_support02_Icon_128.webp",
+  "nameRu": "Метеорит: гравитация (величие)",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 8103,
+  "name": "Nether Grasp: Devour (Magnificent)",
+  "nameCn": "冥渊之手：吞噬（华贵）",
+  "type": "Magnificent Support Skill",
+  "typeCn": "华贵辅助技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CoreTalentIcon/128/UI_Skill_Nethergrasp_support01_Icon_128.webp",
+  "nameRu": "Рука бездны: поглотить (роскошный)",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 8104,
+  "name": "Nether Grasp: Extermination (Noble)",
+  "nameCn": "冥渊之手：绞灭（崇高）",
+  "type": "Noble Support Skill",
+  "typeCn": "崇高辅助技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CoreTalentIcon/128/UI_Skill_Nethergrasp_support02_Icon_128.webp",
+  "nameRu": "Рука бездны: уничтожение (величие)",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 8105,
+  "name": "Flame Jet: Scorching Wave (Magnificent)",
+  "nameCn": "烈焰释放：热潮（华贵）",
+  "type": "Magnificent Support Skill",
+  "typeCn": "华贵辅助技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_FlameBlast_support01_Icon_128.webp",
+  "nameRu": "Пламенная струя: тепловой прилив (роскошный)",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 8106,
+  "name": "Storm Field: Thunderclap (Magnificent)",
+  "nameCn": "雷暴地带：轰雷（华贵）",
+  "type": "Magnificent Support Skill",
+  "typeCn": "华贵辅助技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_CurrentField_support01_Icon_128.webp",
+  "nameRu": "Грозовая зона: гром (роскошный)",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 8107,
+  "name": "Storm Field: Conduction (Noble)",
+  "nameCn": "雷暴地带：传导（崇高）",
+  "type": "Noble Support Skill",
+  "typeCn": "崇高辅助技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_CurrentField_support02_Icon_128.webp",
+  "nameRu": "Грозовая зона: передача (величие)",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 8108,
+  "name": "Chromatic Shot: Condensed Cold (Noble)",
+  "nameCn": "五彩魔矢：聚寒（崇高）",
+  "type": "Noble Support Skill",
+  "typeCn": "崇高辅助技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_Prismaticbolt_support03_Icon_128.webp",
+  "nameRu": "Хроматические стрелы: Сбор холода (Величие)",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 8109,
+  "name": "Chromatic Shot: Condensed Fire (Noble)",
+  "nameCn": "五彩魔矢：聚火（崇高）",
+  "type": "Noble Support Skill",
+  "typeCn": "崇高辅助技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_Prismaticbolt_support04_Icon_128.webp",
+  "nameRu": "Хроматические стрелы: Сбор огня (Величие)",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 8110,
+  "name": "Chromatic Shot: Condensed Lightning (Noble)",
+  "nameCn": "五彩魔矢：聚雷（崇高）",
+  "type": "Noble Support Skill",
+  "typeCn": "崇高辅助技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_Prismaticbolt_support05_Icon_128.webp",
+  "nameRu": "Хроматические стрелы: Сбор молнии (Величие)",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 8111,
+  "name": "Chromatic Shot: Condensed Erosion (Noble)",
+  "nameCn": "五彩魔矢：聚蚀（崇高）",
+  "type": "Noble Support Skill",
+  "typeCn": "崇高辅助技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_Prismaticbolt_support06_Icon_128.webp",
+  "nameRu": "Хроматические стрелы: Сбор эрозии (Величие)",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 8115,
+  "name": "Psionic Missile: Shockwave (Magnificent)",
+  "nameCn": "灵视飞弹：震荡（华贵）",
+  "type": "Magnificent Support Skill",
+  "typeCn": "华贵辅助技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_InsightMissile_support01_Icon_128.webp",
+  "nameRu": "Снаряд прозрения: Сотрясение (роскошный)",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 8116,
+  "name": "Psionic Missile: Convergence (Noble)",
+  "nameCn": "灵视飞弹：聚合（崇高）",
+  "type": "Noble Support Skill",
+  "typeCn": "崇高辅助技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_InsightMissile_support02_Icon_128.webp",
+  "nameRu": "Снаряд прозрения: Схождение (величие)",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 8117,
+  "name": "Psionic Missile: Emission (Noble)",
+  "nameCn": "灵视飞弹：放射（崇高）",
+  "type": "Noble Support Skill",
+  "typeCn": "崇高辅助技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_InsightMissile_support03_Icon_128.webp",
+  "nameRu": "Снаряд прозрения: Излучение (величие)",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 8118,
+  "name": "Homing Frost Bolt: Frost Barb (Magnificent)",
+  "nameCn": "追迹冰矢：冰棘（华贵）",
+  "type": "Magnificent Support Skill",
+  "typeCn": "华贵辅助技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_TrackingIceArrow_support01_Icon_128.webp",
+  "nameRu": "Ищущая ледяная стрела: Ледяные шипы (роскошный)",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 8119,
+  "name": "Homing Frost Bolt: Deep Chill (Noble)",
+  "nameCn": "追迹冰矢：极寒（崇高）",
+  "type": "Noble Support Skill",
+  "typeCn": "崇高辅助技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_TrackingIceArrow_support02_Icon_128.webp",
+  "nameRu": "Ищущая ледяная стрела: Лютый мороз (величие)",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 8120,
+  "name": "Forking Thunder: Swift Bolt (Magnificent)",
+  "nameCn": "裂相电矢：飞矢（华贵）",
+  "type": "Magnificent Support Skill",
+  "typeCn": "华贵辅助技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_SplitSpear_support01_Icon_128.webp",
+  "nameRu": "Расщепляющий молниевый болт: Шальная стрела (роскошный)",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 8121,
+  "name": "Forking Thunder: Disintegration (Noble)",
+  "nameCn": "裂相电矢：裂解（崇高）",
+  "type": "Noble Support Skill",
+  "typeCn": "崇高辅助技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_SplitSpear_support02_Icon_128.webp",
+  "nameRu": "Расщепляющий молниевый болт: Расщепление (величие)",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 8122,
+  "name": "Moon's Dawn: Resplendence (Magnificent)",
+  "nameCn": "月之黎明：交辉（华贵）",
+  "type": "Magnificent Support Skill",
+  "typeCn": "华贵辅助技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_DawnOfMoon_support01_Icon_128.webp",
+  "nameRu": "Лунный рассвет: Перекрёстное сияние (роскошный)",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 8123,
+  "name": "Moon's Dawn: Illumination (Noble)",
+  "nameCn": "月之黎明：启明（崇高）",
+  "type": "Noble Support Skill",
+  "typeCn": "崇高辅助技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_DawnOfMoon_support02_Icon_128.webp",
+  "nameRu": "Лунный рассвет: Озарение (величие)",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 8124,
+  "name": "Hound's Fangs: Bone Piercer (Magnificent)",
+  "nameCn": "猎犬獠牙：透骨（华贵）",
+  "type": "Magnificent Support Skill",
+  "typeCn": "华贵辅助技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_BoneSting_support01_Icon_128.webp",
+  "nameRu": "Клык гончей: до костей (роскошный)",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 8125,
+  "name": "Hound's Fangs: Sharp Teeth (Magnificent)",
+  "nameCn": "猎犬獠牙：利齿（华贵）",
+  "type": "Magnificent Support Skill",
+  "typeCn": "华贵辅助技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_BoneSting_support02_Icon_128.webp",
+  "nameRu": "Клык гончей: острые клыки (роскошный)",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 8126,
+  "name": "Hound's Fangs: Volley (Noble)",
+  "nameCn": "猎犬獠牙：攒射（崇高）",
+  "type": "Noble Support Skill",
+  "typeCn": "崇高辅助技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_BoneSting_support03_Icon_128.webp",
+  "nameRu": "Клык гончей: накопленный залп (величие)",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 8127,
+  "name": "Hound's Fangs: Pounce (Noble)",
+  "nameCn": "猎犬獠牙：扑食（崇高）",
+  "type": "Noble Support Skill",
+  "typeCn": "崇高辅助技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_BoneSting_support04_Icon_128.webp",
+  "nameRu": "Клык гончей: рывок (величие)",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 8128,
+  "name": "Blazing Meteor: Spark (Magnificent)",
+  "nameCn": "爆裂燧星：星火（华贵）",
+  "type": "Magnificent Support Skill",
+  "typeCn": "华贵辅助技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_StarExplosion_support01_Icon_128.webp",
+  "nameRu": "Разрывная искра: звёздная искра (роскошный)",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 8129,
+  "name": "Blazing Meteor: Aftershock (Noble)",
+  "nameCn": "爆裂燧星：余威（崇高）",
+  "type": "Noble Support Skill",
+  "typeCn": "崇高辅助技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_StarExplosion_support02_Icon_128.webp",
+  "nameRu": "Разрывная искра: отголосок (величие)",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 8130,
+  "name": "Blazing Meteor: Detonation (Noble)",
+  "nameCn": "爆裂燧星：燃爆（崇高）",
+  "type": "Noble Support Skill",
+  "typeCn": "崇高辅助技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_StarExplosion_support03_Icon_128.webp",
+  "nameRu": "Разрывная искра: детонация (величие)",
   "typeRu": "Навык"
  },
  {
@@ -7327,7 +8177,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_IIQ_2_2_Icon_128.webp",
   "nameRu": "Злой Компас грабителя",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10002,
@@ -7337,7 +8187,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_IIQ_3_1_Icon_128.webp",
   "nameRu": "Злой Компас грабителя (Наследие)",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10003,
@@ -7347,7 +8197,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_IIQ_3_2_Icon_128.webp",
   "nameRu": "Тяжкий Компас грабителя",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10010,
@@ -7357,7 +8207,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_IIR_1_1_Icon_128.webp",
   "nameRu": "Драгоценный компас",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10011,
@@ -7367,7 +8217,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_IIR_2_2_Icon_128.webp",
   "nameRu": "Яшмовый Драгоценный компас",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10012,
@@ -7377,7 +8227,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_IIR_3_2_Icon_128.webp",
   "nameRu": "Разгромный Драгоценный компас",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10022,
@@ -7387,7 +8237,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_MonsterNormal_1_1_Icon_128.webp",
   "nameRu": "Солдатский компас",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10023,
@@ -7397,7 +8247,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_MonsterNormal_2_2_Icon_128.webp",
   "nameRu": "Воинственный Солдатский компас",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10032,
@@ -7407,7 +8257,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_MonsterMagic_1_1_Icon_128.webp",
   "nameRu": "Гвардейский компас",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10033,
@@ -7417,7 +8267,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_MonsterMagic_2_2_Icon_128.webp",
   "nameRu": "Победный Гвардейский компас",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10042,
@@ -7427,7 +8277,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_MonsterRare_1_1_Icon_128.webp",
   "nameRu": "Элитный компас",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10043,
@@ -7437,7 +8287,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_MonsterRare_2_2_Icon_128.webp",
   "nameRu": "Богатый Элитный компас",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10044,
@@ -7447,7 +8297,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_MonsterRare_3_2_Icon_128.webp",
   "nameRu": "Роскошный Элитный компас",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10046,
@@ -7457,7 +8307,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_MonsterLegend_2_2_Icon_128.webp",
   "nameRu": "Компас босса",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10050,
@@ -7467,7 +8317,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_Beacon_1_1_Icon_128.webp",
   "nameRu": "Компас маячка",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10051,
@@ -7477,7 +8327,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_Beacon_2_2_Icon_128.webp",
   "nameRu": "Удачный Компас маячка",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10052,
@@ -7487,7 +8337,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_Compass_1_1_Icon_128.webp",
   "nameRu": "Зодиакальная астролябия",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10053,
@@ -7497,7 +8347,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_Compass_2_2_Icon_128.webp",
   "nameRu": "Великая зодиакальная астролябия",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10054,
@@ -7507,7 +8357,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_Compass_3_2_Icon_128.webp",
   "nameRu": "Вознесённая зодиакальная астролябия",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10060,
@@ -7517,7 +8367,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_Legend_3_2_Icon_128.webp",
   "nameRu": "Славный Точный компас",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10071,
@@ -7527,7 +8377,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_Gear_2_2_Icon_128.webp",
   "nameRu": "Вооруженный компас",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10072,
@@ -7537,7 +8387,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_Gear_3_1_Icon_128.webp",
   "nameRu": "Раритетный Вооруженный компас",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10073,
@@ -7547,7 +8397,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_Gear_3_2_Icon_128.webp",
   "nameRu": "Бижутерии Вооруженный компас",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10081,
@@ -7557,7 +8407,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_Ember_1_1_Icon_128.webp",
   "nameRu": "Компас Эмбера",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10082,
@@ -7567,7 +8417,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_Ember_2_2_Icon_128.webp",
   "nameRu": "Двойной Компас Эмбера",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10083,
@@ -7577,7 +8427,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_Ember_3_2_Icon_128.webp",
   "nameRu": "Успешный Компас Эмбера",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10101,
@@ -7587,7 +8437,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_MemoryFragment_1_1_Icon_128.webp",
   "nameRu": "Светящийся компас",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10102,
@@ -7597,7 +8447,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_MemoryFragment_2_2_Icon_128.webp",
   "nameRu": "Беспорядочный Светящийся компас",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10103,
@@ -7607,7 +8457,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_MemoryFragment_3_2_Icon_128.webp",
   "nameRu": "Концентрации Светящийся компас",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10104,
@@ -7617,7 +8467,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_MemoryFragment_3_2_Icon_128.webp",
   "nameRu": "Беспорядочный Светящийся компас (реликвия)",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10109,
@@ -7627,7 +8477,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_GameplaySixGod_2_2_Icon_128.webp",
   "nameRu": "Компас богов (Редкое сокровище)",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10110,
@@ -7637,7 +8487,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_GameplaySixGod_3_2_Icon_128.webp",
   "nameRu": "Компас процветания богов",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10120,
@@ -7647,17 +8497,17 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_GameplayGoW_1_1_Icon_128.webp",
   "nameRu": "экспедиционный компас",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10122,
-  "name": "Valiant War Compass",
-  "nameCn": "骁将之征战罗盘",
+  "name": "Wild War Compass",
+  "nameCn": "狂野之征战罗盘",
   "type": "Compass",
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_GameplayGoW_3_2_Icon_128.webp",
-  "nameRu": "Командирский походный компас",
-  "typeRu": "\\nКомпас"
+  "nameRu": "Дикий походный компас",
+  "typeRu": "Компасы"
  },
  {
   "id": 10130,
@@ -7667,7 +8517,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_GameplayGoS_1_1_Icon_128.webp",
   "nameRu": "Джули Компас",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10131,
@@ -7677,7 +8527,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_GameplayGoS_2_1_Icon_128.webp",
   "nameRu": "Цветущий Могучий компас",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10133,
@@ -7687,7 +8537,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_GameplayGoS_3_1_Icon_128.webp",
   "nameRu": "Непревзойденный Могучий компас",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10134,
@@ -7697,7 +8547,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_GameplayGoS_3_2_Icon_128.webp",
   "nameRu": "Могучий компас Мехи (Наследие)",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10140,
@@ -7706,8 +8556,8 @@
   "type": "Compass",
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_AstroCompass_GameplayGoH_1_1_Icon_128.webp",
-  "nameRu": "охотничий компас",
-  "typeRu": "\\nКомпас"
+  "nameRu": "Охотничья астролябия",
+  "typeRu": "Компасы"
  },
  {
   "id": 10141,
@@ -7716,8 +8566,8 @@
   "type": "Compass",
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_AstroCompass_GameplayGoH_2_1_Icon_128.webp",
-  "nameRu": "Легендарный охотничий компас",
-  "typeRu": "\\nКомпас"
+  "nameRu": "Охотничья астролябия осады",
+  "typeRu": "Компасы"
  },
  {
   "id": 10142,
@@ -7726,8 +8576,8 @@
   "type": "Compass",
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_AstroCompass_GameplayGoH_2_1_Icon_128.webp",
-  "nameRu": "Генеральский охотничий компас",
-  "typeRu": "\\nКомпас"
+  "nameRu": "Охотничья астролябия генерала",
+  "typeRu": "Компасы"
  },
  {
   "id": 10143,
@@ -7736,8 +8586,8 @@
   "type": "Compass",
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_AstroCompass_GameplayGoH_3_1_Icon_128.webp",
-  "nameRu": "Сияющий охотничий компас",
-  "typeRu": "\\nКомпас"
+  "nameRu": "Охотничья астролябия озарения",
+  "typeRu": "Компасы"
  },
  {
   "id": 10150,
@@ -7747,7 +8597,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_GameplayGoM_1_1_Icon_128.webp",
   "nameRu": "механический компас",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10151,
@@ -7757,7 +8607,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_GameplayGoM_2_1_Icon_128.webp",
   "nameRu": "Великолепный Механический компас",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10153,
@@ -7767,7 +8617,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_GameplayGoM_3_1_Icon_128.webp",
   "nameRu": "Разделяющий Механический компас",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10154,
@@ -7777,7 +8627,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_GameplayGoM_3_2_Icon_128.webp",
   "nameRu": "Крейсерский Механический компас (Наследие)",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10160,
@@ -7787,7 +8637,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_GameplayCorrosion_1_1_Icon_128.webp",
   "nameRu": "Компас Темного прилива",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10161,
@@ -7797,7 +8647,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_GameplayCorrosion_2_2_Icon_128.webp",
   "nameRu": "Компас главаря Темного прилива",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10162,
@@ -7807,7 +8657,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_GameplayCorrosion_3_2_Icon_128.webp",
   "nameRu": "Небесный Компас Темного прилива",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10170,
@@ -7817,7 +8667,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_GameplayBlackSail_1_1_Icon_128.webp",
   "nameRu": "Компас Чёрного паруса",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10171,
@@ -7827,7 +8677,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_GameplayBlackSail_2_2_Icon_128.webp",
   "nameRu": "Компас возвращения Чёрного паруса",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10180,
@@ -7837,7 +8687,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_GameplayCube_1_1_Icon_128.webp",
   "nameRu": "Компас Волшебного куба",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10181,
@@ -7847,7 +8697,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_GameplayCube_2_2_Icon_128.webp",
   "nameRu": "Компас Волшебного куба биполярности",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10182,
@@ -7857,7 +8707,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_GameplayCube_3_2_Icon_128.webp",
   "nameRu": "Необыкновенный Компас Волшебного куба",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10190,
@@ -7867,7 +8717,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_GameplayEternal_1_1_Icon_128.webp",
   "nameRu": "Компас Тайнограда",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10191,
@@ -7877,7 +8727,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_GameplayEternal_2_2_Icon_128.webp",
   "nameRu": "Семейный Компас Тайнограда",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10200,
@@ -7887,7 +8737,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_GameplayTwinightmare_1_1_Icon_128.webp",
   "nameRu": "Компас кошмаров",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10210,
@@ -7897,7 +8747,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_GameplayMist_1_1_Icon_128.webp",
   "nameRu": "Жуткий компас",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10211,
@@ -7907,7 +8757,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_GameplayMist_2_2_Icon_128.webp",
   "nameRu": "Чужестранный Жуткий компас",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10220,
@@ -7917,7 +8767,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_GameplayDoll_1_1_Icon_128.webp",
   "nameRu": "Кукольная астролябия",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10221,
@@ -7927,7 +8777,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_GameplayDoll_2_2_Icon_128.webp",
   "nameRu": "Коллекционная кукольная астролябия",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10222,
@@ -7937,7 +8787,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_GameplayDoll_3_2_Icon_128.webp",
   "nameRu": "Коллекционная кукольная астролябия (Реликвия)",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10230,
@@ -7947,7 +8797,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_GameplayFrozenCanvas_1_1_Icon_128.webp",
   "nameRu": "Снежный компас",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10231,
@@ -7957,7 +8807,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_GameplayFrozenCanvas_2_2_Icon_128.webp",
   "nameRu": "Снежный компас богатства",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10240,
@@ -7967,7 +8817,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_GameplayTaro_1_1_Icon_128.webp",
   "nameRu": "Компас Таро",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10241,
@@ -7977,7 +8827,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_GameplayTaro_2_2_Icon_128.webp",
   "nameRu": "Компас Козыря Таро",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10242,
@@ -7987,7 +8837,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_GameplayTaro_3_2_Icon_128.webp",
   "nameRu": "Компас Предназначения Таро",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10250,
@@ -7997,7 +8847,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_GameplayTycoon_1_1_Icon_128.webp",
   "nameRu": "Компас Магната",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10260,
@@ -8007,7 +8857,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_GameplayOutlaw_1_1_Icon_128.webp",
   "nameRu": "Компас розыска",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10261,
@@ -8017,7 +8867,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_GameplayOutlaw_2_2_Icon_128.webp",
   "nameRu": "Наградной Компас розыска",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10262,
@@ -8027,7 +8877,17 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_GameplayOutlaw_3_2_Icon_128.webp",
   "nameRu": "Охранительный Компас розыска",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
+ },
+ {
+  "id": 10263,
+  "name": "Full Load Outlaw Compass",
+  "nameCn": "满载之通缉罗盘",
+  "type": "Compass",
+  "typeCn": "罗盘",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_GameplayOutlaw_2_1_Icon_128.webp",
+  "nameRu": "Компас розыска: Полная загрузка",
+  "typeRu": "Компасы"
  },
  {
   "id": 10270,
@@ -8037,7 +8897,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_GameplayCage_1_1_Icon_128.webp",
   "nameRu": "Клеточная астролябия",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10272,
@@ -8047,7 +8907,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_GameplayCage_3_2_Icon_128.webp",
   "nameRu": "Золотая клеточная астролябия",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10280,
@@ -8057,7 +8917,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_GameplayOverrealm_1_1_Icon_128.webp",
   "nameRu": "Компас Свернутого мира",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10281,
@@ -8067,7 +8927,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_GameplayOverrealm_2_2_Icon_128.webp",
   "nameRu": "Фантомный компас Свернутого мира",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10282,
@@ -8077,7 +8937,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_GameplayOverrealm_3_2_Icon_128.webp",
   "nameRu": "Сдерживающий компас Свернутого мира",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10290,
@@ -8087,7 +8947,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_GameplayVorax_1_1_Icon_128.webp",
   "nameRu": "Компас кровожадности",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10291,
@@ -8097,7 +8957,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_GameplayVorax_2_2_Icon_128.webp",
   "nameRu": "Компас кровожадности (Чистильщик)",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10292,
@@ -8107,7 +8967,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_GameplayVorax_3_2_Icon_128.webp",
   "nameRu": "Компас кровожадности (Консилиум)",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10300,
@@ -8116,8 +8976,8 @@
   "type": "Compass",
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_GameplayLunaria_1_1_Icon_128.webp",
-  "nameRu": "Тусклый лунный камень",
-  "typeRu": "\\nСезонный компас"
+  "nameRu": "Компас Ясной луны",
+  "typeRu": "Компасы"
  },
  {
   "id": 10301,
@@ -8126,18 +8986,18 @@
   "type": "Compass",
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_GameplayLunaria_2_1_Icon_128.webp",
-  "nameRu": "Лунный камень струящегося света",
-  "typeRu": "\\nСезонный компас"
+  "nameRu": "Компас ясной луны из ларца тайн",
+  "typeRu": "Компасы"
  },
  {
   "id": 10302,
-  "name": "Lunar Stele Compass",
+  "name": "Lunar Stele Lunaria Compass",
   "nameCn": "月像之明月罗盘",
   "type": "Compass",
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_GameplayLunaria_3_1_Icon_128.webp",
-  "nameRu": "Сверкающий лунный камень",
-  "typeRu": "\\nСезонный компас"
+  "nameRu": "Компас ясной луны Лунного идола",
+  "typeRu": "Компасы"
  },
  {
   "id": 10303,
@@ -8146,8 +9006,8 @@
   "type": "Compass",
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_GameplayLunaria_2_2_Icon_128.webp",
-  "nameRu": null,
-  "typeRu": null
+  "nameRu": "Компас сияющей ясной луны",
+  "typeRu": "Компасы"
  },
  {
   "id": 10310,
@@ -8157,7 +9017,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_GameplayAncientDevice_1_1_Icon_128.webp",
   "nameRu": "Компас творения",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10311,
@@ -8167,7 +9027,7 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_GameplayAncientDevice_2_2_Icon_128.webp",
   "nameRu": "Компас творения (Деривация)",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10312,
@@ -8177,37 +9037,77 @@
   "typeCn": "罗盘",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_GameplayAncientDevice_3_2_Icon_128.webp",
   "nameRu": "Компас творения (Запись)",
-  "typeRu": "\\nКомпас"
+  "typeRu": "Компасы"
  },
  {
   "id": 10320,
-  "name": "Bronze Wick",
-  "nameCn": "铜丝灯芯",
-  "type": "Season Compass",
-  "typeCn": "赛季罗盘",
-  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Item/128/UI_S15Compass_Gameplay_1_Icon_128.webp",
-  "nameRu": "Бронзовый фитиль",
-  "typeRu": "Сезонный компас"
+  "name": "Afterlight Compass",
+  "nameCn": "守夜罗盘",
+  "type": "Compass",
+  "typeCn": "罗盘",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_GameplayAfterlight_1_1_Icon_128.webp",
+  "nameRu": "Компас Ночного дозора",
+  "typeRu": "Компасы"
  },
  {
   "id": 10321,
-  "name": "Silver Wick",
-  "nameCn": "银丝灯芯",
-  "type": "Season Compass",
-  "typeCn": "赛季罗盘",
-  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Item/128/UI_S15Compass_Gameplay_2_Icon_128.webp",
-  "nameRu": "Серебряный фитиль",
-  "typeRu": "Сезонный компас"
+  "name": "Phantom Afterlight Compass",
+  "nameCn": "魅影之守夜罗盘",
+  "type": "Compass",
+  "typeCn": "罗盘",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_GameplayAfterlight_2_2_Icon_128.webp",
+  "nameRu": "Компас фантомов Ночного дозора",
+  "typeRu": "Компасы"
  },
  {
   "id": 10322,
-  "name": "Gold Wick",
-  "nameCn": "金丝灯芯",
+  "name": "All-Evil Afterlight Compass",
+  "nameCn": "百恶之守夜罗盘",
+  "type": "Compass",
+  "typeCn": "罗盘",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_GameplayAfterlight_3_2_Icon_128.webp",
+  "nameRu": "Компас сонма зол Ночного дозора",
+  "typeRu": "Компасы"
+ },
+ {
+  "id": 10323,
+  "name": "Evernight Afterlight Compass",
+  "nameCn": "长夜之守夜罗盘",
+  "type": "Compass",
+  "typeCn": "罗盘",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Compass_GameplayAfterlight_2_1_Icon_128.webp",
+  "nameRu": "Компас Ночного дозора: Долгая ночь",
+  "typeRu": "Компасы"
+ },
+ {
+  "id": 10330,
+  "name": "Darkiron Shackles",
+  "nameCn": "黑铁镣铐",
   "type": "Season Compass",
   "typeCn": "赛季罗盘",
-  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Item/128/UI_S15Compass_Gameplay_3_Icon_128.webp",
-  "nameRu": "Золотой фитиль",
-  "typeRu": "Сезонный компас"
+  "icon": "https://cdn.tlidb.com/UIV2/S16Gameplay/UI/Textures/NoAtlas/UI_S16Compass_Gameplay_1_Icon.webp",
+  "nameRu": "Кандалы из чёрного железа",
+  "typeRu": "Сезон. компас"
+ },
+ {
+  "id": 10331,
+  "name": "Mercury Shackles",
+  "nameCn": "秘银镣铐",
+  "type": "Season Compass",
+  "typeCn": "赛季罗盘",
+  "icon": "https://cdn.tlidb.com/UIV2/S16Gameplay/UI/Textures/NoAtlas/UI_S16Compass_Gameplay_2_Icon.webp",
+  "nameRu": "Мифриловые кандалы",
+  "typeRu": "Сезон. компас"
+ },
+ {
+  "id": 10332,
+  "name": "Redgold Shackles",
+  "nameCn": "赤金镣铐",
+  "type": "Season Compass",
+  "typeCn": "赛季罗盘",
+  "icon": "https://cdn.tlidb.com/UIV2/S16Gameplay/UI/Textures/NoAtlas/UI_S16Compass_Gameplay_3_Icon.webp",
+  "nameRu": "Кандалы из красного золота",
+  "typeRu": "Сезон. компас"
  },
  {
   "id": 12000,
@@ -8217,7 +9117,7 @@
   "typeCn": "探针",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Probe_IIQ_1_Icon_128.webp",
   "nameRu": "Далекий зонд процветания",
-  "typeRu": "\\nЗонд"
+  "typeRu": "Зонд"
  },
  {
   "id": 12001,
@@ -8227,7 +9127,7 @@
   "typeCn": "探针",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Probe_IIQ_2_Icon_128.webp",
   "nameRu": "Зонд процветания дальнего космоса",
-  "typeRu": "\\nЗонд"
+  "typeRu": "Зонд"
  },
  {
   "id": 12010,
@@ -8237,7 +9137,7 @@
   "typeCn": "探针",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Probe_Gear_1_Icon_128.webp",
   "nameRu": "Далекий зонд снаряжения",
-  "typeRu": "\\nЗонд"
+  "typeRu": "Зонд"
  },
  {
   "id": 12011,
@@ -8247,7 +9147,7 @@
   "typeCn": "探针",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Probe_Gear_2_Icon_128.webp",
   "nameRu": "Зонд снаряжения дальнего космоса",
-  "typeRu": "\\nЗонд"
+  "typeRu": "Зонд"
  },
  {
   "id": 12020,
@@ -8257,7 +9157,7 @@
   "typeCn": "探针",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Probe_Ember_1_Icon_128.webp",
   "nameRu": "Далекий зонд эмбера",
-  "typeRu": "\\nЗонд"
+  "typeRu": "Зонд"
  },
  {
   "id": 12021,
@@ -8267,7 +9167,7 @@
   "typeCn": "探针",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Probe_Ember_2_Icon_128.webp",
   "nameRu": "Зонд эмбера дальнего космоса",
-  "typeRu": "\\nЗонд"
+  "typeRu": "Зонд"
  },
  {
   "id": 12030,
@@ -8277,7 +9177,7 @@
   "typeCn": "探针",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Probe_MemoryFragment_1_Icon_128.webp",
   "nameRu": "Далекий зонд света",
-  "typeRu": "\\nЗонд"
+  "typeRu": "Зонд"
  },
  {
   "id": 12031,
@@ -8287,7 +9187,7 @@
   "typeCn": "探针",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Probe_MemoryFragment_2_Icon_128.webp",
   "nameRu": "Зонд света дальнего космоса",
-  "typeRu": "\\nЗонд"
+  "typeRu": "Зонд"
  },
  {
   "id": 12040,
@@ -8297,7 +9197,7 @@
   "typeCn": "探针",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Probe_Compass_1_Icon_128.webp",
   "nameRu": "Далекий зонд компаса",
-  "typeRu": "\\nЗонд"
+  "typeRu": "Зонд"
  },
  {
   "id": 12041,
@@ -8307,7 +9207,7 @@
   "typeCn": "探针",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Probe_Compass_2_Icon_128.webp",
   "nameRu": "Зонд компаса дальнего космоса",
-  "typeRu": "\\nЗонд"
+  "typeRu": "Зонд"
  },
  {
   "id": 12050,
@@ -8317,7 +9217,7 @@
   "typeCn": "探针",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Probe_Beacon_1_Icon_128.webp",
   "nameRu": "Далекий зонд маячка",
-  "typeRu": "\\nЗонд"
+  "typeRu": "Зонд"
  },
  {
   "id": 12101,
@@ -8327,7 +9227,7 @@
   "typeCn": "探针",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Probe_GameplayGoS_2_Icon_128.webp",
   "nameRu": "Глубококосмический зонд Великой силы",
-  "typeRu": "\\nЗонд"
+  "typeRu": "Зонд"
  },
  {
   "id": 12111,
@@ -8337,7 +9237,7 @@
   "typeCn": "探针",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Probe_GameplayGoM_2_Icon_128.webp",
   "nameRu": "Механический глубококосмический зонд",
-  "typeRu": "\\nЗонд"
+  "typeRu": "Зонд"
  },
  {
   "id": 12121,
@@ -8347,7 +9247,7 @@
   "typeCn": "探针",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Probe_GameplayDoll_2_Icon_128.webp",
   "nameRu": "Кукольный глубококосмический зонд",
-  "typeRu": "\\nЗонд"
+  "typeRu": "Зонд"
  },
  {
   "id": 12131,
@@ -8357,13 +9257,13 @@
   "typeCn": "探针",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Compass/128/UI_Probe_GameplayOutlaw_2_Icon_128.webp",
   "nameRu": "Разыскиваемый глубококосмический зонд",
-  "typeRu": "\\nЗонд"
+  "typeRu": "Зонд"
  },
  {
   "id": 71001,
   "name": "Memory of Origin",
   "nameCn": "本源的追忆",
-  "type": "英雄追忆",
+  "type": "Hero Memory",
   "typeCn": "英雄追忆",
   "icon": "https://cdn.tlidb.com/UIV2/Common/Icon/UI/Textures/Item/NoAtlas_112_160/UI_Item_BenYuanDeZhuiYi_Icon_112.webp",
   "nameRu": "Память источника",
@@ -8373,7 +9273,7 @@
   "id": 71002,
   "name": "Memory of Discipline",
   "nameCn": "守己的追忆",
-  "type": "英雄追忆",
+  "type": "Hero Memory",
   "typeCn": "英雄追忆",
   "icon": "https://cdn.tlidb.com/UIV2/Common/Icon/UI/Textures/Item/NoAtlas_112_160/UI_Item_ShouJiDeZhuiYi_Icon_112.webp",
   "nameRu": "Память сохранения",
@@ -8383,7 +9283,7 @@
   "id": 71003,
   "name": "Memory of Progress",
   "nameCn": "奋进的追忆",
-  "type": "英雄追忆",
+  "type": "Hero Memory",
   "typeCn": "英雄追忆",
   "icon": "https://cdn.tlidb.com/UIV2/Common/Icon/UI/Textures/Item/NoAtlas_112_160/UI_Item_FenJinDeZhuiYi_Icon_112.webp",
   "nameRu": "Память стремления",
@@ -8397,7 +9297,7 @@
   "typeCn": "燃料",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Item/128/UI_Item_chuhuolingshaV3_Icon_128.webp",
   "nameRu": "Пламенные пески",
-  "typeRu": "Топливо"
+  "typeRu": null
  },
  {
   "id": 100300,
@@ -8407,7 +9307,7 @@
   "typeCn": "燃料",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Item/128/UI_Item_chuhuoyuanzhiV3_Icon_128.webp",
   "nameRu": "Элементиевое пламя",
-  "typeRu": "Топливо"
+  "typeRu": null
  },
  {
   "id": 101200,
@@ -8697,7 +9597,7 @@
   "typeCn": "传奇装备",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/EquipCommon/Weapon/128/Icon_Equip_Weapon_Dagger_Epic_001_128.webp",
   "nameRu": "Память",
-  "typeRu": "Легендарный"
+  "typeRu": null
  },
  {
   "id": 110804,
@@ -8957,6 +9857,26 @@
   "typeCn": "传奇装备",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/EquipCommon/Weapon/128/Icon_Equip_Weapon_Staff_Epic_001_128.webp",
   "nameRu": "Безумный ритм",
+  "typeRu": "Легендарный"
+ },
+ {
+  "id": 111412,
+  "name": "Silent Aria",
+  "nameCn": "缄默咏叹",
+  "type": "Legendary Gear",
+  "typeCn": "传奇装备",
+  "icon": "https://cdn.tlidb.com/UIV2/Common/Icon/UI/Textures/EquipCommon/NoAtlas_112_160/Icon_Equip_Weapon_Wand_Epic_103_112.webp",
+  "nameRu": "Ария тишины",
+  "typeRu": "Легендарный"
+ },
+ {
+  "id": 111413,
+  "name": "On the Sublime",
+  "nameCn": "崇高之论",
+  "type": "Legendary Gear",
+  "typeCn": "传奇装备",
+  "icon": "https://cdn.tlidb.com/UIV2/Common/Icon/UI/Textures/EquipCommon/NoAtlas_112_160/Icon_Equip_Weapon_Wand_Epic_103_112.webp",
+  "nameRu": "О возвышенном",
   "typeRu": "Легендарный"
  },
  {
@@ -9396,8 +10316,8 @@
   "type": "Legendary Gear",
   "typeCn": "传奇装备",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/EquipCommon/Armor/128/Icon_Equip_Armor_Epic_440_128.webp",
-  "nameRu": "Троица",
-  "typeRu": null
+  "nameRu": "Триединство",
+  "typeRu": "Легендарный"
  },
  {
   "id": 112163,
@@ -9457,6 +10377,36 @@
   "typeCn": "传奇装备",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/EquipCommon/Armor/128/Icon_Equip_Armor_Epic_448_128.webp",
   "nameRu": "Безмолвное признание",
+  "typeRu": "Легендарный"
+ },
+ {
+  "id": 112170,
+  "name": "The Three Saints",
+  "nameCn": "三圣",
+  "type": "Legendary Gear",
+  "typeCn": "传奇装备",
+  "icon": "https://cdn.tlidb.com/UIV2/Common/Icon/UI/Textures/EquipCommon/NoAtlas_112_160/Icon_Equip_Armor_Epic_451_112.webp",
+  "nameRu": "Трое мудрейших",
+  "typeRu": "Легендарный"
+ },
+ {
+  "id": 112171,
+  "name": "Silent Monologue",
+  "nameCn": "缄默独白",
+  "type": "Legendary Gear",
+  "typeCn": "传奇装备",
+  "icon": "https://cdn.tlidb.com/UIV2/Common/Icon/UI/Textures/EquipCommon/NoAtlas_112_160/Icon_Equip_Armor_Epic_450_112.webp",
+  "nameRu": "Немой монолог",
+  "typeRu": "Легендарный"
+ },
+ {
+  "id": 112172,
+  "name": "Uros's Bond",
+  "nameCn": "乌洛斯的纽带",
+  "type": "Legendary Gear",
+  "typeCn": "传奇装备",
+  "icon": "https://cdn.tlidb.com/UIV2/Common/Icon/UI/Textures/EquipCommon/NoAtlas_112_160/Icon_Equip_Armor_Epic_452_112.webp",
+  "nameRu": "Связь Уроса",
   "typeRu": "Легендарный"
  },
  {
@@ -9827,6 +10777,16 @@
   "typeCn": "传奇装备",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/EquipCommon/Helmet/128/Icon_Equip_Helmet_Epic_333_128.webp",
   "nameRu": "Затяжная злоба",
+  "typeRu": "Легендарный"
+ },
+ {
+  "id": 112260,
+  "name": "Contained Mind",
+  "nameCn": "缸中之众",
+  "type": "Legendary Gear",
+  "typeCn": "传奇装备",
+  "icon": "https://cdn.tlidb.com/UIV2/Common/Icon/UI/Textures/EquipCommon/NoAtlas_112_160/Icon_Equip_Helmet_Epic_336_112.webp",
+  "nameRu": "Множество в банке",
   "typeRu": "Легендарный"
  },
  {
@@ -10230,6 +11190,16 @@
   "typeRu": "Легендарный"
  },
  {
+  "id": 112358,
+  "name": "First Aember",
+  "nameCn": "原初灾烬",
+  "type": "Legendary Gear",
+  "typeCn": "传奇装备",
+  "icon": "https://cdn.tlidb.com/UIV2/Common/Icon/UI/Textures/EquipCommon/NoAtlas_112_160/Icon_Equip_Gloves_Epic_441_112.webp",
+  "nameRu": "Первозданный аэмбер",
+  "typeRu": "Легендарный"
+ },
+ {
   "id": 112401,
   "name": "Dragon Scale Shoes",
   "nameCn": "龙鳞轻履",
@@ -10570,6 +11540,26 @@
   "typeRu": "Легендарный"
  },
  {
+  "id": 112443,
+  "name": "Beneath the Styx",
+  "nameCn": "冥河之下",
+  "type": "Legendary Gear",
+  "typeCn": "传奇装备",
+  "icon": "https://cdn.tlidb.com/UIV2/Common/Icon/UI/Textures/EquipCommon/NoAtlas_112_160/Icon_Equip_Shoes_Epic_433_112.webp",
+  "nameRu": "Под Стиксом",
+  "typeRu": "Легендарный"
+ },
+ {
+  "id": 112444,
+  "name": "Illusory Chimera",
+  "nameCn": "幻造奇美拉",
+  "type": "Legendary Gear",
+  "typeCn": "传奇装备",
+  "icon": "https://cdn.tlidb.com/UIV2/Common/Icon/UI/Textures/EquipCommon/NoAtlas_112_160/Icon_Equip_Shoes_Epic_434_112.webp",
+  "nameRu": "Фантомная химера",
+  "typeRu": "Легендарный"
+ },
+ {
   "id": 112502,
   "name": "Arcane Shield",
   "nameCn": "奥术秘能之盾",
@@ -10596,8 +11586,8 @@
   "type": "Legendary Gear",
   "typeCn": "传奇装备",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/EquipCommon/Shield/128/Icon_Equip_Weapon_Shield_Epic_106_128.webp",
-  "nameRu": "Устранение",
-  "typeRu": "Точка основного таланта"
+  "nameRu": "Последний бой",
+  "typeRu": null
  },
  {
   "id": 112506,
@@ -10796,8 +11786,8 @@
   "type": "Legendary Gear",
   "typeCn": "传奇装备",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/EquipCommon/Ring/128/Icon_Equip_Ring_Epic_205_128.webp",
-  "nameRu": "Испепеляющий лёд",
-  "typeRu": null
+  "nameRu": "Замерзшее пламя",
+  "typeRu": "Легендарный"
  },
  {
   "id": 113123,
@@ -11067,7 +12057,7 @@
   "typeCn": "传奇装备",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/EquipCommon/Amulet/128/Icon_Equip_Amulet_Epic_204_128.webp",
   "nameRu": "Фантом",
-  "typeRu": "Легендарный"
+  "typeRu": null
  },
  {
   "id": 113242,
@@ -11131,13 +12121,13 @@
  },
  {
   "id": 113252,
-  "name": "Mother Goddess' Paddock",
-  "nameCn": "母神围场",
+  "name": "Crimson Gash",
+  "nameCn": "深红之刎",
   "type": "Legendary Gear",
   "typeCn": "传奇装备",
-  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/EquipCommon/Amulet/128/Icon_Equip_Amulet_Epic_304_128.webp",
-  "nameRu": null,
-  "typeRu": null
+  "icon": "https://cdn.tlidb.com/UIV2/Common/Icon/UI/Textures/EquipCommon/NoAtlas_112_160/Icon_Equip_Amulet_Epic_335_112.webp",
+  "nameRu": "Алый порез",
+  "typeRu": "Легендарный"
  },
  {
   "id": 113254,
@@ -11357,6 +12347,36 @@
   "typeCn": "传奇装备",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/EquipCommon/Amulet/128/Icon_Equip_Amulet_Epic_333_128.webp",
   "nameRu": "Злопамятный",
+  "typeRu": "Легендарный"
+ },
+ {
+  "id": 113286,
+  "name": "Broken Dream",
+  "nameCn": "碎梦",
+  "type": "Legendary Gear",
+  "typeCn": "传奇装备",
+  "icon": "https://cdn.tlidb.com/UIV2/Common/Icon/UI/Textures/EquipCommon/NoAtlas_112_160/Icon_Equip_Amulet_Epic_334_112.webp",
+  "nameRu": "Разбитые мечты",
+  "typeRu": "Легендарный"
+ },
+ {
+  "id": 113287,
+  "name": "Immolating World",
+  "nameCn": "焚烧不完的世界",
+  "type": "Legendary Gear",
+  "typeCn": "传奇装备",
+  "icon": "https://cdn.tlidb.com/UIV2/Common/Icon/UI/Textures/EquipCommon/NoAtlas_112_160/Icon_Equip_Amulet_Epic_338_112.webp",
+  "nameRu": "Недогоревший мир",
+  "typeRu": null
+ },
+ {
+  "id": 113288,
+  "name": "Realm Beyond Reach",
+  "nameCn": "前人未抵之境",
+  "type": "Legendary Gear",
+  "typeCn": "传奇装备",
+  "icon": "https://cdn.tlidb.com/UIV2/Common/Icon/UI/Textures/EquipCommon/NoAtlas_112_160/Icon_Equip_Amulet_Epic_337_112.webp",
+  "nameRu": "Неизведанный предел",
   "typeRu": "Легендарный"
  },
  {
@@ -11660,6 +12680,16 @@
   "typeRu": "Легендарный"
  },
  {
+  "id": 113343,
+  "name": "Pantheon's Elegy",
+  "nameCn": "悼神",
+  "type": "Legendary Gear",
+  "typeCn": "传奇装备",
+  "icon": "https://cdn.tlidb.com/UIV2/Common/Icon/UI/Textures/EquipCommon/NoAtlas_112_160/Icon_Equip_Belt_Epic_227_112.webp",
+  "nameRu": "Траур по богам",
+  "typeRu": "Легендарный"
+ },
+ {
   "id": 140004,
   "name": "Shallow Dream Talking - Weapon",
   "nameCn": "浅白梦语-武器",
@@ -11737,7 +12767,7 @@
   "typeCn": "灰烬",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Ash/128/UI_Ash_22StonelowZHIZHEN_Icon_128.webp",
   "nameRu": "Величайший эмбер",
-  "typeRu": "Эмбер"
+  "typeRu": null
  },
  {
   "id": 201003,
@@ -11937,7 +12967,7 @@
   "typeCn": "画中雪原",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/GamePlay/UI_Item_S8Gameplay_Snow2_128.webp",
   "nameRu": "Окрашенный снег",
-  "typeRu": "Различные предметы"
+  "typeRu": null
  },
  {
   "id": 338001,
@@ -15383,10 +16413,10 @@
   "id": 381084,
   "name": "Flawless Nerve: Parasitism",
   "nameCn": "完美神经：寄生",
-  "type": "特殊器官-前缀",
+  "type": "Special Organ - Prefix",
   "typeCn": "特殊器官-前缀",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Item/UI_S13_SpecialOrgans_05.webp",
-  "nameRu": "Прекрасные нервы: паразит",
+  "nameRu": "Прекрасные нервы: Паразит",
   "typeRu": "Особый орган-префикс"
  },
  {
@@ -16853,7 +17883,7 @@
   "id": 382150,
   "name": "Organ: Unholy Prayer",
   "nameCn": "器官：污秽祝祷",
-  "type": "核心器官",
+  "type": "Core Organ",
   "typeCn": "核心器官",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Organ/128/Icon_Organ_Ring_Epic_220_128.webp",
   "nameRu": "Орган: Порочная молитва",
@@ -17373,10 +18403,10 @@
   "id": 382202,
   "name": "Organ: Crimson Gash",
   "nameCn": "器官：深红之刎",
-  "type": "核心器官",
+  "type": "Core Organ",
   "typeCn": "核心器官",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Organ/128/Icon_Organ_Amulet_Epic_335_128.webp",
-  "nameRu": "Орган: Облава матери-богини",
+  "nameRu": "Орган: алый порез",
   "typeRu": "Основной орган"
  },
  {
@@ -17803,7 +18833,7 @@
   "id": 382247,
   "name": "Organ: Iron Nest",
   "nameCn": "器官：铁巢",
-  "type": "核心器官",
+  "type": "Core Organ",
   "typeCn": "核心器官",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Organ/128/Icon_Organ_Amulet_Epic_315_128.webp",
   "nameRu": "Орган: Железное гнездо",
@@ -17813,7 +18843,7 @@
   "id": 382248,
   "name": "Organ: Golden Touch",
   "nameCn": "器官：点金手",
-  "type": "核心器官",
+  "type": "Core Organ",
   "typeCn": "核心器官",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Organ/128/Icon_Organ_Gloves_Epic_440_128.webp",
   "nameRu": "Орган: Златая длань",
@@ -17823,7 +18853,7 @@
   "id": 382249,
   "name": "Organ: Magmaskull",
   "nameCn": "器官：熔颅",
-  "type": "核心器官",
+  "type": "Core Organ",
   "typeCn": "核心器官",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Organ/128/Icon_Organ_Helmet_Epic_335_128.webp",
   "nameRu": "Орган: Плавящийся череп",
@@ -17833,7 +18863,7 @@
   "id": 382250,
   "name": "Organ: Ralph's Dreadcrest",
   "nameCn": "器官：雷尔夫的悍首",
-  "type": "核心器官",
+  "type": "Core Organ",
   "typeCn": "核心器官",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Organ/128/Icon_Organ_Helmet_Epic_334_128.webp",
   "nameRu": "Орган: Шлем Ральфа Неустрашимого",
@@ -17843,7 +18873,7 @@
   "id": 382251,
   "name": "Organ: Omni-Elixir Notes",
   "nameCn": "器官：万灵药的尾调",
-  "type": "核心器官",
+  "type": "Core Organ",
   "typeCn": "核心器官",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Organ/128/Icon_Organ_Belt_Epic_226_128.webp",
   "nameRu": "Орган: Нота панацеи",
@@ -17853,61 +18883,61 @@
   "id": 382252,
   "name": "Organ: Malevolent Hand",
   "nameCn": "器官：恶意之手",
-  "type": "核心器官",
+  "type": "Core Organ",
   "typeCn": "核心器官",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Organ/128/Icon_Organ_Gloves_Epic_412_128.webp",
-  "nameRu": null,
-  "typeRu": null
+  "nameRu": "Орган: Рука недоброжелателя",
+  "typeRu": "Основной орган"
  },
  {
   "id": 382253,
   "name": "Organ: Pantheon's Elegy",
   "nameCn": "器官：悼神",
-  "type": "核心器官",
+  "type": "Core Organ",
   "typeCn": "核心器官",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Organ/128/Icon_Organ_Belt_Epic_227_128.webp",
-  "nameRu": null,
-  "typeRu": null
+  "nameRu": "Орган: траур по богам",
+  "typeRu": "Основной орган"
  },
  {
   "id": 382254,
   "name": "Organ: Beneath the Styx",
   "nameCn": "器官：冥河之下",
-  "type": "核心器官",
+  "type": "Core Organ",
   "typeCn": "核心器官",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Organ/128/Icon_Organ_Shoes_Epic_433_128.webp",
-  "nameRu": null,
-  "typeRu": null
+  "nameRu": "Орган: под Стиксом",
+  "typeRu": "Основной орган"
  },
  {
   "id": 382255,
   "name": "Organ: The Three Saints",
   "nameCn": "器官：三圣",
-  "type": "核心器官",
+  "type": "Core Organ",
   "typeCn": "核心器官",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Organ/128/Icon_Organ_Armor_Epic_451_128.webp",
-  "nameRu": null,
-  "typeRu": null
+  "nameRu": "Орган: трое мудрейших",
+  "typeRu": "Основной орган"
  },
  {
   "id": 382256,
   "name": "Organ: Uros's Bond",
   "nameCn": "器官：乌洛斯的纽带",
-  "type": "核心器官",
+  "type": "Core Organ",
   "typeCn": "核心器官",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Organ/128/Icon_Organ_Armor_Epic_203_128.webp",
-  "nameRu": null,
-  "typeRu": null
+  "nameRu": "Орган: связь Уроса",
+  "typeRu": "Основной орган"
  },
  {
   "id": 382257,
   "name": "Organ: Contained Mind",
   "nameCn": "器官：缸中之众",
-  "type": "核心器官",
+  "type": "Core Organ",
   "typeCn": "核心器官",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Organ/128/Icon_Organ_Helmet_Epic_332_128.webp",
-  "nameRu": null,
-  "typeRu": null
+  "nameRu": "Орган: множество в банке",
+  "typeRu": "Основной орган"
  },
  {
   "id": 383000,
@@ -17953,7 +18983,7 @@
   "id": 391000,
   "name": "Crude Lunar Dust",
   "nameCn": "粗糙月尘",
-  "type": "追忆复苏素材",
+  "type": "Memory Revival Material",
   "typeCn": "追忆复苏素材",
   "icon": "https://cdn.tlidb.com/UIV2/S14Gameplay/UI/Textures/NoAtlas/UI_S14AwakenMemory_BasicMaterial_01.webp",
   "nameRu": "Грубая лунная пыль",
@@ -17963,7 +18993,7 @@
   "id": 391001,
   "name": "Luminous Lunar Dust",
   "nameCn": "明朗月尘",
-  "type": "追忆复苏素材",
+  "type": "Memory Revival Material",
   "typeCn": "追忆复苏素材",
   "icon": "https://cdn.tlidb.com/UIV2/S14Gameplay/UI/Textures/NoAtlas/UI_S14AwakenMemory_BasicMaterial_02.webp",
   "nameRu": "Светлая лунная пыль",
@@ -17973,7 +19003,7 @@
   "id": 391002,
   "name": "Flawless Lunar Dust",
   "nameCn": "无瑕月尘",
-  "type": "追忆复苏素材",
+  "type": "Memory Revival Material",
   "typeCn": "追忆复苏素材",
   "icon": "https://cdn.tlidb.com/UIV2/S14Gameplay/UI/Textures/NoAtlas/UI_S14AwakenMemory_BasicMaterial_03.webp",
   "nameRu": "Безупречная лунная пыль",
@@ -17983,77 +19013,77 @@
   "id": 392000,
   "name": "Omni-Elixir Side Effect",
   "nameCn": "万灵药的副作用",
-  "type": "追忆复苏素材-月相",
+  "type": "Memory Revival Material - Moon Phase",
   "typeCn": "追忆复苏素材-月相",
   "icon": "https://cdn.tlidb.com/UIV2/S14Gameplay/UI/Textures/NoAtlas/UI_S14AwakenMemory_SpMaterial_05.webp",
   "nameRu": "Побочное действие панацеи",
-  "typeRu": "Материал Возвращение памяти - Фаза луны"
+  "typeRu": null
  },
  {
   "id": 392001,
   "name": "Basic Pharmacology Manuscript",
   "nameCn": "基础药理学抄本",
-  "type": "追忆复苏素材-月相",
+  "type": "Memory Revival Material - Moon Phase",
   "typeCn": "追忆复苏素材-月相",
   "icon": "https://cdn.tlidb.com/UIV2/S14Gameplay/UI/Textures/NoAtlas/UI_S14AwakenMemory_SpMaterial_06.webp",
   "nameRu": "Тетрадь для введения в фармакологию",
-  "typeRu": "Материал Возвращение памяти - Фаза луны"
+  "typeRu": null
  },
  {
   "id": 392002,
   "name": "Hero's Resourcefulness",
   "nameCn": "英雄的多谋",
-  "type": "追忆复苏素材-月相",
+  "type": "Memory Revival Material - Moon Phase",
   "typeCn": "追忆复苏素材-月相",
   "icon": "https://cdn.tlidb.com/UIV2/S14Gameplay/UI/Textures/NoAtlas/UI_S14AwakenMemory_SpMaterial_07.webp",
   "nameRu": "Замыслы героев",
-  "typeRu": "Материал Возвращение памяти - Фаза луны"
+  "typeRu": null
  },
  {
   "id": 392003,
   "name": "Furious Roar",
   "nameCn": "震怒高吼",
-  "type": "追忆复苏素材-月相",
+  "type": "Memory Revival Material - Moon Phase",
   "typeCn": "追忆复苏素材-月相",
   "icon": "https://cdn.tlidb.com/UIV2/S14Gameplay/UI/Textures/NoAtlas/UI_S14AwakenMemory_SpMaterial_08.webp",
   "nameRu": "Гневный рев",
-  "typeRu": "Материал Возвращение памяти - Фаза луны"
+  "typeRu": null
  },
  {
   "id": 392004,
   "name": "Ancestral Hate",
   "nameCn": "先古憎恶",
-  "type": "追忆复苏素材-月相",
+  "type": "Memory Revival Material - Moon Phase",
   "typeCn": "追忆复苏素材-月相",
   "icon": "https://cdn.tlidb.com/UIV2/S14Gameplay/UI/Textures/NoAtlas/UI_S14AwakenMemory_SpMaterial_09.webp",
   "nameRu": "Презрение предков",
-  "typeRu": "Материал Возвращение памяти - Фаза луны"
+  "typeRu": null
  },
  {
   "id": 392005,
   "name": "Starfall Wasteland",
   "nameCn": "目击星坠的荒原",
-  "type": "追忆复苏素材-月相",
+  "type": "Memory Revival Material - Moon Phase",
   "typeCn": "追忆复苏素材-月相",
   "icon": "https://cdn.tlidb.com/UIV2/S14Gameplay/UI/Textures/NoAtlas/UI_S14AwakenMemory_SpMaterial_10.webp",
   "nameRu": "Пустыня звездопада",
-  "typeRu": "Материал Возвращение памяти - Фаза луны"
+  "typeRu": null
  },
  {
   "id": 392006,
   "name": "Between the Holy Land and Hell",
   "nameCn": "圣域与地狱之间",
-  "type": "追忆复苏素材-月相",
+  "type": "Memory Revival Material - Moon Phase",
   "typeCn": "追忆复苏素材-月相",
   "icon": "https://cdn.tlidb.com/UIV2/S14Gameplay/UI/Textures/NoAtlas/UI_S14AwakenMemory_SpMaterial_11.webp",
   "nameRu": "Между раем и адом",
-  "typeRu": "Материал Возвращение памяти - Фаза луны"
+  "typeRu": null
  },
  {
   "id": 392007,
   "name": "Apathy Blade",
   "nameCn": "无心则利刃",
-  "type": "追忆复苏素材-月相",
+  "type": "Memory Revival Material - Moon Phase",
   "typeCn": "追忆复苏素材-月相",
   "icon": "https://cdn.tlidb.com/UIV2/S14Gameplay/UI/Textures/NoAtlas/UI_S14AwakenMemory_SpMaterial_12.webp",
   "nameRu": "Бесстрастный нож",
@@ -18063,167 +19093,167 @@
   "id": 392008,
   "name": "Mercury Purged",
   "nameCn": "秘银所洗去的",
-  "type": "追忆复苏素材-月相",
+  "type": "Memory Revival Material - Moon Phase",
   "typeCn": "追忆复苏素材-月相",
   "icon": "https://cdn.tlidb.com/UIV2/S14Gameplay/UI/Textures/NoAtlas/UI_S14AwakenMemory_SpMaterial_13.webp",
   "nameRu": "Очищено мифрилом",
-  "typeRu": "Материал Возвращение памяти - Фаза луны"
+  "typeRu": null
  },
  {
   "id": 392009,
   "name": "Royal Arsenal",
   "nameCn": "皇家军火库",
-  "type": "追忆复苏素材-月相",
+  "type": "Memory Revival Material - Moon Phase",
   "typeCn": "追忆复苏素材-月相",
   "icon": "https://cdn.tlidb.com/UIV2/S14Gameplay/UI/Textures/NoAtlas/UI_S14AwakenMemory_SpMaterial_28.webp",
   "nameRu": "Императорский арсенал",
-  "typeRu": "Материал Возвращение памяти - Фаза луны"
+  "typeRu": null
  },
  {
   "id": 392010,
   "name": "Into the Night",
   "nameCn": "潜入夜色",
-  "type": "追忆复苏素材-月相",
+  "type": "Memory Revival Material - Moon Phase",
   "typeCn": "追忆复苏素材-月相",
   "icon": "https://cdn.tlidb.com/UIV2/S14Gameplay/UI/Textures/NoAtlas/UI_S14AwakenMemory_SpMaterial_29.webp",
   "nameRu": "Погружение в ночь",
-  "typeRu": "Материал Возвращение памяти - Фаза луны"
+  "typeRu": null
  },
  {
   "id": 392011,
   "name": "Self-Imposed Shackles",
   "nameCn": "自缚枷锁",
-  "type": "追忆复苏素材-月相",
+  "type": "Memory Revival Material - Moon Phase",
   "typeCn": "追忆复苏素材-月相",
   "icon": "https://cdn.tlidb.com/UIV2/S14Gameplay/UI/Textures/NoAtlas/UI_S14AwakenMemory_SpMaterial_30.webp",
   "nameRu": "Личные оковы",
-  "typeRu": "Материал Возвращение памяти - Фаза луны"
+  "typeRu": null
  },
  {
   "id": 392012,
   "name": "Three-Chambered Heart",
   "nameCn": "三窍的心相",
-  "type": "追忆复苏素材-月相",
+  "type": "Memory Revival Material - Moon Phase",
   "typeCn": "追忆复苏素材-月相",
   "icon": "https://cdn.tlidb.com/UIV2/S14Gameplay/UI/Textures/NoAtlas/UI_S14AwakenMemory_SpMaterial_25.webp",
   "nameRu": "Душа через три канала",
-  "typeRu": "Материал Возвращение памяти - Фаза луны"
+  "typeRu": null
  },
  {
   "id": 392013,
   "name": "First Flake of Strange Snow",
   "nameCn": "第一片畸雪飘落时",
-  "type": "追忆复苏素材-月相",
+  "type": "Memory Revival Material - Moon Phase",
   "typeCn": "追忆复苏素材-月相",
   "icon": "https://cdn.tlidb.com/UIV2/S14Gameplay/UI/Textures/NoAtlas/UI_S14AwakenMemory_SpMaterial_26.webp",
   "nameRu": "Первый Странный снег",
-  "typeRu": "Материал Возвращение памяти - Фаза луны"
+  "typeRu": null
  },
  {
   "id": 392014,
   "name": "Sweet Pain",
   "nameCn": "甜痛",
-  "type": "追忆复苏素材-月相",
+  "type": "Memory Revival Material - Moon Phase",
   "typeCn": "追忆复苏素材-月相",
   "icon": "https://cdn.tlidb.com/UIV2/S14Gameplay/UI/Textures/NoAtlas/UI_S14AwakenMemory_SpMaterial_27.webp",
   "nameRu": "Сладкий недуг",
-  "typeRu": "Материал Возвращение памяти - Фаза луны"
+  "typeRu": null
  },
  {
   "id": 392015,
   "name": "Cat's Night Safari",
   "nameCn": "猫咪的彻夜游猎",
-  "type": "追忆复苏素材-月相",
+  "type": "Memory Revival Material - Moon Phase",
   "typeCn": "追忆复苏素材-月相",
   "icon": "https://cdn.tlidb.com/UIV2/S14Gameplay/UI/Textures/NoAtlas/UI_S14AwakenMemory_SpMaterial_31.webp",
   "nameRu": "Кошачье сафари",
-  "typeRu": "Материал Возвращение памяти - Фаза луны"
+  "typeRu": null
  },
  {
   "id": 392016,
   "name": "Charging Tail",
   "nameCn": "猫尾充电中",
-  "type": "追忆复苏素材-月相",
+  "type": "Memory Revival Material - Moon Phase",
   "typeCn": "追忆复苏素材-月相",
   "icon": "https://cdn.tlidb.com/UIV2/S14Gameplay/UI/Textures/NoAtlas/UI_S14AwakenMemory_SpMaterial_32.webp",
   "nameRu": "Зарядка хвоста кошки",
-  "typeRu": "Материал Возвращение памяти - Фаза луны"
+  "typeRu": null
  },
  {
   "id": 392017,
   "name": "Vengeful Wraith",
   "nameCn": "复仇夜凶灵",
-  "type": "追忆复苏素材-月相",
+  "type": "Memory Revival Material - Moon Phase",
   "typeCn": "追忆复苏素材-月相",
   "icon": "https://cdn.tlidb.com/UIV2/S14Gameplay/UI/Textures/NoAtlas/UI_S14AwakenMemory_SpMaterial_33.webp",
   "nameRu": "Демон мести",
-  "typeRu": "Материал Возвращение памяти - Фаза луны"
+  "typeRu": null
  },
  {
   "id": 392018,
   "name": "Bing's Big Bang Pack",
   "nameCn": "宾哥大礼爆",
-  "type": "追忆复苏素材-月相",
+  "type": "Memory Revival Material - Moon Phase",
   "typeCn": "追忆复苏素材-月相",
   "icon": "https://cdn.tlidb.com/UIV2/S14Gameplay/UI/Textures/NoAtlas/UI_S14AwakenMemory_SpMaterial_38.webp",
   "nameRu": "Взрывной подарок",
-  "typeRu": "Материал Возвращение памяти - Фаза луны"
+  "typeRu": null
  },
  {
   "id": 392019,
   "name": "Genius Idea Generator",
   "nameCn": "金点子制造机",
-  "type": "追忆复苏素材-月相",
+  "type": "Memory Revival Material - Moon Phase",
   "typeCn": "追忆复苏素材-月相",
   "icon": "https://cdn.tlidb.com/UIV2/S14Gameplay/UI/Textures/NoAtlas/UI_S14AwakenMemory_SpMaterial_39.webp",
   "nameRu": "Машина гениальных идей",
-  "typeRu": "Материал Возвращение памяти - Фаза луны"
+  "typeRu": null
  },
  {
   "id": 392020,
   "name": "Telepathy Expert",
   "nameCn": "意念制导专家",
-  "type": "追忆复苏素材-月相",
+  "type": "Memory Revival Material - Moon Phase",
   "typeCn": "追忆复苏素材-月相",
   "icon": "https://cdn.tlidb.com/UIV2/S14Gameplay/UI/Textures/NoAtlas/UI_S14AwakenMemory_SpMaterial_14.webp",
   "nameRu": "Мастер управления силой мысли",
-  "typeRu": "Материал Возвращение памяти - Фаза луны"
+  "typeRu": null
  },
  {
   "id": 392021,
   "name": "Fifth Cosmic Velocity",
   "nameCn": "第五宇宙速度",
-  "type": "追忆复苏素材-月相",
+  "type": "Memory Revival Material - Moon Phase",
   "typeCn": "追忆复苏素材-月相",
   "icon": "https://cdn.tlidb.com/UIV2/S14Gameplay/UI/Textures/NoAtlas/UI_S14AwakenMemory_SpMaterial_15.webp",
   "nameRu": "Пятая космическая скорость",
-  "typeRu": "Материал Возвращение памяти - Фаза луны"
+  "typeRu": null
  },
  {
   "id": 392022,
   "name": "To Myself in Another Spacetime",
   "nameCn": "致另一个时空的我",
-  "type": "追忆复苏素材-月相",
+  "type": "Memory Revival Material - Moon Phase",
   "typeCn": "追忆复苏素材-月相",
   "icon": "https://cdn.tlidb.com/UIV2/S14Gameplay/UI/Textures/NoAtlas/UI_S14AwakenMemory_SpMaterial_16.webp",
   "nameRu": "Мне из другого времени и пространства",
-  "typeRu": "Материал Возвращение памяти - Фаза луны"
+  "typeRu": null
  },
  {
   "id": 392023,
   "name": "Private Universe",
   "nameCn": "私人宇宙",
-  "type": "追忆复苏素材-月相",
+  "type": "Memory Revival Material - Moon Phase",
   "typeCn": "追忆复苏素材-月相",
   "icon": "https://cdn.tlidb.com/UIV2/S14Gameplay/UI/Textures/NoAtlas/UI_S14AwakenMemory_SpMaterial_17.webp",
   "nameRu": "Личный космос",
-  "typeRu": "Материал Возвращение памяти - Фаза луны"
+  "typeRu": null
  },
  {
   "id": 392024,
   "name": "Immolating World",
   "nameCn": "焚烧不完的世界",
-  "type": "追忆复苏素材-月相",
+  "type": "Memory Revival Material - Moon Phase",
   "typeCn": "追忆复苏素材-月相",
   "icon": "https://cdn.tlidb.com/UIV2/S14Gameplay/UI/Textures/NoAtlas/UI_S14AwakenMemory_SpMaterial_34.webp",
   "nameRu": "Недогоревший мир",
@@ -18233,7 +19263,7 @@
   "id": 392025,
   "name": "The Place of Oracle",
   "nameCn": "神示的所在",
-  "type": "追忆复苏素材-月相",
+  "type": "Memory Revival Material - Moon Phase",
   "typeCn": "追忆复苏素材-月相",
   "icon": "https://cdn.tlidb.com/UIV2/S14Gameplay/UI/Textures/NoAtlas/UI_S14AwakenMemory_SpMaterial_35.webp",
   "nameRu": "Указания богов",
@@ -18243,27 +19273,27 @@
   "id": 392026,
   "name": "Crossing the Divine Threshold",
   "nameCn": "迈过神域之槛",
-  "type": "追忆复苏素材-月相",
+  "type": "Memory Revival Material - Moon Phase",
   "typeCn": "追忆复苏素材-月相",
   "icon": "https://cdn.tlidb.com/UIV2/S14Gameplay/UI/Textures/NoAtlas/UI_S14AwakenMemory_SpMaterial_36.webp",
   "nameRu": "Переступить порог божественного царства",
-  "typeRu": "Материал Возвращение памяти - Фаза луны"
+  "typeRu": null
  },
  {
   "id": 392027,
   "name": "Inverted Shrine",
   "nameCn": "倒置神龛",
-  "type": "追忆复苏素材-月相",
+  "type": "Memory Revival Material - Moon Phase",
   "typeCn": "追忆复苏素材-月相",
   "icon": "https://cdn.tlidb.com/UIV2/S14Gameplay/UI/Textures/NoAtlas/UI_S14AwakenMemory_SpMaterial_37.webp",
   "nameRu": "Перевернутый киот",
-  "typeRu": "Материал Возвращение памяти - Фаза луны"
+  "typeRu": null
  },
  {
   "id": 392028,
   "name": "Neural Synchronization Training",
   "nameCn": "脑机同步训练",
-  "type": "追忆复苏素材-月相",
+  "type": "Memory Revival Material - Moon Phase",
   "typeCn": "追忆复苏素材-月相",
   "icon": "https://cdn.tlidb.com/UIV2/S14Gameplay/UI/Textures/NoAtlas/UI_S14AwakenMemory_SpMaterial_22.webp",
   "nameRu": "Тренировка синхронизации мозг-машина",
@@ -18273,187 +19303,187 @@
   "id": 392029,
   "name": "Machine's Joy",
   "nameCn": "机魂之悦",
-  "type": "追忆复苏素材-月相",
+  "type": "Memory Revival Material - Moon Phase",
   "typeCn": "追忆复苏素材-月相",
   "icon": "https://cdn.tlidb.com/UIV2/S14Gameplay/UI/Textures/NoAtlas/UI_S14AwakenMemory_SpMaterial_23.webp",
   "nameRu": "Радость машинной души",
-  "typeRu": "Материал Возвращение памяти - Фаза луны"
+  "typeRu": null
  },
  {
   "id": 392030,
   "name": "Peril of Synthetic Troops",
   "nameCn": "智械危矣",
-  "type": "追忆复苏素材-月相",
+  "type": "Memory Revival Material - Moon Phase",
   "typeCn": "追忆复苏素材-月相",
   "icon": "https://cdn.tlidb.com/UIV2/S14Gameplay/UI/Textures/NoAtlas/UI_S14AwakenMemory_SpMaterial_24.webp",
   "nameRu": "Угроза синтетиков",
-  "typeRu": "Материал Возвращение памяти - Фаза луны"
+  "typeRu": null
  },
  {
   "id": 392031,
   "name": "Nourishing Spring Rain",
   "nameCn": "春日雨露均沾",
-  "type": "追忆复苏素材-月相",
+  "type": "Memory Revival Material - Moon Phase",
   "typeCn": "追忆复苏素材-月相",
   "icon": "https://cdn.tlidb.com/UIV2/S14Gameplay/UI/Textures/NoAtlas/UI_S14AwakenMemory_SpMaterial_18.webp",
   "nameRu": "Весенняя всеобщая благодать",
-  "typeRu": "Материал Возвращение памяти - Фаза луны"
+  "typeRu": null
  },
  {
   "id": 392032,
   "name": "Nature's Party",
   "nameCn": "自然派对",
-  "type": "追忆复苏素材-月相",
+  "type": "Memory Revival Material - Moon Phase",
   "typeCn": "追忆复苏素材-月相",
   "icon": "https://cdn.tlidb.com/UIV2/S14Gameplay/UI/Textures/NoAtlas/UI_S14AwakenMemory_SpMaterial_19.webp",
   "nameRu": "Вечеринка на природе",
-  "typeRu": "Материал Возвращение памяти - Фаза луны"
+  "typeRu": null
  },
  {
   "id": 392033,
   "name": "Soft Storm",
   "nameCn": "柔性风暴",
-  "type": "追忆复苏素材-月相",
+  "type": "Memory Revival Material - Moon Phase",
   "typeCn": "追忆复苏素材-月相",
   "icon": "https://cdn.tlidb.com/UIV2/S14Gameplay/UI/Textures/NoAtlas/UI_S14AwakenMemory_SpMaterial_20.webp",
   "nameRu": "Мягкая буря",
-  "typeRu": "Материал Возвращение памяти - Фаза луны"
+  "typeRu": null
  },
  {
   "id": 392034,
   "name": "Blowing Breeze",
   "nameCn": "大风吹大风吹",
-  "type": "追忆复苏素材-月相",
+  "type": "Memory Revival Material - Moon Phase",
   "typeCn": "追忆复苏素材-月相",
   "icon": "https://cdn.tlidb.com/UIV2/S14Gameplay/UI/Textures/NoAtlas/UI_S14AwakenMemory_SpMaterial_21.webp",
   "nameRu": "Порыв ветра",
-  "typeRu": "Материал Возвращение памяти - Фаза луны"
+  "typeRu": null
  },
  {
   "id": 392035,
   "name": "Ceaseless Tide",
   "nameCn": "海潮永不息",
-  "type": "追忆复苏素材-月相",
+  "type": "Memory Revival Material - Moon Phase",
   "typeCn": "追忆复苏素材-月相",
   "icon": "https://cdn.tlidb.com/UIV2/S14Gameplay/UI/Textures/NoAtlas/UI_S14AwakenMemory_SpMaterial_40.webp",
   "nameRu": "Бесконечный прилив",
-  "typeRu": "Материал Возвращение памяти - Фаза луны"
+  "typeRu": null
  },
  {
   "id": 392036,
   "name": "Artificial Moon: Origin",
   "nameCn": "人造月亮：本源",
-  "type": "追忆复苏素材-月相",
+  "type": "Memory Revival Material - Moon Phase",
   "typeCn": "追忆复苏素材-月相",
   "icon": "https://cdn.tlidb.com/UIV2/S14Gameplay/UI/Textures/NoAtlas/UI_S14AwakenMemory_SpMaterial_01.webp",
   "nameRu": "Искусственная Луна: Источник",
-  "typeRu": "Материал Возвращение памяти - Фаза луны"
+  "typeRu": null
  },
  {
   "id": 392037,
   "name": "Artificial Moon: Discipline",
   "nameCn": "人造月亮：守己",
-  "type": "追忆复苏素材-月相",
+  "type": "Memory Revival Material - Moon Phase",
   "typeCn": "追忆复苏素材-月相",
   "icon": "https://cdn.tlidb.com/UIV2/S14Gameplay/UI/Textures/NoAtlas/UI_S14AwakenMemory_SpMaterial_01.webp",
   "nameRu": "Искусственная Луна: Сохранение",
-  "typeRu": "Материал Возвращение памяти - Фаза луны"
+  "typeRu": null
  },
  {
   "id": 392038,
   "name": "Artificial Moon: Progress",
   "nameCn": "人造月亮：奋进",
-  "type": "追忆复苏素材-月相",
+  "type": "Memory Revival Material - Moon Phase",
   "typeCn": "追忆复苏素材-月相",
   "icon": "https://cdn.tlidb.com/UIV2/S14Gameplay/UI/Textures/NoAtlas/UI_S14AwakenMemory_SpMaterial_01.webp",
   "nameRu": "Искусственная Луна: Стремление",
-  "typeRu": "Материал Возвращение памяти - Фаза луны"
+  "typeRu": null
  },
  {
   "id": 392039,
   "name": "Radical Evolution Theory: Cruelty",
   "nameCn": "过激进化论:暴虐",
-  "type": "追忆复苏素材-月相",
+  "type": "Memory Revival Material - Moon Phase",
   "typeCn": "追忆复苏素材-月相",
   "icon": "https://cdn.tlidb.com/UIV2/S14Gameplay/UI/Textures/NoAtlas/UI_S14AwakenMemory_SpMaterial_02.webp",
   "nameRu": "Теория радикальной эволюции: Тирания",
-  "typeRu": "Материал Возвращение памяти - Фаза луны"
+  "typeRu": null
  },
  {
   "id": 392040,
   "name": "Radical Evolution Theory: Spell Amplification",
   "nameCn": "过激进化论:法术增幅",
-  "type": "追忆复苏素材-月相",
+  "type": "Memory Revival Material - Moon Phase",
   "typeCn": "追忆复苏素材-月相",
   "icon": "https://cdn.tlidb.com/UIV2/S14Gameplay/UI/Textures/NoAtlas/UI_S14AwakenMemory_SpMaterial_02.webp",
   "nameRu": "Теория радикальной эволюции: Усиление заклинания",
-  "typeRu": "Материал Возвращение памяти - Фаза луны"
+  "typeRu": null
  },
  {
   "id": 392041,
   "name": "Radical Evolution Theory: Radical Order",
   "nameCn": "过激进化论:激进号令",
-  "type": "追忆复苏素材-月相",
+  "type": "Memory Revival Material - Moon Phase",
   "typeCn": "追忆复苏素材-月相",
   "icon": "https://cdn.tlidb.com/UIV2/S14Gameplay/UI/Textures/NoAtlas/UI_S14AwakenMemory_SpMaterial_02.webp",
   "nameRu": "Теория радикальной эволюции: Радикальный приказ",
-  "typeRu": "Материал Возвращение памяти - Фаза луны"
+  "typeRu": null
  },
  {
   "id": 392042,
   "name": "Radical Evolution Theory: Deep Pain",
   "nameCn": "过激进化论:深层苦痛",
-  "type": "追忆复苏素材-月相",
+  "type": "Memory Revival Material - Moon Phase",
   "typeCn": "追忆复苏素材-月相",
   "icon": "https://cdn.tlidb.com/UIV2/S14Gameplay/UI/Textures/NoAtlas/UI_S14AwakenMemory_SpMaterial_02.webp",
   "nameRu": "Теория радикальной эволюции: Глубокая боль",
-  "typeRu": "Материал Возвращение памяти - Фаза луны"
+  "typeRu": null
  },
  {
   "id": 392043,
   "name": "Discord of the Second Will",
   "nameCn": "第二意志的乱絮",
-  "type": "追忆复苏素材-月相",
+  "type": "Memory Revival Material - Moon Phase",
   "typeCn": "追忆复苏素材-月相",
   "icon": "https://cdn.tlidb.com/UIV2/S14Gameplay/UI/Textures/NoAtlas/UI_S14AwakenMemory_SpMaterial_04.webp",
   "nameRu": "Клубок второй воли",
-  "typeRu": "Материал Возвращение памяти - Фаза луны"
+  "typeRu": null
  },
  {
   "id": 392044,
   "name": "Reactive Rainbow",
   "nameCn": "反作用力之虹",
-  "type": "追忆复苏素材-月相",
+  "type": "Memory Revival Material - Moon Phase",
   "typeCn": "追忆复苏素材-月相",
   "icon": "https://cdn.tlidb.com/UIV2/S14Gameplay/UI/Textures/NoAtlas/UI_S14AwakenMemory_SpMaterial_03.webp",
   "nameRu": "Радуга противодействия",
-  "typeRu": "Материал Возвращение памяти - Фаза луны"
+  "typeRu": null
  },
  {
   "id": 392045,
   "name": "Approaching Nightfall",
   "nameCn": "夜幕将至",
-  "type": "追忆复苏素材-月相",
+  "type": "Memory Revival Material - Moon Phase",
   "typeCn": "追忆复苏素材-月相",
   "icon": "https://cdn.tlidb.com/UI/Textures/S14Gameplay/UI/Textures/NoAtlas/UI_S14AwakenMemory_SpMaterial_42.webp",
-  "nameRu": null,
+  "nameRu": "Приближение ночи",
   "typeRu": null
  },
  {
   "id": 392046,
   "name": "Red Shoes of Cruelty",
   "nameCn": "残忍红舞鞋",
-  "type": "追忆复苏素材-月相",
+  "type": "Memory Revival Material - Moon Phase",
   "typeCn": "追忆复苏素材-月相",
   "icon": "https://cdn.tlidb.com/UI/Textures/S14Gameplay/UI/Textures/NoAtlas/UI_S14AwakenMemory_SpMaterial_41.webp",
-  "nameRu": null,
+  "nameRu": "Красные башмачки",
   "typeRu": null
  },
  {
   "id": 393000,
   "name": "Moonlit Thread - Epic",
   "nameCn": "月光游丝-卓越",
-  "type": "追忆复苏素材",
+  "type": "Memory Revival Material",
   "typeCn": "追忆复苏素材",
   "icon": "https://cdn.tlidb.com/UIV2/S14Gameplay/UI/Textures/NoAtlas/UI_S14AwakenMemory_RerollMaterial_02.webp",
   "nameRu": null,
@@ -18463,7 +19493,7 @@
   "id": 393003,
   "name": "Lunar Fragment",
   "nameCn": "月亮碎片",
-  "type": "回收追忆复苏素材-月相后获得的道具",
+  "type": "Moon Phase Recycling Reward",
   "typeCn": "回收追忆复苏素材-月相后获得的道具",
   "icon": "https://cdn.tlidb.com/UIV2/S14Gameplay/UI/Textures/NoAtlas/UI_S14AwakenMemory_SpMaterial_Exchange01.webp",
   "nameRu": "Фрагмент Луны",
@@ -18496,8 +19526,8 @@
   "type": "Nether Kings Divinity",
   "typeCn": "冥王的神格",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/UI/Textures/TalentSlate/NoAtlas_112_160/UI_S15Devilblock_shenpan_3_3_112.webp",
-  "nameRu": null,
-  "typeRu": null
+  "nameRu": "Божественная сущность Короля подземного мира: приговор",
+  "typeRu": "Божественная сущность Короля подземного мира"
  },
  {
   "id": 394005,
@@ -18506,8 +19536,8 @@
   "type": "Nether Kings Divinity",
   "typeCn": "冥王的神格",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/UI/Textures/TalentSlate/NoAtlas_112_160/UI_S15Devilblock_qinran_3_3_112.webp",
-  "nameRu": null,
-  "typeRu": null
+  "nameRu": "Божественная сущность Короля подземного мира: заражение",
+  "typeRu": "Божественная сущность Короля подземного мира"
  },
  {
   "id": 394006,
@@ -18516,8 +19546,8 @@
   "type": "Nether Kings Divinity",
   "typeCn": "冥王的神格",
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/UI/Textures/TalentSlate/NoAtlas_112_160/UI_S15Devilblock_fangzhu_3_3_112.webp",
-  "nameRu": null,
-  "typeRu": null
+  "nameRu": "Божественная сущность Короля подземного мира: отвержение",
+  "typeRu": "Божественная сущность Короля подземного мира"
  },
  {
   "id": 394101,
@@ -18536,8 +19566,8 @@
   "type": "Divine Remnant",
   "typeCn": "神骸",
   "icon": "https://cdn.tlidb.com/UI/Textures/S15Gameplay/UI/Textures/NoAtlas/UI_S15DevilMaterial_02.webp",
-  "nameRu": null,
-  "typeRu": null
+  "nameRu": "Божественные останки Бога могущества - редкие",
+  "typeRu": "Божественные останки"
  },
  {
   "id": 394103,
@@ -18546,8 +19576,8 @@
   "type": "Divine Remnant",
   "typeCn": "神骸",
   "icon": "https://cdn.tlidb.com/UI/Textures/S15Gameplay/UI/Textures/NoAtlas/UI_S15DevilMaterial_03.webp",
-  "nameRu": null,
-  "typeRu": null
+  "nameRu": "Божественные останки Бога могущества - легендарные",
+  "typeRu": "Божественные останки"
  },
  {
   "id": 394104,
@@ -18566,8 +19596,8 @@
   "type": "Divine Remnant",
   "typeCn": "神骸",
   "icon": "https://cdn.tlidb.com/UI/Textures/S15Gameplay/UI/Textures/NoAtlas/UI_S15DevilMaterial_05.webp",
-  "nameRu": null,
-  "typeRu": null
+  "nameRu": "Божественные останки Богини охоты - редкие",
+  "typeRu": "Божественные останки"
  },
  {
   "id": 394106,
@@ -18576,8 +19606,8 @@
   "type": "Divine Remnant",
   "typeCn": "神骸",
   "icon": "https://cdn.tlidb.com/UI/Textures/S15Gameplay/UI/Textures/NoAtlas/UI_S15DevilMaterial_06.webp",
-  "nameRu": null,
-  "typeRu": null
+  "nameRu": "Божественные останки Богини охоты - легендарные",
+  "typeRu": "Божественные останки"
  },
  {
   "id": 394107,
@@ -18596,8 +19626,8 @@
   "type": "Divine Remnant",
   "typeCn": "神骸",
   "icon": "https://cdn.tlidb.com/UI/Textures/S15Gameplay/UI/Textures/NoAtlas/UI_S15DevilMaterial_08.webp",
-  "nameRu": null,
-  "typeRu": null
+  "nameRu": "Божественные останки Богини знаний - редкие",
+  "typeRu": "Божественные останки"
  },
  {
   "id": 394109,
@@ -18606,8 +19636,8 @@
   "type": "Divine Remnant",
   "typeCn": "神骸",
   "icon": "https://cdn.tlidb.com/UI/Textures/S15Gameplay/UI/Textures/NoAtlas/UI_S15DevilMaterial_09.webp",
-  "nameRu": null,
-  "typeRu": null
+  "nameRu": "Божественные останки Богини знаний - легендарные",
+  "typeRu": "Божественные останки"
  },
  {
   "id": 394110,
@@ -18626,8 +19656,8 @@
   "type": "Divine Remnant",
   "typeCn": "神骸",
   "icon": "https://cdn.tlidb.com/UI/Textures/S15Gameplay/UI/Textures/NoAtlas/UI_S15DevilMaterial_11.webp",
-  "nameRu": null,
-  "typeRu": null
+  "nameRu": "Божественные останки Бога войны - редкие",
+  "typeRu": "Божественные останки"
  },
  {
   "id": 394112,
@@ -18636,8 +19666,8 @@
   "type": "Divine Remnant",
   "typeCn": "神骸",
   "icon": "https://cdn.tlidb.com/UI/Textures/S15Gameplay/UI/Textures/NoAtlas/UI_S15DevilMaterial_12.webp",
-  "nameRu": null,
-  "typeRu": null
+  "nameRu": "Божественные останки Бога войны - легендарные",
+  "typeRu": "Божественные останки"
  },
  {
   "id": 394113,
@@ -18656,8 +19686,8 @@
   "type": "Divine Remnant",
   "typeCn": "神骸",
   "icon": "https://cdn.tlidb.com/UI/Textures/S15Gameplay/UI/Textures/NoAtlas/UI_S15DevilMaterial_14.webp",
-  "nameRu": null,
-  "typeRu": null
+  "nameRu": "Божественные останки Бога обмана - редкие",
+  "typeRu": "Божественные останки"
  },
  {
   "id": 394115,
@@ -18666,8 +19696,8 @@
   "type": "Divine Remnant",
   "typeCn": "神骸",
   "icon": "https://cdn.tlidb.com/UI/Textures/S15Gameplay/UI/Textures/NoAtlas/UI_S15DevilMaterial_15.webp",
-  "nameRu": null,
-  "typeRu": null
+  "nameRu": "Божественные останки Бога обмана - легендарные",
+  "typeRu": "Божественные останки"
  },
  {
   "id": 394116,
@@ -18686,8 +19716,8 @@
   "type": "Divine Remnant",
   "typeCn": "神骸",
   "icon": "https://cdn.tlidb.com/UI/Textures/S15Gameplay/UI/Textures/NoAtlas/UI_S15DevilMaterial_17.webp",
-  "nameRu": null,
-  "typeRu": null
+  "nameRu": "Божественные останки Бога машин - редкие",
+  "typeRu": "Божественные останки"
  },
  {
   "id": 394118,
@@ -18696,8 +19726,8 @@
   "type": "Divine Remnant",
   "typeCn": "神骸",
   "icon": "https://cdn.tlidb.com/UI/Textures/S15Gameplay/UI/Textures/NoAtlas/UI_S15DevilMaterial_18.webp",
-  "nameRu": null,
-  "typeRu": null
+  "nameRu": "Божественные останки Бога машин - легендарные",
+  "typeRu": "Божественные останки"
  },
  {
   "id": 394119,
@@ -18706,8 +19736,8 @@
   "type": "Divine Remnant",
   "typeCn": "神骸",
   "icon": "https://cdn.tlidb.com/UI/Textures/S15Gameplay/UI/Textures/NoAtlas/UI_S15DevilMaterial_19.webp",
-  "nameRu": null,
-  "typeRu": null
+  "nameRu": "Божественные останки Короля подземного мира",
+  "typeRu": "Божественные останки"
  },
  {
   "id": 394201,
@@ -18716,8 +19746,168 @@
   "type": "Soul Nail",
   "typeCn": "魂钉",
   "icon": "https://cdn.tlidb.com/UI/Textures/S15Gameplay/UI/Textures/NoAtlas/UI_S15DevilFixedMaterial_01.webp",
-  "nameRu": null,
-  "typeRu": null
+  "nameRu": "Гвоздь души Короля подземного мира",
+  "typeRu": "Гвоздь души"
+ },
+ {
+  "id": 396010,
+  "name": "Recommendation Letter - Lone Wolf",
+  "nameCn": "引荐信：独狼",
+  "type": "Follower",
+  "typeCn": "追随者",
+  "icon": "https://cdn.tlidb.com/UIV2/Common/Icon/UI/Textures/S16/NoAtlas_112_160/UI_mercenary_headicon_langnv_Icon1_112.webp",
+  "nameRu": "Рекомендательное письмо: Волчица-одиночка",
+  "typeRu": "Последователь"
+ },
+ {
+  "id": 396011,
+  "name": "Recommendation Letter - Mammoth",
+  "nameCn": "引荐信：猛犸象",
+  "type": "Follower",
+  "typeCn": "追随者",
+  "icon": "https://cdn.tlidb.com/UIV2/Common/Icon/UI/Textures/S16/NoAtlas_112_160/UI_mercenary_headicon_mengmaxiang_Icon1_112.webp",
+  "nameRu": "Рекомендательное письмо: Мамонт",
+  "typeRu": "Последователь"
+ },
+ {
+  "id": 396012,
+  "name": "Recommendation Letter - Witch Rat",
+  "nameCn": "引荐信：巫鼠",
+  "type": "Follower",
+  "typeCn": "追随者",
+  "icon": "https://cdn.tlidb.com/UIV2/Common/Icon/UI/Textures/S16/NoAtlas_112_160/UI_mercenary_headicon_shunan_Icon1_112.webp",
+  "nameRu": "Рекомендательное письмо: Крыс-колдун",
+  "typeRu": "Последователь"
+ },
+ {
+  "id": 396013,
+  "name": "Recommendation Letter - Lion Queen",
+  "nameCn": "引荐信：狮后",
+  "type": "Follower",
+  "typeCn": "追随者",
+  "icon": "https://cdn.tlidb.com/UIV2/Common/Icon/UI/Textures/S16/NoAtlas_112_160/UI_mercenary_headicon_cishi_Icon1_112.webp",
+  "nameRu": "Рекомендательное письмо: Королева львов",
+  "typeRu": "Последователь"
+ },
+ {
+  "id": 396500,
+  "name": "Recommendation Letter - Blade of the Silver Moon",
+  "nameCn": "引荐信：银月的锋刃",
+  "type": "Follower",
+  "typeCn": "追随者",
+  "icon": "https://cdn.tlidb.com/UIV2/Common/Icon/UI/Textures/S16/NoAtlas_112_160/UI_mercenary_headicon_langnv_Icon1_112.webp",
+  "nameRu": "Рекомендательное письмо: Клинок Серебряной Луны",
+  "typeRu": "Последователь"
+ },
+ {
+  "id": 396501,
+  "name": "Recommendation Letter - Relentless Claws",
+  "nameCn": "引荐信：追凶利爪",
+  "type": "Follower",
+  "typeCn": "追随者",
+  "icon": "https://cdn.tlidb.com/UIV2/Common/Icon/UI/Textures/S16/NoAtlas_112_160/UI_mercenary_headicon_langnv_Icon1_112.webp",
+  "nameRu": "Рекомендательное письмо: Когти преследования",
+  "typeRu": "Последователь"
+ },
+ {
+  "id": 396502,
+  "name": "Recommendation Letter - Howl of the Pack",
+  "nameCn": "引荐信：群狼之啸",
+  "type": "Follower",
+  "typeCn": "追随者",
+  "icon": "https://cdn.tlidb.com/UIV2/Common/Icon/UI/Textures/S16/NoAtlas_112_160/UI_mercenary_headicon_langnv_Icon1_112.webp",
+  "nameRu": "Рекомендательное письмо: Вой стаи",
+  "typeRu": "Последователь"
+ },
+ {
+  "id": 396510,
+  "name": "Recommendation Letter - Iron Curtain",
+  "nameCn": "引荐信：铁幕",
+  "type": "Follower",
+  "typeCn": "追随者",
+  "icon": "https://cdn.tlidb.com/UIV2/Common/Icon/UI/Textures/S16/NoAtlas_112_160/UI_mercenary_headicon_mengmaxiang_Icon1_112.webp",
+  "nameRu": "Рекомендательное письмо: Железный занавес",
+  "typeRu": "Последователь"
+ },
+ {
+  "id": 396511,
+  "name": "Recommendation Letter - Wild Barbarian King",
+  "nameCn": "引荐信：荒原的蛮王",
+  "type": "Follower",
+  "typeCn": "追随者",
+  "icon": "https://cdn.tlidb.com/UIV2/Common/Icon/UI/Textures/S16/NoAtlas_112_160/UI_mercenary_headicon_mengmaxiang_Icon1_112.webp",
+  "nameRu": "Рекомендательное письмо: Дикий владыка пустошей",
+  "typeRu": "Последователь"
+ },
+ {
+  "id": 396512,
+  "name": "Recommendation Letter - Vessel of Sin",
+  "nameCn": "引荐信：有罪之躯",
+  "type": "Follower",
+  "typeCn": "追随者",
+  "icon": "https://cdn.tlidb.com/UIV2/Common/Icon/UI/Textures/S16/NoAtlas_112_160/UI_mercenary_headicon_mengmaxiang_Icon1_112.webp",
+  "nameRu": "Рекомендательное письмо: Грешная плоть",
+  "typeRu": "Последователь"
+ },
+ {
+  "id": 396520,
+  "name": "Recommendation Letter - Curl-Tailed Sentinel",
+  "nameCn": "引荐信：蜷尾哨兵",
+  "type": "Follower",
+  "typeCn": "追随者",
+  "icon": "https://cdn.tlidb.com/UIV2/Common/Icon/UI/Textures/S16/NoAtlas_112_160/UI_mercenary_headicon_shunan_Icon1_112.webp",
+  "nameRu": "Рекомендательное письмо: Кольцехвостый часовой",
+  "typeRu": "Последователь"
+ },
+ {
+  "id": 396521,
+  "name": "Recommendation Letter - Plague",
+  "nameCn": "引荐信：鼠疫",
+  "type": "Follower",
+  "typeCn": "追随者",
+  "icon": "https://cdn.tlidb.com/UIV2/Common/Icon/UI/Textures/S16/NoAtlas_112_160/UI_mercenary_headicon_shunan_Icon1_112.webp",
+  "nameRu": "Рекомендательное письмо: Мор",
+  "typeRu": "Последователь"
+ },
+ {
+  "id": 396522,
+  "name": "Recommendation Letter - Rampaging Rat",
+  "nameCn": "引荐信：暴走悍鼠",
+  "type": "Follower",
+  "typeCn": "追随者",
+  "icon": "https://cdn.tlidb.com/UIV2/Common/Icon/UI/Textures/S16/NoAtlas_112_160/UI_mercenary_headicon_shunan_Icon1_112.webp",
+  "nameRu": "Рекомендательное письмо: Неистовый человек-крыса",
+  "typeRu": "Последователь"
+ },
+ {
+  "id": 396530,
+  "name": "Recommendation Letter - Golden-Mane Bastion",
+  "nameCn": "引荐信：金鬃堡垒",
+  "type": "Follower",
+  "typeCn": "追随者",
+  "icon": "https://cdn.tlidb.com/UIV2/Common/Icon/UI/Textures/S16/NoAtlas_112_160/UI_mercenary_headicon_cishi_Icon1_112.webp",
+  "nameRu": "Рекомендательное письмо: Златогривая крепость",
+  "typeRu": "Последователь"
+ },
+ {
+  "id": 396531,
+  "name": "Recommendation Letter - Scion of Light",
+  "nameCn": "引荐信：光明后裔",
+  "type": "Follower",
+  "typeCn": "追随者",
+  "icon": "https://cdn.tlidb.com/UIV2/Common/Icon/UI/Textures/S16/NoAtlas_112_160/UI_mercenary_headicon_cishi_Icon1_112.webp",
+  "nameRu": "Рекомендательное письмо: Потомок Света",
+  "typeRu": "Последователь"
+ },
+ {
+  "id": 396532,
+  "name": "Recommendation Letter - Chant of Conquest",
+  "nameCn": "引荐信：征服之咏",
+  "type": "Follower",
+  "typeCn": "追随者",
+  "icon": "https://cdn.tlidb.com/UIV2/Common/Icon/UI/Textures/S16/NoAtlas_112_160/UI_mercenary_headicon_cishi_Icon1_112.webp",
+  "nameRu": "Рекомендательное письмо: Песнь завоевания",
+  "typeRu": "Последователь"
  },
  {
   "id": 400000,
@@ -19260,6 +20450,26 @@
   "typeRu": "Гербы божественности"
  },
  {
+  "id": 502000,
+  "name": "Tempering Medal",
+  "nameCn": "历练勋章",
+  "type": "Tartarus Skill Tempering Material",
+  "typeCn": "塔罗斯技能历练材料",
+  "icon": "https://cdn.tlidb.com/UIV2/S16Gameplay/UI/Textures/NoAtlas/UI_S16Mercenary_Material_Forge_01.webp",
+  "nameRu": "Медаль опыта",
+  "typeRu": "Материал тренировки навыков Талоса"
+ },
+ {
+  "id": 502001,
+  "name": "Tempering Medal (Origin)",
+  "nameCn": "历练勋章（始源）",
+  "type": "Origin Tartarus Skill Tempering Material",
+  "typeCn": "始源塔罗斯技能历练材料",
+  "icon": "https://cdn.tlidb.com/UIV2/S16Gameplay/UI/Textures/NoAtlas/UI_S16Mercenary_Material_Forge_02.webp",
+  "nameRu": "Медаль опыта (изначальная)",
+  "typeRu": "Материал тренировки изначальных навыков Талоса"
+ },
+ {
   "id": 990004,
   "name": "Mistville Intel",
   "nameCn": "雾都情报",
@@ -19348,5 +20558,1355 @@
   "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Ticket/128/UI_TowerIcon_badge05_Icon_128.webp",
   "nameRu": "Доказательство храбрости V",
   "typeRu": "Доказательство восхождения на 41-й этаж башни"
+ },
+ {
+  "id": 3970300,
+  "name": "Tartarus: Black Hole I",
+  "nameCn": "塔罗斯：黑洞Ⅰ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_BlackHole_mercenary_Icon_128.webp",
+  "nameRu": "Талос: черная дыра I",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970301,
+  "name": "Tartarus: Black Hole II",
+  "nameCn": "塔罗斯：黑洞Ⅱ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_BlackHole_mercenary_Icon_128.webp",
+  "nameRu": "Талос: черная дыра II",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970302,
+  "name": "Tartarus: Black Hole III",
+  "nameCn": "塔罗斯：黑洞Ⅲ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_BlackHole_mercenary_Icon_128.webp",
+  "nameRu": "Талос: черная дыра III",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970310,
+  "name": "Tartarus: Thunder Spike I",
+  "nameCn": "塔罗斯：雷光刺击Ⅰ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_LightningStab_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Молниевый удар I",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970311,
+  "name": "Tartarus: Thunder Spike II",
+  "nameCn": "塔罗斯：雷光刺击Ⅱ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_LightningStab_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Молниевый удар II",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970312,
+  "name": "Tartarus: Thunder Spike III",
+  "nameCn": "塔罗斯：雷光刺击Ⅲ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_LightningStab_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Молниевый удар III",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970320,
+  "name": "Tartarus: Lightning Storm I",
+  "nameCn": "塔罗斯：闪电风暴Ⅰ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_ThunderStorm_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Молниевый шторм I",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970321,
+  "name": "Tartarus: Lightning Storm II",
+  "nameCn": "塔罗斯：闪电风暴Ⅱ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_ThunderStorm_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Молниевый шторм II",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970322,
+  "name": "Tartarus: Lightning Storm III",
+  "nameCn": "塔罗斯：闪电风暴Ⅲ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_ThunderStorm_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Молниевый шторм III",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970330,
+  "name": "Tartarus: Double Thrusts I",
+  "nameCn": "塔罗斯：双重突刺Ⅰ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_DoubleStab_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Двойной прокол I",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970331,
+  "name": "Tartarus: Double Thrusts II",
+  "nameCn": "塔罗斯：双重突刺Ⅱ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_DoubleStab_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Двойной прокол II",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970332,
+  "name": "Tartarus: Double Thrusts III",
+  "nameCn": "塔罗斯：双重突刺Ⅲ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_DoubleStab_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Двойной прокол III",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970390,
+  "name": "Tartarus: Life Tonic I",
+  "nameCn": "塔罗斯：生命药水Ⅰ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_shengmingyaoshui_mercenary_Icon_128.webp",
+  "nameRu": "Талос: эликсир жизни I",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970391,
+  "name": "Tartarus: Life Tonic II",
+  "nameCn": "塔罗斯：生命药水Ⅱ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_shengmingyaoshui_mercenary_Icon_128.webp",
+  "nameRu": "Талос: эликсир жизни II",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970392,
+  "name": "Tartarus: Life Tonic III",
+  "nameCn": "塔罗斯：生命药水Ⅲ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_shengmingyaoshui_mercenary_Icon_128.webp",
+  "nameRu": "Талос: эликсир жизни III",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970410,
+  "name": "Tartarus: Ice Lances I",
+  "nameCn": "塔罗斯：冰锥术Ⅰ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_ConeOfCold_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Ледяные копья I",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970411,
+  "name": "Tartarus: Ice Lances II",
+  "nameCn": "塔罗斯：冰锥术Ⅱ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_ConeOfCold_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Ледяные копья II",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970412,
+  "name": "Tartarus: Ice Lances III",
+  "nameCn": "塔罗斯：冰锥术Ⅲ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_ConeOfCold_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Ледяные копья III",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970420,
+  "name": "Tartarus: Forking Thunder I",
+  "nameCn": "塔罗斯：裂相电矢Ⅰ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_SplitSpear_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Расщепляющий молниевый болт I",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970421,
+  "name": "Tartarus: Forking Thunder II",
+  "nameCn": "塔罗斯：裂相电矢Ⅱ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_SplitSpear_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Расщепляющий молниевый болт II",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970422,
+  "name": "Tartarus: Forking Thunder III",
+  "nameCn": "塔罗斯：裂相电矢Ⅲ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_SplitSpear_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Расщепляющий молниевый болт III",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970430,
+  "name": "Tartarus: Blazing Meteor I",
+  "nameCn": "塔罗斯：爆裂燧星Ⅰ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_StarExplosion_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Разрывная искра I",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970431,
+  "name": "Tartarus: Blazing Meteor II",
+  "nameCn": "塔罗斯：爆裂燧星Ⅱ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_StarExplosion_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Разрывная искра II",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970432,
+  "name": "Tartarus: Blazing Meteor III",
+  "nameCn": "塔罗斯：爆裂燧星Ⅲ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_StarExplosion_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Разрывная искра III",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970440,
+  "name": "Tartarus: Focused Slash I",
+  "nameCn": "塔罗斯：专注斩Ⅰ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_FocusedStrike_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Вердикт ревнителя I",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970441,
+  "name": "Tartarus: Focused Slash II",
+  "nameCn": "塔罗斯：专注斩Ⅱ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_FocusedStrike_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Вердикт ревнителя II",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970442,
+  "name": "Tartarus: Focused Slash III",
+  "nameCn": "塔罗斯：专注斩Ⅲ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_FocusedStrike_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Вердикт ревнителя III",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970450,
+  "name": "Tartarus: Icy Blade I",
+  "nameCn": "塔罗斯：冰凌斩Ⅰ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_FrostSlash_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Ледяной клинок I",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970451,
+  "name": "Tartarus: Icy Blade II",
+  "nameCn": "塔罗斯：冰凌斩Ⅱ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_FrostSlash_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Ледяной клинок II",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970452,
+  "name": "Tartarus: Icy Blade III",
+  "nameCn": "塔罗斯：冰凌斩Ⅲ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_FrostSlash_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Ледяной клинок III",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970480,
+  "name": "Tartarus: Frigid Transmission I",
+  "nameCn": "塔罗斯：寒冰传送Ⅰ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_IceBlink_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Передача холода I",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970481,
+  "name": "Tartarus: Frigid Transmission II",
+  "nameCn": "塔罗斯：寒冰传送Ⅱ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_IceBlink_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Передача холода II",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970482,
+  "name": "Tartarus: Frigid Transmission III",
+  "nameCn": "塔罗斯：寒冰传送Ⅲ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_IceBlink_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Передача холода III",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970490,
+  "name": "Tartarus: Speed Phantom I",
+  "nameCn": "塔罗斯：迅法幻身Ⅰ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_QuicklyPhantom_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Призрачное тело I",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970491,
+  "name": "Tartarus: Speed Phantom II",
+  "nameCn": "塔罗斯：迅法幻身Ⅱ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_QuicklyPhantom_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Призрачное тело II",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970492,
+  "name": "Tartarus: Speed Phantom III",
+  "nameCn": "塔罗斯：迅法幻身Ⅲ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_QuicklyPhantom_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Призрачное тело III",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970500,
+  "name": "Tartarus: Blink I",
+  "nameCn": "塔罗斯：闪现Ⅰ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_Blink_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Мигание I",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970501,
+  "name": "Tartarus: Blink II",
+  "nameCn": "塔罗斯：闪现Ⅱ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_Blink_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Мигание II",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970502,
+  "name": "Tartarus: Blink III",
+  "nameCn": "塔罗斯：闪现Ⅲ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_Blink_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Мигание III",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970510,
+  "name": "Tartarus: Leap Attack I",
+  "nameCn": "塔罗斯：跃击Ⅰ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_Leapslam_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Атака в прыжке I",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970511,
+  "name": "Tartarus: Leap Attack II",
+  "nameCn": "塔罗斯：跃击Ⅱ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_Leapslam_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Атака в прыжке II",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970512,
+  "name": "Tartarus: Leap Attack III",
+  "nameCn": "塔罗斯：跃击Ⅲ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_Leapslam_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Атака в прыжке III",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970520,
+  "name": "Tartarus: Swift Shadow Raid I",
+  "nameCn": "塔罗斯：迅影奔袭Ⅰ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_CutForward_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Стремительная тень I",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970521,
+  "name": "Tartarus: Swift Shadow Raid II",
+  "nameCn": "塔罗斯：迅影奔袭Ⅱ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_CutForward_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Стремительная тень II",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970522,
+  "name": "Tartarus: Swift Shadow Raid III",
+  "nameCn": "塔罗斯：迅影奔袭Ⅲ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_CutForward_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Стремительная тень III",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970530,
+  "name": "Tartarus: Charging Warcry I",
+  "nameCn": "塔罗斯：冲锋战吼Ⅰ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_AncestralCry_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Клич прорыва I",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970531,
+  "name": "Tartarus: Charging Warcry II",
+  "nameCn": "塔罗斯：冲锋战吼Ⅱ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_AncestralCry_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Клич прорыва II",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970532,
+  "name": "Tartarus: Charging Warcry III",
+  "nameCn": "塔罗斯：冲锋战吼Ⅲ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_AncestralCry_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Клич прорыва III",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970540,
+  "name": "Tartarus: Shockwave Warcry I",
+  "nameCn": "塔罗斯：破势战吼Ⅰ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_ComboBattleCry_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Сокрушающий боевой клич I",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970541,
+  "name": "Tartarus: Shockwave Warcry II",
+  "nameCn": "塔罗斯：破势战吼Ⅱ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_ComboBattleCry_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Сокрушающий боевой клич II",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970542,
+  "name": "Tartarus: Shockwave Warcry III",
+  "nameCn": "塔罗斯：破势战吼Ⅲ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_ComboBattleCry_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Сокрушающий боевой клич III",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970550,
+  "name": "Tartarus: Raging Warcry I",
+  "nameCn": "塔罗斯：暴怒战吼Ⅰ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_RageCry_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Клич свирепости I",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970551,
+  "name": "Tartarus: Raging Warcry II",
+  "nameCn": "塔罗斯：暴怒战吼Ⅱ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_RageCry_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Клич свирепости II",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970552,
+  "name": "Tartarus: Raging Warcry III",
+  "nameCn": "塔罗斯：暴怒战吼Ⅲ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_RageCry_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Клич свирепости III",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970560,
+  "name": "Tartarus: Fearless Warcry I",
+  "nameCn": "塔罗斯：狂猛战吼Ⅰ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_WildCry_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Клич бесстрашия I",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970561,
+  "name": "Tartarus: Fearless Warcry II",
+  "nameCn": "塔罗斯：狂猛战吼Ⅱ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_WildCry_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Клич бесстрашия II",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970562,
+  "name": "Tartarus: Fearless Warcry III",
+  "nameCn": "塔罗斯：狂猛战吼Ⅲ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_WildCry_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Клич бесстрашия III",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970570,
+  "name": "Tartarus: Resurrection Warcry I",
+  "nameCn": "塔罗斯：复苏战吼Ⅰ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_Bang_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Клич возрождения I",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970571,
+  "name": "Tartarus: Resurrection Warcry II",
+  "nameCn": "塔罗斯：复苏战吼Ⅱ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_Bang_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Клич возрождения II",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970572,
+  "name": "Tartarus: Resurrection Warcry III",
+  "nameCn": "塔罗斯：复苏战吼Ⅲ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_Bang_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Клич возрождения III",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970590,
+  "name": "Tartarus: Nether Grasp I",
+  "nameCn": "塔罗斯：冥渊之手Ⅰ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_Nethergrasp_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Рука бездны I",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970591,
+  "name": "Tartarus: Nether Grasp II",
+  "nameCn": "塔罗斯：冥渊之手Ⅱ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_Nethergrasp_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Рука бездны II",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970592,
+  "name": "Tartarus: Nether Grasp III",
+  "nameCn": "塔罗斯：冥渊之手Ⅲ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_Nethergrasp_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Рука бездны III",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970600,
+  "name": "Tartarus: Frost Terra I",
+  "nameCn": "塔罗斯：寒霜地面Ⅰ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_IceArea_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Морозный пруд I",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970601,
+  "name": "Tartarus: Frost Terra II",
+  "nameCn": "塔罗斯：寒霜地面Ⅱ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_IceArea_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Морозный пруд II",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970602,
+  "name": "Tartarus: Frost Terra III",
+  "nameCn": "塔罗斯：寒霜地面Ⅲ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_IceArea_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Морозный пруд III",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970610,
+  "name": "Tartarus: Wilt Spike I",
+  "nameCn": "塔罗斯：凋零刺击Ⅰ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_ViperStab_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Шип увядания I",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970611,
+  "name": "Tartarus: Wilt Spike II",
+  "nameCn": "塔罗斯：凋零刺击Ⅱ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_ViperStab_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Шип увядания II",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970612,
+  "name": "Tartarus: Wilt Spike III",
+  "nameCn": "塔罗斯：凋零刺击Ⅲ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_ViperStab_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Шип увядания III",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970620,
+  "name": "Tartarus: Frost Spike I",
+  "nameCn": "塔罗斯：碎冰刺击Ⅰ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_FrostStab_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Морозный шип I",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970621,
+  "name": "Tartarus: Frost Spike II",
+  "nameCn": "塔罗斯：碎冰刺击Ⅱ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_FrostStab_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Морозный шип II",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970622,
+  "name": "Tartarus: Frost Spike III",
+  "nameCn": "塔罗斯：碎冰刺击Ⅲ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_FrostStab_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Морозный шип III",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970640,
+  "name": "Tartarus: Tidewell I",
+  "nameCn": "塔罗斯：潮汐之泉Ⅰ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_Torrent_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Источник приливов I",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970641,
+  "name": "Tartarus: Tidewell II",
+  "nameCn": "塔罗斯：潮汐之泉Ⅱ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_Torrent_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Источник приливов II",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970642,
+  "name": "Tartarus: Tidewell III",
+  "nameCn": "塔罗斯：潮汐之泉Ⅲ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_Torrent_mercenary_Icon_128.webp",
+  "nameRu": "Талос: Источник приливов III",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970650,
+  "name": "Tartarus: Lightning Beam I",
+  "nameCn": "塔罗斯：雷暴射线Ⅰ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_ThunderstormRay_Icon_128.webp",
+  "nameRu": "Талос: Грозовой луч I",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970651,
+  "name": "Tartarus: Lightning Beam II",
+  "nameCn": "塔罗斯：雷暴射线Ⅱ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_ThunderstormRay_Icon_128.webp",
+  "nameRu": "Талос: Грозовой луч II",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970652,
+  "name": "Tartarus: Lightning Beam III",
+  "nameCn": "塔罗斯：雷暴射线Ⅲ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_ThunderstormRay_Icon_128.webp",
+  "nameRu": "Талос: Грозовой луч III",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970660,
+  "name": "Tartarus: Star Stalker I",
+  "nameCn": "塔罗斯：追猎星芒Ⅰ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_FollowStar_mercenary_Icon_128.webp",
+  "nameRu": "Талос: В погоне за звездами I",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970661,
+  "name": "Tartarus: Star Stalker II",
+  "nameCn": "塔罗斯：追猎星芒Ⅱ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_FollowStar_mercenary_Icon_128.webp",
+  "nameRu": "Талос: В погоне за звездами II",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3970662,
+  "name": "Tartarus: Star Stalker III",
+  "nameCn": "塔罗斯：追猎星芒Ⅲ",
+  "type": "Tartarus Skill",
+  "typeCn": "塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_FollowStar_mercenary_Icon_128.webp",
+  "nameRu": "Талос: В погоне за звездами III",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3980000,
+  "name": "Origin Tartarus: Black Hole I",
+  "nameCn": "始源塔罗斯：黑洞Ⅰ",
+  "type": "Origin Tartarus Skill",
+  "typeCn": "始源塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_BlackHole_mercenary_Fuwen_Icon_128.webp",
+  "nameRu": "Изначальный Талос: черная дыра I",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3980001,
+  "name": "Origin Tartarus: Black Hole II",
+  "nameCn": "始源塔罗斯：黑洞Ⅱ",
+  "type": "Origin Tartarus Skill",
+  "typeCn": "始源塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_BlackHole_mercenary_Fuwen_Icon_128.webp",
+  "nameRu": "Изначальный Талос: черная дыра II",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3980002,
+  "name": "Origin Tartarus: Black Hole III",
+  "nameCn": "始源塔罗斯：黑洞Ⅲ",
+  "type": "Origin Tartarus Skill",
+  "typeCn": "始源塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_BlackHole_mercenary_Fuwen_Icon_128.webp",
+  "nameRu": "Изначальный Талос: черная дыра III",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3980010,
+  "name": "Origin Tartarus: Scorching Pulse I",
+  "nameCn": "始源塔罗斯：灼热波纹Ⅰ",
+  "type": "Origin Tartarus Skill",
+  "typeCn": "始源塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_BurningWave_mercenary_Fuwen_Icon_128.webp",
+  "nameRu": "Изначальный Талос: Обжигающий пульс I",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3980011,
+  "name": "Origin Tartarus: Scorching Pulse II",
+  "nameCn": "始源塔罗斯：灼热波纹Ⅱ",
+  "type": "Origin Tartarus Skill",
+  "typeCn": "始源塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_BurningWave_mercenary_Fuwen_Icon_128.webp",
+  "nameRu": "Изначальный Талос: Обжигающий пульс II",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3980012,
+  "name": "Origin Tartarus: Scorching Pulse III",
+  "nameCn": "始源塔罗斯：灼热波纹Ⅲ",
+  "type": "Origin Tartarus Skill",
+  "typeCn": "始源塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_BurningWave_mercenary_Fuwen_Icon_128.webp",
+  "nameRu": "Изначальный Талос: Обжигающий пульс III",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3980050,
+  "name": "Origin Tartarus: Focused Slash I",
+  "nameCn": "始源塔罗斯：专注斩Ⅰ",
+  "type": "Origin Tartarus Skill",
+  "typeCn": "始源塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_FocusedStrike_mercenary_Fuwen_Icon_128.webp",
+  "nameRu": "Изначальный Талос: Вердикт ревнителя I",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3980051,
+  "name": "Origin Tartarus: Focused Slash II",
+  "nameCn": "始源塔罗斯：专注斩Ⅱ",
+  "type": "Origin Tartarus Skill",
+  "typeCn": "始源塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_FocusedStrike_mercenary_Fuwen_Icon_128.webp",
+  "nameRu": "Изначальный Талос: Вердикт ревнителя II",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3980052,
+  "name": "Origin Tartarus: Focused Slash III",
+  "nameCn": "始源塔罗斯：专注斩Ⅲ",
+  "type": "Origin Tartarus Skill",
+  "typeCn": "始源塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_FocusedStrike_mercenary_Fuwen_Icon_128.webp",
+  "nameRu": "Изначальный Талос: Вердикт ревнителя III",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3980060,
+  "name": "Origin Tartarus: Split Firebolt I",
+  "nameCn": "始源塔罗斯：裂变火球Ⅰ",
+  "type": "Origin Tartarus Skill",
+  "typeCn": "始源塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_Fireball_mercenary_Fuwen_Icon_128.webp",
+  "nameRu": "Изначальный Талос: Расколотый огненный шар I",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3980061,
+  "name": "Origin Tartarus: Split Firebolt II",
+  "nameCn": "始源塔罗斯：裂变火球Ⅱ",
+  "type": "Origin Tartarus Skill",
+  "typeCn": "始源塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_Fireball_mercenary_Fuwen_Icon_128.webp",
+  "nameRu": "Изначальный Талос: Расколотый огненный шар II",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3980062,
+  "name": "Origin Tartarus: Split Firebolt III",
+  "nameCn": "始源塔罗斯：裂变火球Ⅲ",
+  "type": "Origin Tartarus Skill",
+  "typeCn": "始源塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_Fireball_mercenary_Fuwen_Icon_128.webp",
+  "nameRu": "Изначальный Талос: Расколотый огненный шар III",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3980070,
+  "name": "Origin Tartarus: Berserking Blade I",
+  "nameCn": "始源塔罗斯：暴走巨刃Ⅰ",
+  "type": "Origin Tartarus Skill",
+  "typeCn": "始源塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_ViolentSweep_mercenary_Fuwen_Icon_128.webp",
+  "nameRu": "Изначальный Талос: Клинок неистовства I",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3980071,
+  "name": "Origin Tartarus: Berserking Blade II",
+  "nameCn": "始源塔罗斯：暴走巨刃Ⅱ",
+  "type": "Origin Tartarus Skill",
+  "typeCn": "始源塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_ViolentSweep_mercenary_Fuwen_Icon_128.webp",
+  "nameRu": "Изначальный Талос: Клинок неистовства II",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3980072,
+  "name": "Origin Tartarus: Berserking Blade III",
+  "nameCn": "始源塔罗斯：暴走巨刃Ⅲ",
+  "type": "Origin Tartarus Skill",
+  "typeCn": "始源塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_ViolentSweep_mercenary_Fuwen_Icon_128.webp",
+  "nameRu": "Изначальный Талос: Клинок неистовства III",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3980080,
+  "name": "Origin Tartarus: Shackles of Malice I",
+  "nameCn": "始源塔罗斯：恶意枷锁Ⅰ",
+  "type": "Origin Tartarus Skill",
+  "typeCn": "始源塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_EvilChain_mercenary_Fuwen_Icon_128.webp",
+  "nameRu": "Изначальный Талос: Оковы порока I",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3980081,
+  "name": "Origin Tartarus: Shackles of Malice II",
+  "nameCn": "始源塔罗斯：恶意枷锁Ⅱ",
+  "type": "Origin Tartarus Skill",
+  "typeCn": "始源塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_EvilChain_mercenary_Fuwen_Icon_128.webp",
+  "nameRu": "Изначальный Талос: Оковы порока II",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3980082,
+  "name": "Origin Tartarus: Shackles of Malice III",
+  "nameCn": "始源塔罗斯：恶意枷锁Ⅲ",
+  "type": "Origin Tartarus Skill",
+  "typeCn": "始源塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_EvilChain_mercenary_Fuwen_Icon_128.webp",
+  "nameRu": "Изначальный Талос: Оковы порока III",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3980090,
+  "name": "Origin Tartarus: Thunder Slash I",
+  "nameCn": "始源塔罗斯：雷影斩Ⅰ",
+  "type": "Origin Tartarus Skill",
+  "typeCn": "始源塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_ThunderSlash_mercenary_Fuwen_Icon_128.webp",
+  "nameRu": "Изначальный Талос: Грозовое рассечение I",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3980091,
+  "name": "Origin Tartarus: Thunder Slash II",
+  "nameCn": "始源塔罗斯：雷影斩Ⅱ",
+  "type": "Origin Tartarus Skill",
+  "typeCn": "始源塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_ThunderSlash_mercenary_Fuwen_Icon_128.webp",
+  "nameRu": "Изначальный Талос: Грозовое рассечение II",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3980092,
+  "name": "Origin Tartarus: Thunder Slash III",
+  "nameCn": "始源塔罗斯：雷影斩Ⅲ",
+  "type": "Origin Tartarus Skill",
+  "typeCn": "始源塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_ThunderSlash_mercenary_Fuwen_Icon_128.webp",
+  "nameRu": "Изначальный Талос: Грозовое рассечение III",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3980100,
+  "name": "Origin Tartarus: Frost Spike I",
+  "nameCn": "始源塔罗斯：碎冰刺击Ⅰ",
+  "type": "Origin Tartarus Skill",
+  "typeCn": "始源塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_FrostStab_mercenary_Fuwen_Icon_128.webp",
+  "nameRu": "Изначальный Талос: Морозный шип I",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3980101,
+  "name": "Origin Tartarus: Frost Spike II",
+  "nameCn": "始源塔罗斯：碎冰刺击Ⅱ",
+  "type": "Origin Tartarus Skill",
+  "typeCn": "始源塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_FrostStab_mercenary_Fuwen_Icon_128.webp",
+  "nameRu": "Изначальный Талос: Морозный шип II",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3980102,
+  "name": "Origin Tartarus: Frost Spike III",
+  "nameCn": "始源塔罗斯：碎冰刺击Ⅲ",
+  "type": "Origin Tartarus Skill",
+  "typeCn": "始源塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_FrostStab_mercenary_Fuwen_Icon_128.webp",
+  "nameRu": "Изначальный Талос: Морозный шип III",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3980110,
+  "name": "Origin Tartarus: Ice Shot I",
+  "nameCn": "始源塔罗斯：寒冰射击Ⅰ",
+  "type": "Origin Tartarus Skill",
+  "typeCn": "始源塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_Iceshot_mercenary_Fuwen_Icon_128.webp",
+  "nameRu": "Изначальный Талос: Выстрел льда I",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3980111,
+  "name": "Origin Tartarus: Ice Shot II",
+  "nameCn": "始源塔罗斯：寒冰射击Ⅱ",
+  "type": "Origin Tartarus Skill",
+  "typeCn": "始源塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_Iceshot_mercenary_Fuwen_Icon_128.webp",
+  "nameRu": "Изначальный Талос: Выстрел льда II",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3980112,
+  "name": "Origin Tartarus: Ice Shot III",
+  "nameCn": "始源塔罗斯：寒冰射击Ⅲ",
+  "type": "Origin Tartarus Skill",
+  "typeCn": "始源塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_Iceshot_mercenary_Fuwen_Icon_128.webp",
+  "nameRu": "Изначальный Талос: Выстрел льда III",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3980130,
+  "name": "Origin Tartarus: Fearless Warcry I",
+  "nameCn": "始源塔罗斯：狂猛战吼Ⅰ",
+  "type": "Origin Tartarus Skill",
+  "typeCn": "始源塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_WildCry_mercenary_Fuwen_Icon_128.webp",
+  "nameRu": "Изначальный Талос: Клич бесстрашия I",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3980131,
+  "name": "Origin Tartarus: Fearless Warcry II",
+  "nameCn": "始源塔罗斯：狂猛战吼Ⅱ",
+  "type": "Origin Tartarus Skill",
+  "typeCn": "始源塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_WildCry_mercenary_Fuwen_Icon_128.webp",
+  "nameRu": "Изначальный Талос: Клич бесстрашия II",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3980132,
+  "name": "Origin Tartarus: Fearless Warcry III",
+  "nameCn": "始源塔罗斯：狂猛战吼Ⅲ",
+  "type": "Origin Tartarus Skill",
+  "typeCn": "始源塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_WildCry_mercenary_Fuwen_Icon_128.webp",
+  "nameRu": "Изначальный Талос: Клич бесстрашия III",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3980140,
+  "name": "Origin Tartarus: Raging Warcry I",
+  "nameCn": "始源塔罗斯：暴怒战吼Ⅰ",
+  "type": "Origin Tartarus Skill",
+  "typeCn": "始源塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_RageCry_mercenary_Fuwen_Icon_128.webp",
+  "nameRu": "Изначальный Талос: Клич свирепости I",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3980141,
+  "name": "Origin Tartarus: Raging Warcry II",
+  "nameCn": "始源塔罗斯：暴怒战吼Ⅱ",
+  "type": "Origin Tartarus Skill",
+  "typeCn": "始源塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_RageCry_mercenary_Fuwen_Icon_128.webp",
+  "nameRu": "Изначальный Талос: Клич свирепости II",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3980142,
+  "name": "Origin Tartarus: Raging Warcry III",
+  "nameCn": "始源塔罗斯：暴怒战吼Ⅲ",
+  "type": "Origin Tartarus Skill",
+  "typeCn": "始源塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_RageCry_mercenary_Fuwen_Icon_128.webp",
+  "nameRu": "Изначальный Талос: Клич свирепости III",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3980150,
+  "name": "Origin Tartarus: Arcane Circle I",
+  "nameCn": "始源塔罗斯：秘法阵Ⅰ",
+  "type": "Origin Tartarus Skill",
+  "typeCn": "始源塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_SoulStealArea_mercenary_Fuwen_Icon_128.webp",
+  "nameRu": "Изначальный Талос: Круг арканы I",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3980151,
+  "name": "Origin Tartarus: Arcane Circle II",
+  "nameCn": "始源塔罗斯：秘法阵Ⅱ",
+  "type": "Origin Tartarus Skill",
+  "typeCn": "始源塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_SoulStealArea_mercenary_Fuwen_Icon_128.webp",
+  "nameRu": "Изначальный Талос: Круг арканы II",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3980152,
+  "name": "Origin Tartarus: Arcane Circle III",
+  "nameCn": "始源塔罗斯：秘法阵Ⅲ",
+  "type": "Origin Tartarus Skill",
+  "typeCn": "始源塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_SoulStealArea_mercenary_Fuwen_Icon_128.webp",
+  "nameRu": "Изначальный Талос: Круг арканы III",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3980160,
+  "name": "Origin Tartarus: Flame Core I",
+  "nameCn": "始源塔罗斯：聚焰之核Ⅰ",
+  "type": "Origin Tartarus Skill",
+  "typeCn": "始源塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_FirePile_mercenary_Fuwen_Icon_128.webp",
+  "nameRu": "Изначальный Талос: Ядро пламени I",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3980161,
+  "name": "Origin Tartarus: Flame Core II",
+  "nameCn": "始源塔罗斯：聚焰之核Ⅱ",
+  "type": "Origin Tartarus Skill",
+  "typeCn": "始源塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_FirePile_mercenary_Fuwen_Icon_128.webp",
+  "nameRu": "Изначальный Талос: Ядро пламени II",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3980162,
+  "name": "Origin Tartarus: Flame Core III",
+  "nameCn": "始源塔罗斯：聚焰之核Ⅲ",
+  "type": "Origin Tartarus Skill",
+  "typeCn": "始源塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_FirePile_mercenary_Fuwen_Icon_128.webp",
+  "nameRu": "Изначальный Талос: Ядро пламени III",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3980170,
+  "name": "Origin Tartarus: Shadow Dash I",
+  "nameCn": "始源塔罗斯：暗影冲刺Ⅰ",
+  "type": "Origin Tartarus Skill",
+  "typeCn": "始源塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_ShadowDash_mercenary_Fuwen_Icon_128.webp",
+  "nameRu": "Изначальный Талос: Теневой бросок I",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3980171,
+  "name": "Origin Tartarus: Shadow Dash II",
+  "nameCn": "始源塔罗斯：暗影冲刺Ⅱ",
+  "type": "Origin Tartarus Skill",
+  "typeCn": "始源塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_ShadowDash_mercenary_Fuwen_Icon_128.webp",
+  "nameRu": "Изначальный Талос: Теневой бросок II",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3980172,
+  "name": "Origin Tartarus: Shadow Dash III",
+  "nameCn": "始源塔罗斯：暗影冲刺Ⅲ",
+  "type": "Origin Tartarus Skill",
+  "typeCn": "始源塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_ShadowDash_mercenary_Fuwen_Icon_128.webp",
+  "nameRu": "Изначальный Талос: Теневой бросок III",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3980180,
+  "name": "Origin Tartarus: Safeguard Ring I",
+  "nameCn": "始源塔罗斯：绝境阵Ⅰ",
+  "type": "Origin Tartarus Skill",
+  "typeCn": "始源塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_DesperateFormation_mercenary_Fuwen_Icon_128.webp",
+  "nameRu": "Изначальный Талос: Кольцо-оберег I",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3980181,
+  "name": "Origin Tartarus: Safeguard Ring II",
+  "nameCn": "始源塔罗斯：绝境阵Ⅱ",
+  "type": "Origin Tartarus Skill",
+  "typeCn": "始源塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_DesperateFormation_mercenary_Fuwen_Icon_128.webp",
+  "nameRu": "Изначальный Талос: Кольцо-оберег II",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3980182,
+  "name": "Origin Tartarus: Safeguard Ring III",
+  "nameCn": "始源塔罗斯：绝境阵Ⅲ",
+  "type": "Origin Tartarus Skill",
+  "typeCn": "始源塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_DesperateFormation_mercenary_Fuwen_Icon_128.webp",
+  "nameRu": "Изначальный Талос: Кольцо-оберег III",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3980190,
+  "name": "Origin Tartarus: Bond of Archery I",
+  "nameCn": "始源塔罗斯：射术羁绊Ⅰ",
+  "type": "Origin Tartarus Skill",
+  "typeCn": "始源塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_ShootFetters_mercenary_Fuwen_Icon_128.webp",
+  "nameRu": "Изначальный Талос: узы лучника I",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3980191,
+  "name": "Origin Tartarus: Bond of Archery II",
+  "nameCn": "始源塔罗斯：射术羁绊Ⅱ",
+  "type": "Origin Tartarus Skill",
+  "typeCn": "始源塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_ShootFetters_mercenary_Fuwen_Icon_128.webp",
+  "nameRu": "Изначальный Талос: узы лучника II",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3980192,
+  "name": "Origin Tartarus: Bond of Archery III",
+  "nameCn": "始源塔罗斯：射术羁绊Ⅲ",
+  "type": "Origin Tartarus Skill",
+  "typeCn": "始源塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_ShootFetters_mercenary_Fuwen_Icon_128.webp",
+  "nameRu": "Изначальный Талос: узы лучника III",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3980210,
+  "name": "Origin Tartarus: Frost Shield I",
+  "nameCn": "始源塔罗斯：寒冰盾Ⅰ",
+  "type": "Origin Tartarus Skill",
+  "typeCn": "始源塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_IceShield_mercenary_Fuwen_Icon_128.webp",
+  "nameRu": "Изначальный Талос: морозный щит I",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3980211,
+  "name": "Origin Tartarus: Frost Shield II",
+  "nameCn": "始源塔罗斯：寒冰盾Ⅱ",
+  "type": "Origin Tartarus Skill",
+  "typeCn": "始源塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_IceShield_mercenary_Fuwen_Icon_128.webp",
+  "nameRu": "Изначальный Талос: морозный щит II",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3980212,
+  "name": "Origin Tartarus: Frost Shield III",
+  "nameCn": "始源塔罗斯：寒冰盾Ⅲ",
+  "type": "Origin Tartarus Skill",
+  "typeCn": "始源塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_IceShield_mercenary_Fuwen_Icon_128.webp",
+  "nameRu": "Изначальный Талос: морозный щит III",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3980220,
+  "name": "Origin Tartarus: Spiral Strike I",
+  "nameCn": "始源塔罗斯：螺旋击Ⅰ",
+  "type": "Origin Tartarus Skill",
+  "typeCn": "始源塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_WhirlingBlade_mercenary_Fuwen_Icon_128.webp",
+  "nameRu": "Изначальный Талос: Спиральный удар I",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3980221,
+  "name": "Origin Tartarus: Spiral Strike II",
+  "nameCn": "始源塔罗斯：螺旋击Ⅱ",
+  "type": "Origin Tartarus Skill",
+  "typeCn": "始源塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_WhirlingBlade_mercenary_Fuwen_Icon_128.webp",
+  "nameRu": "Изначальный Талос: Спиральный удар II",
+  "typeRu": "Навык"
+ },
+ {
+  "id": 3980222,
+  "name": "Origin Tartarus: Spiral Strike III",
+  "nameCn": "始源塔罗斯：螺旋击Ⅲ",
+  "type": "Origin Tartarus Skill",
+  "typeCn": "始源塔罗斯技能",
+  "icon": "https://cdn.tlidb.com/UI/Textures/Common/Icon/Skill/CommonSkill/128/UI_Skill_WhirlingBlade_mercenary_Fuwen_Icon_128.webp",
+  "nameRu": "Изначальный Талос: Спиральный удар III",
+  "typeRu": "Навык"
  }
 ]

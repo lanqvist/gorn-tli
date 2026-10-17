@@ -3,6 +3,7 @@ import { createInterface } from 'node:readline';
 
 import { EventParser } from './eventParser.js';
 import { InventoryTracker, type SlotState } from './inventory.js';
+import type { MapKeyLookup } from './patterns.js';
 import { RunSegmenter } from './runSegmenter.js';
 import { TradeLedger } from './trade.js';
 import {
@@ -47,10 +48,18 @@ function emptyDiagnostics(): Diagnostics {
  * Используется и для ретро-скана уже накопленных логов (мгновенная история
  * при первом запуске), и как эталон для тестов на реальных фикстурах.
  */
-export async function analyzeLogFile(path: string): Promise<AnalysisResult> {
+export interface AnalyzeOptions {
+  /** Ключ ли предмет от карты — из справочника. Без него сезонные компасы не видны как вложения. */
+  isMapKey?: MapKeyLookup;
+}
+
+export async function analyzeLogFile(
+  path: string,
+  options: AnalyzeOptions = {},
+): Promise<AnalysisResult> {
   const diagnostics = emptyDiagnostics();
   const parser = new EventParser();
-  const inventory = new InventoryTracker(diagnostics);
+  const inventory = new InventoryTracker(diagnostics, options.isMapKey);
   const segmenter = new RunSegmenter();
   const trade = new TradeLedger();
   const prices: PriceObservationEvent[] = [];
@@ -136,6 +145,7 @@ export async function analyzeLogFile(path: string): Promise<AnalysisResult> {
         players.set(ev.playerId, mergePlayerInfo(players.get(ev.playerId), ev));
         lastPlayerId = ev.playerId;
         segmenter.setPlayer(ev.playerId);
+        if (ev.seasonId !== undefined) segmenter.setSeason(ev.seasonId);
         break;
 
       default:

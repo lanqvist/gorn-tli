@@ -60,6 +60,8 @@ interface CatalogueItem {
   id: number;
   name: string;
   nameRu: string | null;
+  /** Тип по-китайски — по нему ядро узнаёт ключи от карт. */
+  typeCn: string | null;
   icon: string | null;
 }
 
@@ -211,6 +213,7 @@ app.whenReady().then(async () => {
   engine = new Engine(app.getPath('userData'), items, settings.itemNames, {
     communityPrices: settings.communityPrices,
     playerFilter: settings.playerFilter,
+    allSeasons: settings.allSeasons,
     excludedItems: settings.excludedItems,
     minDropFe: settings.minDropFe,
   });
@@ -305,12 +308,18 @@ app.whenReady().then(async () => {
     return v;
   });
 
-  // Фильтр по персонажу. null — показывать всех.
-  ipcMain.handle('settings:setPlayerFilter', (_e, playerId: string | null) => {
-    settings?.setPlayerFilter(playerId);
-    engine?.setPlayerFilter(playerId);
-    return playerId;
-  });
+  // Чьи забеги показывать: персонаж (null — все) и все ли сезоны.
+  ipcMain.handle(
+    'settings:setRunScope',
+    (_e, scope: { playerId: string | null; allSeasons: boolean }) => {
+      const next = {
+        playerId: typeof scope?.playerId === 'string' ? scope.playerId : null,
+        allSeasons: scope?.allSeasons === true,
+      };
+      settings?.setRunScope(next);
+      engine?.setRunScope(next);
+    },
+  );
 
   ipcMain.handle('update:get', () => updater?.current ?? null);
   ipcMain.handle('update:download', () => updater?.download());

@@ -17,6 +17,7 @@ import {
   formatDuration,
   formatNumber,
 } from '../core/format.js';
+import { isMapKeyType } from '../core/patterns.js';
 import { pluralize, RUN } from '../core/plural.js';
 import { perHour, summarize } from '../core/stats.js';
 import { FE_ID, type ConfigBaseId, type Run } from '../core/types.js';
@@ -24,6 +25,7 @@ import { FE_ID, type ConfigBaseId, type Run } from '../core/types.js';
 interface ItemInfo {
   name: string;
   type: string;
+  typeCn: string | null;
 }
 
 function loadItems(): Map<ConfigBaseId, ItemInfo> {
@@ -34,8 +36,9 @@ function loadItems(): Map<ConfigBaseId, ItemInfo> {
       id: string | number;
       name: string;
       type: string;
+      typeCn?: string | null;
     }>) {
-      out.set(Number(it.id), { name: it.name, type: it.type });
+      out.set(Number(it.id), { name: it.name, type: it.type, typeCn: it.typeCn ?? null });
     }
   } catch {
     // Справочник необязателен: без него показываем сырые id.
@@ -58,7 +61,9 @@ async function main(): Promise<void> {
 
   const items = loadItems();
   const started = Date.now();
-  const result = await analyzeLogFile(path);
+  const result = await analyzeLogFile(path, {
+    isMapKey: (id) => isMapKeyType(items.get(id)?.typeCn),
+  });
   const elapsed = Date.now() - started;
 
   const farming = result.runs.filter((r) => !r.isHub && r.durationMs !== null);

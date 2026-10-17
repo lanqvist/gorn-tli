@@ -100,7 +100,7 @@ function CopyProtosReport({ snapshot }: { snapshot: Snapshot }) {
   }, [copied]);
 
   const report = [
-    `Незнакомые операции в логе (сезон ${snapshot.seasonId ?? '?'}):`,
+    `Незнакомые операции в логе (${snapshot.seasonName ?? 'сезон ?'}, SeasonId ${snapshot.seasonId ?? '?'}):`,
     ...snapshot.diagnostics.unknownProtos.map(([p, n]) => `- ${p} ×${n}`),
   ].join('\n');
 
