@@ -319,7 +319,7 @@ function bestowValue(): number {
 
 function instigateValue(): number {
   let free = 0;
-  for (let c = 1; c < CELLS; c++) if (m[LOCK + c] === 1 && m[EVT + c] === 0) free++;
+  for (let c = 1; c < CELLS; c++) if (m[EVT + c] === 0) free++;
   return Math.min(P.instigateDoors, free) * W[W_INSTIGATE]!;
 }
 
