@@ -31,10 +31,19 @@ const preloadCtx = await context({
   format: 'cjs',
 });
 
+const prisonCtx = await context({
+  ...common,
+  entryPoints: ['src/main/prison/worker.ts'],
+  outfile: 'dist/main/prisonWorker.cjs',
+  format: 'cjs',
+});
+
 await mainCtx.rebuild();
 await preloadCtx.rebuild();
+await prisonCtx.rebuild();
 await mainCtx.watch();
 await preloadCtx.watch();
+await prisonCtx.watch();
 
 const server = await createServer();
 await server.listen();
@@ -49,7 +58,7 @@ const child = spawn(electronPath, ['dist/main/index.js'], {
 });
 
 const shutdown = async () => {
-  await Promise.all([mainCtx.dispose(), preloadCtx.dispose(), server.close()]);
+  await Promise.all([mainCtx.dispose(), preloadCtx.dispose(), prisonCtx.dispose(), server.close()]);
   process.exit(0);
 };
 

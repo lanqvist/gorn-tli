@@ -9,7 +9,7 @@ import {
   shell,
   Tray,
 } from 'electron';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -20,6 +20,7 @@ import { DebugSink } from './debug.js';
 import { Engine, type Snapshot } from './engine.js';
 import { IconCache, registerIconScheme } from './icons.js';
 import { Overlay, prefsPayload } from './overlay.js';
+import { PrisonAssist } from './prison/assist.js';
 import { SettingsStore, type NameLanguage, type OverlayMode } from './settings.js';
 import { ToastLayer } from './toastLayer.js';
 import { Updater, type UpdateState } from './updater.js';
@@ -54,6 +55,7 @@ let debugSink: DebugSink | null = null;
 let updater: Updater | null = null;
 let icons: IconCache | null = null;
 let tray: Tray | null = null;
+let prison: PrisonAssist | null = null;
 /** Выход по-настоящему: отличает «закрыть в трей» от завершения приложения. */
 let quitting = false;
 
@@ -95,6 +97,15 @@ function loadMaps(): MapCatalogue | null {
     }
   }
   return null;
+}
+
+/**
+ * Код «Tartarus Simulator» для подсказок в тюрьме: в разработке — из
+ * vendor/tartarus в корне проекта, в сборке — из ресурсов.
+ */
+function vendorDir(): string {
+  const dev = join(__dirname, '../../vendor/tartarus');
+  return existsSync(join(dev, 'advisor.js')) ? dev : join(process.resourcesPath ?? '', 'vendor/tartarus');
 }
 
 function createWindow(): void {
@@ -261,6 +272,10 @@ app.whenReady().then(async () => {
     toastLayer?.send('snapshot', snapshot);
     debugSink?.record(snapshot);
   });
+  prison = new PrisonAssist({ worker: join(__dirname, 'prisonWorker.cjs'), vendor: vendorDir() });
+  prison.setEnabled(settings.prisonHints);
+  engine.on('lines', (lines: string[]) => prison?.onLines(lines));
+
   engine.on('error', (err: Error) => {
     console.error('[движок]', err.message);
   });
@@ -373,6 +388,13 @@ app.whenReady().then(async () => {
   ipcMain.handle('settings:setCommunityPrices', (_e, enabled: boolean) => {
     settings?.setCommunityPrices(enabled);
     engine?.setCommunityPrices(enabled);
+    return enabled;
+  });
+
+  ipcMain.handle('settings:prisonHints', () => settings?.prisonHints ?? false);
+  ipcMain.handle('settings:setPrisonHints', (_e, enabled: boolean) => {
+    settings?.setPrisonHints(enabled);
+    prison?.setEnabled(enabled);
     return enabled;
   });
 
@@ -584,6 +606,8 @@ function registerShortcuts(): void {
     ['Control+Alt+G', () => overlay?.toggle()],
     ['Control+Alt+L', () => overlay?.toggleLocked()],
     ['Control+Alt+M', () => overlay?.cycleMode()],
+    // Подсказка в тюрьме вручную: если автоматический снимок не сработал.
+    ['Control+Alt+P', () => prison?.captureNow()],
   ];
 
   for (const [accelerator, handler] of bindings) {
@@ -597,6 +621,7 @@ function registerShortcuts(): void {
 
 app.on('will-quit', () => {
   globalShortcut.unregisterAll();
+  prison?.dispose();
 });
 
 app.on('window-all-closed', () => {

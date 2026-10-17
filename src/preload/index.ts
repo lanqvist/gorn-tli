@@ -90,6 +90,22 @@ contextBridge.exposeInMainWorld('gorn', {
   setCommunityPrices: (enabled: boolean) =>
     ipcRenderer.invoke('settings:setCommunityPrices', enabled),
 
+  /** Подсказки в сезонной тюрьме: включение и окно стрелок. */
+  getPrisonHints: () => ipcRenderer.invoke('settings:prisonHints'),
+  setPrisonHints: (enabled: boolean) => ipcRenderer.invoke('settings:setPrisonHints', enabled),
+  prison: {
+    onHint: (callback: (hint: unknown) => void) => {
+      const handler = (_e: unknown, hint: unknown) => callback(hint);
+      ipcRenderer.on('prison:hint', handler);
+      return () => ipcRenderer.removeListener('prison:hint', handler);
+    },
+    onSettled: (callback: (live: boolean) => void) => {
+      const handler = (_e: unknown, live: boolean) => callback(live);
+      ipcRenderer.on('prison:settled', handler);
+      return () => ipcRenderer.removeListener('prison:settled', handler);
+    },
+  },
+
   /** Слой всплывающего дохода у центра экрана. */
   toasts: {
     reportHeight: (height: number) => ipcRenderer.send('toasts:height', height),

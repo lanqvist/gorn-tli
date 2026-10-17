@@ -563,7 +563,12 @@ export class Engine extends EventEmitter {
       // Продолжаем ровно с того байта, где закончился ретро-скан: щель
       // между сканом и стартом дочитывания иначе теряет строки.
       ...(currentLog ? { initialPosition: currentLog.position } : {}),
-      onLines: (lines) => this.consume(lines),
+      onLines: (lines) => {
+        this.consume(lines);
+        // Сырые строки — для подсказок в тюрьме: им нужны строки интерфейса
+        // (S16Board…), которые разбор валюты пропускает.
+        this.emit('lines', lines);
+      },
       onRotate: () => this.onLogRotate(),
       onError: (err) => this.emit('error', err),
     });

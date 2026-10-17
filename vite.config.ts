@@ -26,6 +26,7 @@ export default defineConfig({
         index: resolve(import.meta.dirname, 'src/renderer/index.html'),
         overlay: resolve(import.meta.dirname, 'src/renderer/overlay.html'),
         toasts: resolve(import.meta.dirname, 'src/renderer/toasts.html'),
+        prison: resolve(import.meta.dirname, 'src/renderer/prison.html'),
       },
     },
   },

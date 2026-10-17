@@ -29,6 +29,12 @@ export interface Settings {
    */
   communityPrices: boolean;
   /**
+   * Подсказки в сезонной тюрьме: снимки окна игры по строкам лога и стрелки
+   * поверх игры. Выключено по умолчанию — это единственное место, где
+   * трекер смотрит на экран, а не только в лог.
+   */
+  prisonHints: boolean;
+  /**
    * Папка логов, указанная вручную. null — автопоиск по Steam-библиотекам.
    * Ручной путь нужен не-Steam установкам и нестандартным дискам.
    */
@@ -87,6 +93,7 @@ const DEFAULTS: Settings = {
   uiLanguage: 'ru',
   itemNames: 'ru',
   communityPrices: true,
+  prisonHints: false,
   logDir: null,
   playerFilter: null,
   allSeasons: false,
@@ -155,6 +162,7 @@ export class SettingsStore {
         uiLanguage: isUiLanguage(raw.settings.uiLanguage) ? raw.settings.uiLanguage : 'ru',
         itemNames: raw.settings.itemNames ?? DEFAULTS.itemNames,
         communityPrices: raw.settings.communityPrices ?? DEFAULTS.communityPrices,
+        prisonHints: raw.settings.prisonHints === true,
         logDir: raw.settings.logDir ?? DEFAULTS.logDir,
         playerFilter: raw.settings.playerFilter ?? DEFAULTS.playerFilter,
         allSeasons: raw.settings.allSeasons === true,
@@ -203,6 +211,15 @@ export class SettingsStore {
 
   setCommunityPrices(enabled: boolean): void {
     this.data.communityPrices = enabled;
+    this.save();
+  }
+
+  get prisonHints(): boolean {
+    return this.data.prisonHints;
+  }
+
+  setPrisonHints(enabled: boolean): void {
+    this.data.prisonHints = enabled;
     this.save();
   }
 

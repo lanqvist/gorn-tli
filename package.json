@@ -53,6 +53,10 @@
       {
         "from": "build/icon.ico",
         "to": "icon.ico"
+      },
+      {
+        "from": "vendor/tartarus",
+        "to": "vendor/tartarus"
       }
     ],
     "win": {

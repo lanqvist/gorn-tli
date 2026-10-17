@@ -92,6 +92,12 @@ declare global {
       install: () => void;
       onState: (cb: (state: UpdateState) => void) => () => void;
     };
+    getPrisonHints: () => Promise<boolean>;
+    setPrisonHints: (enabled: boolean) => Promise<boolean>;
+    prison: {
+      onHint: (cb: (hint: GornPrisonHint | null) => void) => () => void;
+      onSettled: (cb: (live: boolean) => void) => () => void;
+    };
     settings: {
       get: () => Promise<GornAppSettings>;
       setCloseToTray: (enabled: boolean) => Promise<boolean>;
@@ -100,6 +106,15 @@ declare global {
       resetLogDir: () => Promise<GornLogDirResult>;
       relaunch: () => void;
     };
+  }
+
+  /** Подсказка в тюрьме в координатах окна стрелок (см. main/prison/arrowLayer.ts). */
+  interface GornPrisonHint {
+    text: string;
+    marks: Array<{ kind: 'arrow'; from: number[]; to: number[] } | { kind: 'ring'; at: number[]; r: number } | { kind: 'box'; box: number[] }>;
+    live: boolean;
+    phase: 'instant' | 'final';
+    anchor: number[];
   }
 
   interface GornAppSettings {

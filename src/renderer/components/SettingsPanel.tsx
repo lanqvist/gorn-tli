@@ -129,6 +129,7 @@ export function SettingsPanel({
   });
   const [sys, setSys] = useState<GornAppSettings | null>(null);
   const [community, setCommunity] = useState(true);
+  const [prisonHints, setPrisonHints] = useState(false);
   const [logDirNote, setLogDirNote] = useState<string | null>(null);
   const [needsRestart, setNeedsRestart] = useState(false);
   const [updState, setUpdState] = useState<UpdateState | null>(null);
@@ -155,6 +156,7 @@ export function SettingsPanel({
     });
     refreshSys();
     void window.gorn.getCommunityPrices().then(setCommunity);
+    void window.gorn.getPrisonHints().then(setPrisonHints);
     return window.gorn.update.onState(setUpdState);
   }, []);
 
@@ -401,6 +403,34 @@ export function SettingsPanel({
             {tr(
               'Не видно оверлея в игре? Переключите её в безрамочный режим — эксклюзивный полный экран перекрыть нельзя.',
               'Overlay not showing in game? Switch the game to borderless mode — nothing can draw over exclusive fullscreen.',
+            )}
+          </p>
+        </section>
+
+        <section className="set-section">
+          <h3>{tr('Подсказки в тюрьме', 'Prison hints')}</h3>
+          <label className="set-row">
+            <span
+              title={tr(
+                'В сезонной тюрьме (Тюрьма Талоса) рисует поверх игры стрелку к лучшему ходу. Ходы делаете вы сами.',
+                'In the season prison (Tartarus) draws an arrow to the best move over the game. You make the moves yourself.',
+              )}
+            >
+              {tr('Стрелки к лучшему ходу', 'Arrows to the best move')}
+            </span>
+            <input
+              type="checkbox"
+              checked={prisonHints}
+              onChange={(e) => {
+                setPrisonHints(e.target.checked);
+                void window.gorn?.setPrisonHints(e.target.checked);
+              }}
+            />
+          </label>
+          <p className="muted small">
+            {tr(
+              'Единственная функция Горна, которая смотрит на экран: в тюрьме по строкам лога снимается окно игры, распознаётся доска и считается ход. Снимки не сохраняются и никуда не уходят. Нужен режим «окно без рамки» на весь монитор. Ctrl+Alt+P — снять кадр вручную.',
+              'The one Gorn feature that looks at the screen: in the prison the game window is captured on log lines, the board is read and a move is worked out. Captures are not saved or sent anywhere. Needs borderless fullscreen. Ctrl+Alt+P captures by hand.',
             )}
           </p>
         </section>
