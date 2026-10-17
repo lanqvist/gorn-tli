@@ -93,6 +93,9 @@ contextBridge.exposeInMainWorld('gorn', {
   /** Подсказки в сезонной тюрьме: включение и окно стрелок. */
   getPrisonHints: () => ipcRenderer.invoke('settings:prisonHints'),
   setPrisonHints: (enabled: boolean) => ipcRenderer.invoke('settings:setPrisonHints', enabled),
+  getPrisonSaveShots: () => ipcRenderer.invoke('settings:prisonSaveShots'),
+  setPrisonSaveShots: (enabled: boolean) => ipcRenderer.invoke('settings:setPrisonSaveShots', enabled),
+  openPrisonShots: () => ipcRenderer.invoke('settings:openPrisonShots'),
   prison: {
     onHint: (callback: (hint: unknown) => void) => {
       const handler = (_e: unknown, hint: unknown) => callback(hint);

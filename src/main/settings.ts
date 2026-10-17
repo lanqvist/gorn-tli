@@ -35,6 +35,11 @@ export interface Settings {
    */
   prisonHints: boolean;
   /**
+   * Сохранять кадры тюрьмы (PNG и что по ним понято) в «Изображения»:
+   * для разбора ошибок распознавания. Выключено по умолчанию.
+   */
+  prisonSaveShots: boolean;
+  /**
    * Папка логов, указанная вручную. null — автопоиск по Steam-библиотекам.
    * Ручной путь нужен не-Steam установкам и нестандартным дискам.
    */
@@ -94,6 +99,7 @@ const DEFAULTS: Settings = {
   itemNames: 'ru',
   communityPrices: true,
   prisonHints: false,
+  prisonSaveShots: false,
   logDir: null,
   playerFilter: null,
   allSeasons: false,
@@ -163,6 +169,7 @@ export class SettingsStore {
         itemNames: raw.settings.itemNames ?? DEFAULTS.itemNames,
         communityPrices: raw.settings.communityPrices ?? DEFAULTS.communityPrices,
         prisonHints: raw.settings.prisonHints === true,
+        prisonSaveShots: raw.settings.prisonSaveShots === true,
         logDir: raw.settings.logDir ?? DEFAULTS.logDir,
         playerFilter: raw.settings.playerFilter ?? DEFAULTS.playerFilter,
         allSeasons: raw.settings.allSeasons === true,
@@ -220,6 +227,15 @@ export class SettingsStore {
 
   setPrisonHints(enabled: boolean): void {
     this.data.prisonHints = enabled;
+    this.save();
+  }
+
+  get prisonSaveShots(): boolean {
+    return this.data.prisonSaveShots;
+  }
+
+  setPrisonSaveShots(enabled: boolean): void {
+    this.data.prisonSaveShots = enabled;
     this.save();
   }
 

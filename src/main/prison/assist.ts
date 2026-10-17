@@ -1,6 +1,7 @@
 import { desktopCapturer, screen, type Display } from 'electron';
 import { Worker } from 'node:worker_threads';
 import { existsSync } from 'node:fs';
+import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import { PrisonTriggers, type PrisonShot } from '../../core/prisonTriggers.js';
@@ -36,8 +37,20 @@ export class PrisonAssist {
   private queued: PrisonShotMessage | null = null;
   private display: Display | null = null;
   private staleTimer: NodeJS.Timeout | null = null;
+  /** Куда сохранять кадры (null — не сохранять) и что о каждом уже известно. */
+  private saveRoot: string | null = null;
+  private readonly saving = new Map<number, { base: string; info: Record<string, unknown> }>();
 
   constructor(private readonly dirs: { worker: string; vendor: string }) {}
+
+  /**
+   * Сохранять кадры тюрьмы: PNG в исходном разрешении и JSON рядом —
+   * вид экрана, строки лога, которые его вызвали, и показанная подсказка.
+   * Для разбора ошибок распознавания и пополнения эталонов.
+   */
+  setSaveRoot(dir: string | null): void {
+    this.saveRoot = dir;
+  }
 
   get isEnabled(): boolean {
     return this.enabled;
@@ -109,12 +122,14 @@ export class PrisonAssist {
     if (!game || game.thumbnail.isEmpty()) return;
     const { width, height } = game.thumbnail.getSize();
     const bitmap = game.thumbnail.toBitmap();
+    const id = ++this.nextId;
+    if (this.saveRoot) void this.saveShot(id, manual ? 'manual' : shot.kind, game.thumbnail.toPNG(), shot);
     // Своя копия пикселей: её можно передать потоку без копирования.
     const buffer = new Uint8Array(bitmap).buffer as ArrayBuffer;
     this.display = display;
     const msg: PrisonShotMessage = {
       type: 'shot',
-      id: ++this.nextId,
+      id,
       kind: manual ? 'manual' : shot.kind,
       fresh: shot.fresh,
       after: shot.after,
@@ -137,6 +152,7 @@ export class PrisonAssist {
 
   private onReply(msg: PrisonWorkerReply): void {
     const done = msg.type !== 'hint' || msg.phase === 'final';
+    this.noteReply(msg, done);
     // Ответ на кадр, который уже сменился новым, не показываем.
     const current = !this.queued && msg.id === this.nextId;
     if (current && this.display) {
@@ -153,6 +169,35 @@ export class PrisonAssist {
       this.queued = null;
       if (next) this.send(next);
     }
+  }
+
+  private async saveShot(id: number, kind: string, png: Buffer, shot: PrisonShot): Promise<void> {
+    if (!this.saveRoot) return;
+    const now = new Date();
+    const pad = (n: number, w = 2) => String(n).padStart(w, '0');
+    const day = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+    const time = `${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}-${pad(now.getMilliseconds(), 3)}`;
+    const dir = join(this.saveRoot, day);
+    const base = join(dir, `${time}-${kind}`);
+    this.saving.set(id, { base, info: { kind, fresh: shot.fresh, after: shot.after, treasureView: shot.treasureView, lines: shot.lines, hints: [] } });
+    try {
+      await mkdir(dir, { recursive: true });
+      await writeFile(`${base}.png`, png);
+    } catch (err) {
+      console.warn('[тюрьма] кадр не сохранён:', err instanceof Error ? err.message : err);
+    }
+  }
+
+  /** Ответ потока — в JSON кадра; итоговый ответ записывает файл. */
+  private noteReply(msg: PrisonWorkerReply, done: boolean): void {
+    const entry = this.saving.get(msg.id);
+    if (!entry) return;
+    (entry.info['hints'] as unknown[]).push(msg);
+    if (!done) return;
+    this.saving.delete(msg.id);
+    void writeFile(`${entry.base}.json`, JSON.stringify(entry.info, null, 1)).catch((err: unknown) =>
+      console.warn('[тюрьма] описание кадра не сохранено:', err instanceof Error ? err.message : err),
+    );
   }
 
   private armStale(): void {

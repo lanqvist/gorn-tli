@@ -130,6 +130,7 @@ export function SettingsPanel({
   const [sys, setSys] = useState<GornAppSettings | null>(null);
   const [community, setCommunity] = useState(true);
   const [prisonHints, setPrisonHints] = useState(false);
+  const [prisonShots, setPrisonShots] = useState(false);
   const [logDirNote, setLogDirNote] = useState<string | null>(null);
   const [needsRestart, setNeedsRestart] = useState(false);
   const [updState, setUpdState] = useState<UpdateState | null>(null);
@@ -157,6 +158,7 @@ export function SettingsPanel({
     refreshSys();
     void window.gorn.getCommunityPrices().then(setCommunity);
     void window.gorn.getPrisonHints().then(setPrisonHints);
+    void window.gorn.getPrisonSaveShots().then(setPrisonShots);
     return window.gorn.update.onState(setUpdState);
   }, []);
 
@@ -427,10 +429,34 @@ export function SettingsPanel({
               }}
             />
           </label>
+          <label className="set-row">
+            <span
+              title={tr(
+                'Каждый кадр тюрьмы — PNG и описание (что за экран и какая подсказка) в «Изображения → Горн — тюрьма». Для разбора ошибок.',
+                'Every prison capture — a PNG and a description (which screen, which hint) in Pictures → Горн — тюрьма. For tracking down misreads.',
+              )}
+            >
+              {tr('Сохранять кадры', 'Save captures')}
+            </span>
+            <input
+              type="checkbox"
+              checked={prisonShots}
+              onChange={(e) => {
+                setPrisonShots(e.target.checked);
+                void window.gorn?.setPrisonSaveShots(e.target.checked);
+              }}
+            />
+          </label>
+          <div className="set-row">
+            <span>{tr('Папка с кадрами', 'Captures folder')}</span>
+            <button type="button" onClick={() => void window.gorn?.openPrisonShots()}>
+              {tr('Открыть', 'Open')}
+            </button>
+          </div>
           <p className="muted small">
             {tr(
-              'Единственная функция Горна, которая смотрит на экран: в тюрьме по строкам лога снимается окно игры, распознаётся доска и считается ход. Снимки не сохраняются и никуда не уходят. Нужен режим «окно без рамки» на весь монитор. Ctrl+Alt+P — снять кадр вручную.',
-              'The one Gorn feature that looks at the screen: in the prison the game window is captured on log lines, the board is read and a move is worked out. Captures are not saved or sent anywhere. Needs borderless fullscreen. Ctrl+Alt+P captures by hand.',
+              'Единственная функция Горна, которая смотрит на экран: в тюрьме по строкам лога снимается окно игры, распознаётся доска и считается ход. Снимки никуда не уходят и сохраняются, только если включено «Сохранять кадры». Нужен режим «окно без рамки» на весь монитор. Ctrl+Alt+P — снять кадр вручную.',
+              'The one Gorn feature that looks at the screen: in the prison the game window is captured on log lines, the board is read and a move is worked out. Captures are never sent anywhere and are saved only with “Save captures” on. Needs borderless fullscreen. Ctrl+Alt+P captures by hand.',
             )}
           </p>
         </section>

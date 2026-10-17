@@ -94,6 +94,9 @@ declare global {
     };
     getPrisonHints: () => Promise<boolean>;
     setPrisonHints: (enabled: boolean) => Promise<boolean>;
+    getPrisonSaveShots: () => Promise<boolean>;
+    setPrisonSaveShots: (enabled: boolean) => Promise<boolean>;
+    openPrisonShots: () => Promise<string>;
     prison: {
       onHint: (cb: (hint: GornPrisonHint | null) => void) => () => void;
       onSettled: (cb: (live: boolean) => void) => () => void;

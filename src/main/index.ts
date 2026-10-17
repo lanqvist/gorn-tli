@@ -10,6 +10,7 @@ import {
   Tray,
 } from 'electron';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -274,6 +275,8 @@ app.whenReady().then(async () => {
   });
   prison = new PrisonAssist({ worker: join(__dirname, 'prisonWorker.cjs'), vendor: vendorDir() });
   prison.setEnabled(settings.prisonHints);
+  const prisonShotsDir = join(app.getPath('pictures'), 'Горн — тюрьма');
+  prison.setSaveRoot(settings.prisonSaveShots ? prisonShotsDir : null);
   engine.on('lines', (lines: string[]) => prison?.onLines(lines));
 
   engine.on('error', (err: Error) => {
@@ -396,6 +399,17 @@ app.whenReady().then(async () => {
     settings?.setPrisonHints(enabled);
     prison?.setEnabled(enabled);
     return enabled;
+  });
+
+  ipcMain.handle('settings:prisonSaveShots', () => settings?.prisonSaveShots ?? false);
+  ipcMain.handle('settings:setPrisonSaveShots', (_e, enabled: boolean) => {
+    settings?.setPrisonSaveShots(enabled);
+    prison?.setSaveRoot(enabled ? prisonShotsDir : null);
+    return enabled;
+  });
+  ipcMain.handle('settings:openPrisonShots', async () => {
+    await mkdir(prisonShotsDir, { recursive: true });
+    return shell.openPath(prisonShotsDir);
   });
 
   ipcMain.handle('overlay:state', () => settings?.overlay ?? null);
