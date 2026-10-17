@@ -1,4 +1,4 @@
-import { activeDuration, runEnd, runNet, type PriceLookup } from './analysis.js';
+import { activeDuration, runEnd, runNet, type RunPricing } from './analysis.js';
 import { perHour, summarize, type RateSummary } from './stats.js';
 import type { Run } from './types.js';
 
@@ -28,7 +28,7 @@ export interface MapStats {
 export function groupByMap(
   runs: Run[],
   nameOf: (run: Run) => string,
-  priceOf: PriceLookup,
+  pricing: RunPricing,
 ): MapStats[] {
   const groups = new Map<string, Run[]>();
   for (const run of runs) {
@@ -45,7 +45,7 @@ export function groupByMap(
     const rates: number[] = [];
     for (const run of list) {
       const active = activeDuration(run);
-      const value = runNet(run, priceOf);
+      const value = runNet(run, pricing);
       net += value;
       activeMs += active;
       // Тот же отсев, что у стратегий: на пяти секундах темп — шум.
@@ -70,11 +70,11 @@ export interface PeriodTotals {
   inMapMs: number;
 }
 
-function totalsOf(runs: Run[], priceOf: PriceLookup): PeriodTotals {
+function totalsOf(runs: Run[], pricing: RunPricing): PeriodTotals {
   let netFe = 0;
   let inMapMs = 0;
   for (const run of runs) {
-    netFe += runNet(run, priceOf);
+    netFe += runNet(run, pricing);
     inMapMs += activeDuration(run);
   }
   return { runs: runs.length, netFe, inMapMs };
@@ -99,7 +99,7 @@ export interface DayTotals extends PeriodTotals {
  */
 export function dailyTotals(
   runs: Run[],
-  priceOf: PriceLookup,
+  pricing: RunPricing,
   days: number,
   now: number,
 ): DayTotals[] {
@@ -118,7 +118,7 @@ export function dailyTotals(
   cursor.setDate(cursor.getDate() - (days - 1));
   for (let i = 0; i < days; i++) {
     const day = cursor.getTime();
-    out.push({ day, ...totalsOf(byDay.get(day) ?? [], priceOf) });
+    out.push({ day, ...totalsOf(byDay.get(day) ?? [], pricing) });
     cursor.setDate(cursor.getDate() + 1);
   }
   return out;
@@ -141,7 +141,7 @@ export interface SessionTotals extends PeriodTotals, SessionBounds {}
 export function sessionTotals(
   sessions: SessionBounds[],
   runs: Run[],
-  priceOf: PriceLookup,
+  pricing: RunPricing,
 ): SessionTotals[] {
   return sessions
     .map((s) => {
@@ -149,7 +149,7 @@ export function sessionTotals(
         const end = runEnd(r);
         return end >= s.startedAt && (s.endedAt === null || end < s.endedAt);
       });
-      return { ...s, ...totalsOf(inside, priceOf) };
+      return { ...s, ...totalsOf(inside, pricing) };
     })
     .filter((s) => s.runs > 0)
     .sort((a, b) => b.startedAt - a.startedAt);
