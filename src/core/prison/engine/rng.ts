@@ -84,6 +84,12 @@ export class Rng {
     return this.bits30() < p * TWO30;
   }
 
+  /**
+   * Начало утра дня day. Обычный ГСЧ ничего не делает; решатель переопределяет,
+   * чтобы с каждого утра кости у всех кандидатов снова совпадали.
+   */
+  morning(_day: number): void {}
+
   /** Независимый поток по метке: тот же родитель и метка → те же числа. */
   stream(label: string | number): Rng {
     return new Rng(mix32(this.st[1]! ^ hashLabel(label)));
