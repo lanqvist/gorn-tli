@@ -23,3 +23,10 @@ debug/
 /*.png
 /*.jpg
 /*.webp
+
+# Тексты клиента игры (тексты издателя) и извлечённые игровые файлы — только
+# локально. Числа и ID из них переносятся в docs/prison/rules.md.
+docs/prison/client-texts.*.md
+docs/prison/client-data/*
+!docs/prison/client-data/client-config.json
+!docs/prison/client-data/manifest.json

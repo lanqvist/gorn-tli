@@ -9,7 +9,8 @@ import {
 } from '../../src/core/prison/engine/state.js';
 
 /** Параметры тестов: без случайных событий за дверями. */
-export const P: Params = { ...DEFAULT_PARAMS, doorEvent: 0, relockEvent: 0 };
+/** Изолированные сценарии: без открытых в начале камер и без меток событий. */
+export const P: Params = { ...DEFAULT_PARAMS, doorEvent: 0, relockEvent: 0, startOpen: 0, eventMin: 0 };
 
 /** ГСЧ, который всегда возвращает одно и то же число из [0, 1). */
 export class Fixed extends Rng {

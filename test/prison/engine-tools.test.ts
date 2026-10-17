@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
 import { LION, MAMMOTH, RAT, WOLF, type Action, type ToolId } from '../../src/core/prison/model.js';
-import { applyCode, codeBuffer, decode, encode, legalCodes, settle } from '../../src/core/prison/engine/actions.js';
+import { applyCode, codeBuffer, decode, encode, legalCodes } from '../../src/core/prison/engine/actions.js';
 import type { Rng } from '../../src/core/prison/engine/rng.js';
 import { bite, canEat, morning, openCell } from '../../src/core/prison/engine/rules.js';
 import {
-  DOORS, DOORS_N, FLAGS, F_SCRATCH, F_TUSK, F_VIS_BEAST, F_VIS_TIER, HUNT_LEFT, NEST, NEXT, PHASE, PRE_TIER,
-  P_HUNT, P_MORNING, P_PATROL, State, WARDEN,
+  DOORS, DOORS_N, FLAGS, F_SCRATCH, F_TUSK, F_VIS_BEAST, F_VIS_TIER, HUNT_LEFT, LOCK, NEST, PHASE, PRE_TIER,
+  P_PATROL, State, WARDEN,
 } from '../../src/core/prison/engine/state.js';
 import { NO, P, Seq, YES, beast, blank, hide, inmates, locked, manageAt, put, tier } from './engine-helpers.js';
 
@@ -135,6 +135,18 @@ describe('орудия пожирания', () => {
     expect(tier(s, 1)).toBe(3);
   });
 
+  it('Ржавая пила срабатывает и на укусе цепочки («цепное Пожирание»)', () => {
+    const s = withTools('saw');
+    put(s, 1, MAMMOTH, 0);
+    put(s, 2, LION, 0);
+    put(s, 3, RAT, 2);
+    manageAt(s, 1, YES);
+    act(s, { type: 'devour', to: 2 }, YES); // 0 + 1 + пила: Редкий мамонт
+    expect([beast(s, 1), tier(s, 1)]).toEqual([MAMMOTH, 2]);
+    bite(s, YES, P, 3, 1, true); // укус в цепочке: 2 + 1 + пила
+    expect(tier(s, 3)).toBe(4);
+  });
+
   it('Шипастый ошейник: укус в цепочке 80 % — +1', () => {
     const s = withTools('collar');
     put(s, 1, MAMMOTH, 1);
@@ -172,7 +184,7 @@ describe('орудия пожирания', () => {
     expect([beast(s, 2), tier(s, 2)]).toEqual([LION, 2]);
   });
 
-  it('Тесная клетка: 40 % — камера съеденного сразу открывается с новым узником', () => {
+  it('Переполненная клетка зверей: 40 % — камера съеденного сразу открывается с новым узником', () => {
     const s = withTools('cage');
     put(s, 1, MAMMOTH, 1);
     put(s, 2, LION, 1);
@@ -181,17 +193,22 @@ describe('орудия пожирания', () => {
     expect([beast(s, 2), tier(s, 2)]).toEqual([MAMMOTH, 0]);
   });
 
-  it('Шампур крысиных голов: крыса ест крысу той же редкости, укус крысы +1', () => {
+  it('Шампур (клиент 148): крыса ест крысу той же редкости, после Пожирания ещё +2', () => {
     const s = blank();
-    put(s, 1, RAT, 2);
-    put(s, 2, RAT, 2);
+    put(s, 1, RAT, 1);
+    put(s, 2, RAT, 1);
     expect(canEat(s, 1, 2)).toBe(false);
     const t = withTools('skewer');
-    put(t, 1, RAT, 2);
-    put(t, 2, RAT, 2);
+    put(t, 1, RAT, 1);
+    put(t, 2, RAT, 1);
     expect(canEat(t, 1, 2)).toBe(true);
     bite(t, NO, P, 1, 2, false);
-    expect(tier(t, 1)).toBe(4);
+    expect(tier(t, 1)).toBe(4); // 1 + 1 + 2
+    const u = withTools('skewer');
+    put(u, 1, RAT, 0);
+    put(u, 2, MAMMOTH, 0);
+    bite(u, NO, P, 1, 2, false); // и при обычной еде: «Когда Огромная крыса пожирает»
+    expect(tier(u, 1)).toBe(3);
   });
 
   it('Железная корона: лев ест любого той же редкости, укус льва +2', () => {
@@ -222,6 +239,29 @@ describe('орудия пожирания', () => {
     expect(tier(t, 1)).toBe(3);
   });
 
+  it('«Подавление» только у Гильотины: «Схватка узников» ест ниже без него', () => {
+    const p = { ...P, oppressStep: 0.5 };
+    const s = blank({ start: 'cagefight' });
+    put(s, 1, WOLF, 2);
+    put(s, 2, RAT, 0);
+    bite(s, new Seq([0.99]), p, 1, 2, false);
+    expect(tier(s, 1)).toBe(3);
+  });
+
+  it('«Подавление»: укус узника ниже — шанс повышения −5 % за ранг разницы', () => {
+    const p = { ...P, oppressStep: 0.5 };
+    const s = withTools('guillotine');
+    put(s, 1, WOLF, 2);
+    put(s, 2, RAT, 0);
+    bite(s, new Seq([0.5]), p, 1, 2, false); // шанс 1 − 0,5 · 2 = 0: не повысился
+    expect(tier(s, 1)).toBe(2);
+    const t = withTools('guillotine');
+    put(t, 1, WOLF, 2);
+    put(t, 2, RAT, 1);
+    bite(t, new Seq([0.4]), p, 1, 2, false); // шанс 0,5
+    expect(tier(t, 1)).toBe(3);
+  });
+
   it('Клыкастая гильотина: волк ест крыс ниже по редкости', () => {
     const s = withTools('guillotine');
     put(s, 1, WOLF, 2);
@@ -233,6 +273,16 @@ describe('орудия пожирания', () => {
     put(t, 1, WOLF, 2);
     put(t, 2, RAT, 0);
     expect(canEat(t, 1, 2)).toBe(false);
+  });
+
+  it('Железная дева мстителя: еда — любой зверь, над которым у едока преимущество', () => {
+    const s = withTools('revenge');
+    put(s, 1, MAMMOTH, 1);
+    put(s, 2, LION, 1);
+    manageAt(s, 1, YES);
+    act(s, { type: 'devour', to: 2 }, new Seq([0, 0, 0, 0, 0.6, 0]));
+    // Seq: шансы да, новый зверь — мамонт, дева да, камера 2, вторая еда (волк)
+    expect([beast(s, 2), tier(s, 2)]).toEqual([WOLF, 2]);
   });
 
   it('Голодная удушающая цепь: утром самый редкий убирает соседей, +1 за каждого 40 %', () => {
@@ -298,7 +348,7 @@ describe('орудия замены', () => {
     expect(inmates(t)).toBe(1);
   });
 
-  it('Отсечённая железная дева: выше нового столько же, сколько ниже — +3', () => {
+  it('Рассечённый саркофаг: выше нового столько же, сколько ниже — +3', () => {
     const s = withTools('maiden');
     put(s, 1, LION, 1);
     manageAt(s, 1, YES);
@@ -312,7 +362,7 @@ describe('орудия замены', () => {
     expect(tier(t, 1)).toBe(0);
   });
 
-  it('Гильотина козла отпущения: при 2+ других — 2 убираются, новый на 1 выше прежнего', () => {
+  it('Гильотина козла отпущения: при 2+ других — 2 убираются, новый гарантированно выше прежнего', () => {
     const s = withTools('scapegoat');
     put(s, 1, LION, 1);
     put(s, 2, WOLF, 0);
@@ -344,6 +394,25 @@ describe('утренние орудия', () => {
     manageAt(s, 3, YES);
     act(s, { type: 'swap' }, YES);
     expect([tier(s, 3), tier(s, 5), tier(s, 6), tier(s, 7), tier(s, 8)]).toEqual([1, 1, 1, 1, 1]);
+    // «Бивень» — метка камеры (tlidb): после замены остаётся, сходит, когда камера пустеет
+    expect(s.m[FLAGS + 3]! & F_TUSK).toBeTruthy();
+  });
+
+  it('Клещи, Когти и Ящик (клиент 141, 145, 147) ставят по метке каждое утро', () => {
+    const s = withTools('tongs', 'claws', 'ironbox');
+    put(s, 3, MAMMOTH, 0);
+    put(s, 4, MAMMOTH, 0);
+    morning(s, YES, P);
+    morning(s, YES, P);
+    let tusks = 0;
+    let scratches = 0;
+    let nests = 0;
+    for (let c = 1; c < 16; c++) {
+      if (s.m[FLAGS + c]! & F_TUSK) tusks++;
+      if (s.m[LOCK + c] === 1 && s.m[FLAGS + c]! & F_SCRATCH) scratches++;
+      if (s.m[NEST + c]! > 0) nests++;
+    }
+    expect([tusks, scratches, nests]).toEqual([2, 2, 2]);
   });
 
   it('Грязные когти: царапина показывает редкость, волк той же редкости ест сквозь дверь, прирост 3', () => {
@@ -396,20 +465,35 @@ describe('утренние орудия', () => {
     expect(tier(s, 7)).toBe(1);
   });
 
-  it('Окровавленный капкан: лев метит добычу, 3 утра оба +1', () => {
+  it('Окровавленный капкан: «Выслеживание» в камере льва, «Добыча» 3 хода — оба +1 каждое утро', () => {
     const s = withTools('trap');
     put(s, 2, LION, 0);
     put(s, 3, WOLF, 0);
     put(s, 9, RAT, 2);
-    s.m[NEXT] = P_MORNING;
-    settle(s, YES, P);
-    expect(s.m[PHASE]).toBe(P_HUNT);
-    expect(legal(s)).toEqual([{ type: 'hunt', to: 3 }]);
+    manageAt(s, 9);
+    expect(legal(s).some((a) => a.type === 'hunt')).toBe(false); // не лев
+    manageAt(s, 2);
+    expect(legal(s).filter((a) => a.type === 'hunt')).toEqual([{ type: 'hunt', to: 3 }]);
     act(s, { type: 'hunt', to: 3 }, YES);
-    expect(s.m[HUNT_LEFT]).toBe(3);
+    // это действие дня: день кончился, первое утро уже прошло
     expect(s.m[PHASE]).toBe(P_PATROL);
-    for (let i = 0; i < 4; i++) morning(s, YES, P);
+    expect(s.m[HUNT_LEFT]).toBe(2);
+    for (let i = 0; i < 3; i++) morning(s, YES, P);
     expect([tier(s, 2), tier(s, 3), tier(s, 9)]).toEqual([3, 3, 2]);
+  });
+
+  it('«Добыча» сходит, когда лев или добыча сменили кодовое имя', () => {
+    const s = withTools('trap');
+    put(s, 2, LION, 0);
+    put(s, 3, WOLF, 0);
+    put(s, 4, RAT, 0);
+    manageAt(s, 2);
+    act(s, { type: 'hunt', to: 3 }, YES);
+    expect(s.m[HUNT_LEFT]).toBe(2);
+    // волк съедает крысу и меняет зверя (Seq: прирост без шансов, новый зверь — мамонт)
+    bite(s, new Seq([0]), P, 3, 4, false);
+    expect(beast(s, 3)).toBe(MAMMOTH);
+    expect(s.m[HUNT_LEFT]).toBe(0);
   });
 });
 

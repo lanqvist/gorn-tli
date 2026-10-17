@@ -5,12 +5,12 @@
 
 import { CELLS, OFFICE } from '../model.js';
 import {
-  A_ACCEPT, A_BESTOW, A_CHAIN, A_DEVOUR, A_END, A_GIFT, A_HUNT, A_PATROL, A_SWAP, A_TOOL, applyCode,
+  A_ACCEPT, A_BESTOW, A_CHAIN, A_DEVOUR, A_END, A_GIFT, A_PATROL, A_SWAP, A_TOOL, applyCode,
 } from '../engine/actions.js';
 import type { Rng } from '../engine/rng.js';
-import { huntTargets, targets } from '../engine/rules.js';
+import { targets } from '../engine/rules.js';
 import {
-  CHAIN_EATER, DOORS, DOORS_N, LOCK, OFFER, OFFER_GIFT, OFFER_KIND, PHASE, P_CHAIN, P_END, P_EVENT, P_HUNT,
+  CHAIN_EATER, DOORS, DOORS_N, LOCK, OFFER, OFFER_GIFT, OFFER_KIND, PHASE, P_CHAIN, P_END, P_EVENT,
   P_MANAGE, P_OFFICE, P_PATROL, P_PICK, P_RATWAY, STORAGE, TIER, WARDEN, type State,
 } from '../engine/state.js';
 import type { Params } from '../model.js';
@@ -27,8 +27,6 @@ export function greedyCode(s: State): number {
   switch (m[PHASE]) {
     case P_PICK:
       return code(m[OFFER_KIND] === OFFER_GIFT ? A_GIFT : A_TOOL, m[OFFER]!);
-    case P_HUNT:
-      return code(A_HUNT, lowest(huntTargets(s)));
     case P_PATROL: {
       // камера, где узник может есть; иначе запертая; иначе первая
       let locked = -1;
