@@ -97,7 +97,15 @@ declare global {
     getPrisonSaveShots: () => Promise<boolean>;
     setPrisonSaveShots: (enabled: boolean) => Promise<boolean>;
     openPrisonShots: () => Promise<string>;
+    capture: {
+      onStart: (cb: (req: { sourceId: string; width: number; height: number }) => void) => () => void;
+      onStop: (cb: () => void) => () => void;
+      onGrab: (cb: (id: number, stableMs: number, maxMs: number) => void) => () => void;
+      started: (err: string | null) => void;
+      frame: (id: number, frame: { width: number; height: number; buffer: ArrayBuffer } | null, err: string | null) => void;
+    };
     prison: {
+      ready: () => void;
       onHint: (cb: (hint: GornPrisonHint | null) => void) => () => void;
       onSettled: (cb: (live: boolean) => void) => () => void;
     };
@@ -118,6 +126,8 @@ declare global {
     live: boolean;
     phase: 'instant' | 'final';
     anchor: number[];
+    /** Ход сделан, новая подсказка считается. */
+    thinking?: boolean;
   }
 
   interface GornAppSettings {

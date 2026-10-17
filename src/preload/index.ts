@@ -97,6 +97,8 @@ contextBridge.exposeInMainWorld('gorn', {
   setPrisonSaveShots: (enabled: boolean) => ipcRenderer.invoke('settings:setPrisonSaveShots', enabled),
   openPrisonShots: () => ipcRenderer.invoke('settings:openPrisonShots'),
   prison: {
+    /** Страница стрелок подписалась и готова принимать подсказки. */
+    ready: () => ipcRenderer.send('prison:ready'),
     onHint: (callback: (hint: unknown) => void) => {
       const handler = (_e: unknown, hint: unknown) => callback(hint);
       ipcRenderer.on('prison:hint', handler);
@@ -107,6 +109,28 @@ contextBridge.exposeInMainWorld('gorn', {
       ipcRenderer.on('prison:settled', handler);
       return () => ipcRenderer.removeListener('prison:settled', handler);
     },
+  },
+
+  /** Скрытое окно с потоком экрана для подсказок в тюрьме. */
+  capture: {
+    onStart: (callback: (req: { sourceId: string; width: number; height: number }) => void) => {
+      const handler = (_e: unknown, req: { sourceId: string; width: number; height: number }) => callback(req);
+      ipcRenderer.on('capture:start', handler);
+      return () => ipcRenderer.removeListener('capture:start', handler);
+    },
+    onStop: (callback: () => void) => {
+      const handler = () => callback();
+      ipcRenderer.on('capture:stop', handler);
+      return () => ipcRenderer.removeListener('capture:stop', handler);
+    },
+    onGrab: (callback: (id: number, stableMs: number, maxMs: number) => void) => {
+      const handler = (_e: unknown, id: number, stableMs: number, maxMs: number) => callback(id, stableMs, maxMs);
+      ipcRenderer.on('capture:grab', handler);
+      return () => ipcRenderer.removeListener('capture:grab', handler);
+    },
+    started: (err: string | null) => ipcRenderer.send('capture:started', err),
+    frame: (id: number, frame: { width: number; height: number; buffer: ArrayBuffer } | null, err: string | null) =>
+      ipcRenderer.send('capture:frame', id, frame, err),
   },
 
   /** Слой всплывающего дохода у центра экрана. */

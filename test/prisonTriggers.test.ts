@@ -53,9 +53,23 @@ describe('триггеры тюрьмы', () => {
     const { t, timer, shots } = setup();
     t.feed([L('19.00.00', 'UI_S16_Card_Up'), L('19.00.00', 'S16BoardTaskPop Run')]);
     expect(timer.pending).toBe(1);
-    expect(timer.run()).toEqual([1500]);
+    expect(timer.run()).toEqual([600]);
     expect(shots).toHaveLength(1);
     expect(shots[0]!.kind).toBe('objective');
+  });
+
+  it('выбор орудий после «Обновить» помечен', () => {
+    const { t, timer, shots } = setup();
+    t.feed([L('19.00.00', 'UIButton@ normal-click Btn_S16Board_RelicPop_Reroll')]);
+    timer.run();
+    expect(shots[0]).toMatchObject({ kind: 'instruments', rerolled: true });
+  });
+
+  it('выбор двери — кадр доски после прохода', () => {
+    const { t, timer, shots } = setup();
+    t.feed([L('19.00.00', 'UIButton@ normal-click Btn_S16Board_RouteCell')]);
+    expect(timer.run()).toEqual([800]);
+    expect(shots[0]).toMatchObject({ kind: 'board', rerolled: false });
   });
 
   it('выбор орудий с днём 0 — новый забег', () => {
@@ -78,9 +92,9 @@ describe('триггеры тюрьмы', () => {
     t.feed([L('19.00.00', 'Btn_S16Board_Top_Speed')]);
     expect(t.speedUp).toBe(true);
     t.feed([L('19.00.01', 'UI_S16_Click_Eat')]);
-    expect(timer.run()).toEqual([2500 * 0.45]);
+    expect(timer.run()).toEqual([800 * 0.45]);
     t.feed([L('19.00.02', 'S16BoardColoredPop Destory')]);
-    expect(timer.run()).toEqual([270]);
+    expect(timer.run()).toEqual([250]);
   });
 
   it('сокровищница после замены и после пожирания', () => {
@@ -100,7 +114,7 @@ describe('триггеры тюрьмы', () => {
     t.feed([L('19.00.00', 'S16BoardColoredPop Run'), L('19.00.01', 'S16BoardColoredPop Destory')]);
     expect(shots.map((s) => s.kind)).toEqual(['treasure']);
     timer.run();
-    expect(shots[1]).toMatchObject({ kind: 'board', treasureView: true });
+    expect(shots[1]).toMatchObject({ kind: 'board', treasureView: true, treasureClosed: true });
   });
 
   it('доска после выбранного подарка — не просмотр', () => {

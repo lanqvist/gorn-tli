@@ -25,7 +25,9 @@ const DEMO: GornPrisonHint = {
  */
 function PrisonApp() {
   const [hint, setHint] = useState<GornPrisonHint | null>(null);
-  const [checked, setChecked] = useState(false);
+  // null — считаю; true — проверено вариантами; false — готово (один ход или
+  // проверять было нечего).
+  const [checked, setChecked] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (!window.gorn) {
@@ -34,9 +36,10 @@ function PrisonApp() {
     }
     const off1 = window.gorn.prison.onHint((h) => {
       setHint(h);
-      setChecked(!!h && h.phase === 'final' && h.live);
+      setChecked(h && h.phase === 'final' ? h.live : null);
     });
     const off2 = window.gorn.prison.onSettled((live) => setChecked(live));
+    window.gorn.prison.ready();
     return () => {
       off1();
       off2();
@@ -45,6 +48,14 @@ function PrisonApp() {
 
   if (!hint) return null;
   const [ax, ay] = hint.anchor;
+  if (hint.thinking) {
+    return (
+      <div className="prison-label prison-thinking" style={{ left: ax, top: ay }}>
+        <span className="prison-spinner" aria-hidden="true" />
+        <span>{tr('Горн смотрит…', 'Gorn is looking…')}</span>
+      </div>
+    );
+  }
   return (
     <>
       <svg className="prison-marks" width="100%" height="100%">
@@ -79,7 +90,13 @@ function PrisonApp() {
       </svg>
       <div className="prison-label" style={{ left: ax, top: ay }}>
         <span>{hint.text}</span>
-        <small>{checked ? tr('проверено', 'checked') : tr('считаю…', 'checking…')}</small>
+        <small>
+          {checked === null
+            ? tr('предварительно — проверяю', 'first pick — checking')
+            : checked
+              ? tr('проверено', 'checked')
+              : tr('готово', 'ready')}
+        </small>
       </div>
     </>
   );

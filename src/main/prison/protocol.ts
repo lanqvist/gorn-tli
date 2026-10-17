@@ -13,12 +13,30 @@ export interface PrisonShotMessage {
   fresh: boolean;
   after: '' | 'swap' | 'consume';
   treasureView: boolean;
+  rerolled: boolean;
+  treasureClosed: boolean;
+  /**
+   * Доска, снятая, пока уже открылось окно подарков: обновить по ней
+   * доску, а совет дать по подаркам.
+   */
+  asTreasure: boolean;
   width: number;
   height: number;
-  /** Пиксели BGRA, как их отдаёт NativeImage.toBitmap() на Windows. */
+  /** Пиксели: BGRA от NativeImage.toBitmap(), RGBA из потока экрана; пусто — кадр без картинки (подарки). */
   buffer: ArrayBuffer;
+  format: 'bgra' | 'rgba';
   /** Сколько мс решатель проигрывает варианты после мгновенного совета. */
   budgetMs: number;
+  /** Куда сохранить кадр PNG (null — не сохранять). */
+  savePath: string | null;
+}
+
+/** Положение доски на кадре такого размера (масштаб и сдвиг). */
+export interface BoardNear {
+  s: number;
+  tx: number;
+  ty: number;
+  size: string;
 }
 
 /** Подсказка в пикселях кадра: окно стрелок само переводит их в экран. */
@@ -34,4 +52,8 @@ export type PrisonWorkerReply =
   | ({ type: 'hint'; id: number; phase: 'instant' | 'final' } & PrisonHint)
   | { type: 'settled'; id: number; live: boolean }
   | { type: 'clear'; id: number }
-  | { type: 'error'; id: number; message: string };
+  | { type: 'error'; id: number; message: string }
+  /** Модель доски после кадра — сохранить на диск (id всегда 0). */
+  | { type: 'state'; id: number; model: unknown }
+  /** Где доска на кадре: сохраняется, чтобы первый кадр после запуска не искал её по всему экрану. */
+  | { type: 'near'; id: number; near: BoardNear };

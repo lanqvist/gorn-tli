@@ -1,4 +1,4 @@
-import { BrowserWindow, type Display } from 'electron';
+import { BrowserWindow, ipcMain, type Display } from 'electron';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -14,6 +14,8 @@ export interface PrisonLayerHint {
   phase: 'instant' | 'final';
   /** Где поставить текст: над верхней меткой. */
   anchor: number[];
+  /** Ход сделан, новая подсказка считается: показать «смотрю…». */
+  thinking?: boolean;
 }
 
 /**
@@ -21,13 +23,29 @@ export interface PrisonLayerHint {
  *
  * В отличие от оверлея, оно во весь монитор: стрелки тянутся через всю
  * доску. Полноэкранное прозрачное окно дорого для композиции, поэтому оно
- * показано, только пока есть подсказка, и спрятано всё остальное время.
- * Клики проходят насквозь всегда.
+ * показано, только пока есть подсказка или «смотрю…», и спрятано всё
+ * остальное время. Клики проходят насквозь всегда.
  */
 export class ArrowLayer {
   private window: BrowserWindow | null = null;
   private ready = false;
   private pending: PrisonLayerHint | null = null;
+
+  constructor() {
+    // Готовность сообщает сама страница, когда подписалась на подсказки:
+    // загрузка HTML раньше — React ещё не смонтирован, и первая подсказка
+    // терялась, окно показывалось пустым.
+    ipcMain.on('prison:ready', (e) => {
+      const win = this.window;
+      if (!win || win.isDestroyed() || e.sender !== win.webContents) return;
+      this.ready = true;
+      if (this.pending) {
+        win.webContents.send('prison:hint', this.pending);
+        this.pending = null;
+        win.showInactive();
+      }
+    });
+  }
 
   show(display: Display, hint: PrisonHint & { phase: 'instant' | 'final' }): void {
     const b = display.bounds;
@@ -46,12 +64,43 @@ export class ArrowLayer {
     const anchor = marks.length ? [xs[0]!, Math.max(40, Math.min(...ys) - 18)] : [b.width / 2, b.height * 0.12];
     const payload: PrisonLayerHint = { text: hint.text, marks, live: hint.live, phase: hint.phase, anchor };
 
+    this.present(display, payload);
+  }
+
+  /**
+   * Ход сделан, новая подсказка в пути: убрать стрелки и показать
+   * «смотрю…». Окно на экране ещё и заставляет Windows пересобирать экран:
+   * пока поверх игры ничего нет, она выводит картинку мимо композиции и
+   * поток экрана замерзает на старом кадре. В сам захват окно не попадает.
+   */
+  thinking(display: Display): void {
+    const b = display.bounds;
+    this.present(display, { text: '', marks: [], live: false, phase: 'instant', anchor: [b.width / 2, b.height * 0.1], thinking: true });
+  }
+
+  private present(display: Display, payload: PrisonLayerHint): void {
     const win = this.ensure(display);
-    win.setBounds(b);
+    const b = display.bounds;
+    const cur = win.getBounds();
+    if (cur.x !== b.x || cur.y !== b.y || cur.width !== b.width || cur.height !== b.height) win.setBounds(b);
     if (this.ready) {
       win.webContents.send('prison:hint', payload);
       if (!win.isVisible()) win.showInactive();
     } else this.pending = payload;
+  }
+
+  /**
+   * Поток застыл: игра снова выводит картинку мимо композиции, хотя окно
+   * уже видно. Заново показанное окно поверх игры возвращает композицию.
+   */
+  nudge(display: Display): void {
+    const win = this.window;
+    if (!win || win.isDestroyed() || !this.ready) {
+      this.thinking(display);
+      return;
+    }
+    if (win.isVisible()) win.hide();
+    win.showInactive();
   }
 
   /** Совет подтвердился проигрыванием вариантов — тот же ход. */
@@ -59,6 +108,7 @@ export class ArrowLayer {
     if (this.ready && this.window?.isVisible()) this.window.webContents.send('prison:settled', live);
   }
 
+  /** Убрать подсказку и спрятать окно. */
   clear(): void {
     this.pending = null;
     if (!this.window || this.window.isDestroyed()) return;
@@ -98,14 +148,10 @@ export class ArrowLayer {
     win.setAlwaysOnTop(true, 'screen-saver');
     win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
     win.setIgnoreMouseEvents(true);
-    win.webContents.once('did-finish-load', () => {
-      this.ready = true;
-      if (this.pending) {
-        win.webContents.send('prison:hint', this.pending);
-        this.pending = null;
-        win.showInactive();
-      }
-    });
+    // Не попадать в собственный захват экрана: на Windows 10 2004+ это
+    // WDA_EXCLUDEFROMCAPTURE — окно просто вырезается из снимка. Иначе
+    // стрелки, не успевшие спрятаться, читались как часть доски.
+    win.setContentProtection(true);
     win.on('closed', () => {
       this.window = null;
       this.ready = false;

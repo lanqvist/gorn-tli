@@ -273,7 +273,12 @@ app.whenReady().then(async () => {
     toastLayer?.send('snapshot', snapshot);
     debugSink?.record(snapshot);
   });
-  prison = new PrisonAssist({ worker: join(__dirname, 'prisonWorker.cjs'), vendor: vendorDir() });
+  prison = new PrisonAssist({
+    worker: join(__dirname, 'prisonWorker.cjs'),
+    vendor: vendorDir(),
+    // Модель доски забега: переживает перезапуск Горна посреди тюрьмы.
+    state: join(app.getPath('userData'), 'prison-state.json'),
+  });
   prison.setEnabled(settings.prisonHints);
   const prisonShotsDir = join(app.getPath('pictures'), 'Горн — тюрьма');
   prison.setSaveRoot(settings.prisonSaveShots ? prisonShotsDir : null);

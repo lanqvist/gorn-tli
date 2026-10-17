@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; media-src 'self' blob: mediastream:; script-src 'self'"
+    />
+    <title>Горн — поток экрана</title>
+  </head>
+  <body>
+    <video id="screen" muted playsinline></video>
+    <script type="module" src="./capture.ts"></script>
+  </body>
+</html>

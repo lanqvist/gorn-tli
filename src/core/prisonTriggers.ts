@@ -20,23 +20,33 @@ interface Rule {
   settleMs: number;
 }
 
-/** Игра зовёт тюрьму S16. Задержки — в миллисекундах на обычной скорости. */
+/**
+ * Игра зовёт тюрьму S16. Задержки — в миллисекундах на обычной скорости:
+ * минимум, после которого кадр вообще имеет смысл. Дальше Горн сам ждёт,
+ * пока картинка перестанет меняться (поток экрана), поэтому паузы короткие.
+ */
 export const PRISON_RULES: readonly Rule[] = [
-  { kind: 'objective', re: /S16BoardTaskPop Run/i, settleMs: 1500 },
-  { kind: 'instruments', re: /S16BoardRelicPop Run/i, settleMs: 1500 },
-  { kind: 'instruments', re: /Btn_S16Board_RelicPop_Reroll/i, settleMs: 2000 },
+  { kind: 'objective', re: /S16BoardTaskPop Run/i, settleMs: 600 },
+  // Карты орудий влетают дольше прочего.
+  { kind: 'instruments', re: /S16BoardRelicPop Run/i, settleMs: 900 },
+  { kind: 'instruments', re: /Btn_S16Board_RelicPop_Reroll/i, settleMs: 900 },
   // День начался: баннер закрылся, игра пишет номер дня (на итогах — max=0).
-  { kind: 'board', re: /\[S16LastDay\] check cur=\d+ max=[1-9]/i, settleMs: 1500 },
-  { kind: 'board', re: /UI_S16_Card_Up/i, settleMs: 1500 },
-  { kind: 'board', re: /Btn_S16Board_ActionCell/i, settleMs: 2000 },
-  { kind: 'board', re: /UI_S16_Click_Eat/i, settleMs: 2500 },
+  { kind: 'board', re: /\[S16LastDay\] check cur=\d+ max=[1-9]/i, settleMs: 500 },
+  { kind: 'board', re: /UI_S16_Card_Up/i, settleMs: 400 },
+  { kind: 'board', re: /Btn_S16Board_ActionCell/i, settleMs: 600 },
+  // Выбрана дверь: надзиратель идёт. Обычно следом UI_S16_Card_Up или окно
+  // события, но не всегда — тогда кадр по самому выбору, после прохода.
+  { kind: 'board', re: /Btn_S16Board_RouteCell/i, settleMs: 800 },
+  { kind: 'board', re: /UI_S16_Click_Eat/i, settleMs: 800 },
   { kind: 'skip', re: /S16BoardNewDayPop Run/i, settleMs: 0 },
-  { kind: 'treasure', re: /S16BoardColoredPop Run/i, settleMs: 1500 },
+  // Подарки рисуются по месту карточек, картинка не нужна: ждать анимацию
+  // незачем, только собрать соседние строки.
+  { kind: 'treasure', re: /S16BoardColoredPop Run/i, settleMs: 250 },
   // «Destory» — так в самой игре.
-  { kind: 'board', re: /S16BoardColoredPop Destory/i, settleMs: 600 },
+  { kind: 'board', re: /S16BoardColoredPop Destory/i, settleMs: 300 },
   { kind: 'speed', re: /Btn_S16Board_Top_Speed/i, settleMs: 0 },
-  { kind: 'board', re: /UI_S16_Click_Cancel/i, settleMs: 1500 },
-  { kind: 'board', re: /Btn_S16Board_EventPop_Confirm/i, settleMs: 1500 },
+  { kind: 'board', re: /UI_S16_Click_Cancel/i, settleMs: 500 },
+  { kind: 'board', re: /Btn_S16Board_EventPop_Confirm/i, settleMs: 500 },
 ];
 
 const RANK: Record<PrisonFrameKind, number> = { board: 1, instruments: 2, objective: 3, treasure: 3 };
@@ -50,6 +60,10 @@ export interface PrisonShot {
   after: '' | 'swap' | 'consume';
   /** Доска, открытая из сокровищницы кнопкой «Посмотреть состояние тюрьмы». */
   treasureView: boolean;
+  /** Выбор орудий после «Обновить»: обновление потрачено. */
+  rerolled: boolean;
+  /** Доска сразу после окна сокровищницы (подарок взят или просмотр доски). */
+  treasureClosed: boolean;
   lines: string[];
 }
 
@@ -141,6 +155,7 @@ export class PrisonTriggers {
     let treasureView = false;
     const shut = stampMs(b.lines.find((l) => /ColoredPop Destory/i.test(l)) ?? '');
     if (shut) treasureView = !(this.lastGift && shut >= this.lastGift && shut - this.lastGift < 3000);
-    this.onShot({ kind: b.kind, fresh, after, treasureView, lines: b.lines });
+    const rerolled = b.kind === 'instruments' && b.lines.some((l) => /Btn_S16Board_RelicPop_Reroll/i.test(l));
+    this.onShot({ kind: b.kind, fresh, after, treasureView, rerolled, treasureClosed: !!shut, lines: b.lines });
   }
 }
