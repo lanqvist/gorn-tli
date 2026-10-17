@@ -1,0 +1,167 @@
+# Свой симулятор тюрьмы: архитектура
+
+Замена `vendor/tartarus` (чужой код без лицензии) своей реализацией:
+распознавание экрана, движок правил, стратегия и проверка вариантами. Цель —
+подсказки в публичных сборках Горна. Вторая цель — в разы меньше нагрузка:
+сейчас ход стоит ~0,4 с распознавания и до 1,5 с расчёта на ядре.
+
+Правила игры — в [rules.md](rules.md).
+
+## Чистота разработки
+
+- Код `vendor/tartarus` и клон «Tartarus Simulator» **не открывать и не
+  копировать**: ни файлы, ни функции, ни веса, ни эталоны. Всё пишется по
+  `rules.md`, по своим кадрам и своим замерам.
+- Можно сравнивать **результаты**: тот же кадр или та же позиция → наш
+  ответ против нынешнего. Сравнение делает основная сессия, в которой
+  `vendor` уже читали, а не сессии, которые пишут код.
+- Эталоны распознавания собираются своим инструментом из своих скриншотов.
+  Нынешний `scan-data-ru.js` посчитан функциями автора, его не берём.
+- Перед первым пушем `vendor/tartarus` вычищается из ещё не отправленных
+  коммитов.
+
+## Модули
+
+Всё новое лежит в `src/core/prison/`: чистый TypeScript без Electron, чтобы
+гонять в тестах и в процессе подсказок.
+
+```
+src/core/prison/
+  model.ts          ид и типы: звери, редкости, орудия, события, подарки, цели
+  view.ts           что распознано на экране (ScreenView) — договор распознавания
+  engine/           движок правил
+    state.ts        состояние в типизированных массивах, копирование одним set()
+    rng.ts          ГСЧ (один uint32), потоки по меткам
+    rules.ts        кто кого ест, укус, утро, двери, события, орудия
+    actions.ts      легальные ходы и их применение
+  policy/           мгновенная стратегия: ход без перебора, оценка доски
+  solver/           проверка вариантами: Монте-Карло, общие кости, ранняя остановка
+  adapter.ts        ScreenView + память забега → состояние движка
+  recognize/        распознавание
+    geometry.ts     калибровка: где доска и панели при этом разрешении
+    board.ts        камеры, надзиратель, двери, дни, ряд решений, цепочка, тропа
+    panels.ts       орудия, призматические, цель
+    pick.ts         выбор орудий, сокровищница
+    templates/      эталоны (JSON), собранные scripts/prison-templates.mjs
+scripts/prison-templates.mjs   сборка эталонов из размеченных кадров
+test/prison/                   тесты: правила, стратегия, распознавание на кадрах
+```
+
+`src/main/prison/worker.ts` остаётся связкой: протокол
+`PrisonShotMessage → PrisonWorkerReply` и метки на кадре не меняются.
+Выбор реализации — настройка разработчика `prisonEngine: 'own' | 'vendor'`.
+Пока своя реализация не догонит прежнюю, по умолчанию работает прежняя.
+
+## Договоры между частями
+
+Номера камер внутри — **0–15**: 0 — допросная. Игроку показываем +1.
+
+```ts
+// model.ts
+export type Beast = 'mammoth' | 'lion' | 'wolf' | 'rat';
+export type Tier = 0 | 1 | 2 | 3 | 4 | 5; // Обычная … Призматическая
+export type ToolId = 'forged' | 'keys' | 'dogtag' | /* … 31 шт., см. rules.md §7 */ 'trap';
+export type GiftId = 'ring' | 'horn' | 'wine' | 'brand';
+
+// view.ts — выход распознавания
+export interface CellView {
+  kind: 'office' | 'locked' | 'empty' | 'inmate';
+  beast?: Beast;
+  tier?: Tier;
+  event?: boolean;     // «!»
+  nest?: boolean;
+  jaws?: boolean;      // цель пожирания на экране цепочки
+  shownTier?: Tier;    // редкость видна на запертой двери
+}
+export type Box = [x0: number, y0: number, x1: number, y1: number]; // пиксели кадра
+export interface BoardView {
+  cells: CellView[];               // 16
+  warden: number | null;
+  daysLeft: number | null;
+  doors: number[];                 // предложенные камеры, в порядке карточек
+  decision: null
+    | { kind: 'manage'; consume: boolean; replace: boolean; end: boolean }
+    | { kind: 'office' }
+    | { kind: 'ratway' }             // «Выберите цель»
+    | { kind: 'event' };             // окно события
+  chain: { targets: number[] } | null; // «Выберите узника для пожирания»
+  tools: ToolId[];
+  chromatic: number;               // призматических в хранилище
+  objective: string | null;
+  at: {                            // где рисовать метки
+    cells: { x: number; y: number; r: number }[];
+    doorCards: Box[];
+    decisionCards: Box[];
+    cancel: Box | null;
+  };
+}
+export interface PickView { cards: (ToolId | null)[]; boxes: Box[]; reroll: boolean; reward: boolean }
+export type ScreenView =
+  | { screen: 'board'; board: BoardView }
+  | { screen: 'pick'; pick: PickView }
+  | { screen: 'treasure'; gifts: Box[] }
+  | { screen: 'other' };
+
+// recognize
+export interface Frame { width: number; height: number; data: Uint8ClampedArray } // RGBA
+export function calibrate(frame: Frame): Geometry | null;             // редко: первая доска, смена разрешения
+export function read(frame: Frame, geo: Geometry | null): { view: ScreenView; geo: Geometry | null };
+
+// engine
+export type Action =
+  | { type: 'patrol'; cell: number } | { type: 'devour'; to: number } | { type: 'chain'; to: number }
+  | { type: 'stopchain' } | { type: 'swap' } | { type: 'end' } | { type: 'hunt'; to: number }
+  | { type: 'office'; choice: 'bestow' | 'instigate' } | { type: 'event'; accept: boolean }
+  | { type: 'choose'; id: ToolId | GiftId } | { type: 'reroll' };
+export interface Engine {
+  legal(s: State): Action[];
+  apply(s: State, a: Action, rng: Rng): void;     // на месте, без аллокаций
+  copy(from: State, to: State): void;
+  score(s: State): number;                        // призматических в хранилище
+}
+
+// policy / solver
+export function instant(s: State): Action;
+export function solve(s: State, opts: { seed: number; minRounds: number; maxRounds: number }):
+  { step(ms: number): { best: Action; options: { action: Action; mean: number; gapSe: number }[]; done: boolean } };
+```
+
+## Бюджеты скорости
+
+| Что | Сейчас | Цель |
+|---|---|---|
+| Распознавание кадра 1920×1080, доска уже найдена | ~120 мс | ≤ 30 мс |
+| Первая доска или смена разрешения | 1,4–1,8 с | ≤ 300 мс |
+| Экран цепочки (затемнённый) | 1,4–1,8 с | ≤ 50 мс |
+| Прогон забега до конца (плейаут) | 0,5–3 мс | ≤ 0,1 мс |
+| Мгновенный совет | < 1 мс | < 5 мс |
+| Проверка вариантами на ход | до 1,5 с ядра | ≤ 300 мс ядра, ранняя остановка |
+
+Без аллокаций в цикле плейаута: состояние — типизированные массивы,
+орудия — битовая маска, лог в прогонах выключен.
+
+## Проверка
+
+- **Правила** — unit-тесты на каждое правило из `rules.md`, с фиксированным ГСЧ.
+- **Распознавание** — точность по полям на `Documents/gorn-prison-data`.
+  Без этой папки тест пропускается, в CI его нет. Порог — паритет: сейчас
+  100 % на `boards-ru4k.json`. Плюс скорость на кадрах из
+  `Изображения/Горн — тюрьма`.
+- **Стратегия** — самоигра: среднее число призматических за забег на одном
+  наборе забегов. Сравнение с нынешним решателем по совпадению ходов делает
+  основная сессия.
+- **Живые замеры** — по своим кадрам с логом сверять догадки из `rules.md`.
+
+## Порядок работ
+
+| Этап | Что | Зависит от | Срок |
+|---|---|---|---|
+| A | Движок: `model.ts`, `engine/`, тесты правил | rules.md | ~2 недели |
+| B | Распознавание: `view.ts`, `recognize/`, сборка эталонов, тест точности | данные | 3–4 недели |
+| C | Стратегия и проверка вариантами, самоигра | A | 2–3 недели |
+| D | `adapter.ts`, переключатель в `worker.ts`, сравнение с прежним, удаление `vendor` | A, B, C | ~1 неделя |
+
+A и B независимы, их ведут две отдельные сессии, каждая в своём worktree.
+`model.ts` пишет этап A, `view.ts` — этап B. Общие имена (`Beast`, `Tier`,
+`ToolId`) у обоих берутся из этого документа, при слиянии сводятся в
+`model.ts`.
