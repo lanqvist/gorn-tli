@@ -22,6 +22,8 @@ const SOLVE_BUDGET_MS = 1500;
 const STALE_MS = 120_000;
 /** Запасной разовый снимок дольше этого не ждём: при открытом потоке он тянется десятки секунд. */
 const SNAPSHOT_MAX_MS = 3000;
+/** Последний кадр статичного экрана годится, если снят хотя бы через столько после строки лога. */
+const STATIC_AFTER_LINE_MS = 300;
 /** Сколько раз подтолкнуть композицию, если поток застыл на старом кадре. */
 const NUDGES = 2;
 /** Ход игрока в логе: старая подсказка больше не про этот экран. */
@@ -268,7 +270,12 @@ export class PrisonAssist {
     // Окно стрелок видно (хотя бы «смотрю…») — экран пересобирается и поток
     // получает свежие кадры; в сам кадр окно не попадает.
     this.layer.thinking(display);
-    let frame = await this.stream.grab(display, manual ? 0 : STABLE_MS, manual ? 600 : STABLE_MAX_MS);
+    // Статичный экран (выбор орудий, событие) новых кадров не даёт: годится
+    // последний, снятый после строки лога (с запасом на начало анимации);
+    // по хоткею — любой последний: игрок смотрит на экран сам.
+    const lineAt = shot.lines.length ? stampMs(shot.lines[shot.lines.length - 1]!) : null;
+    const okAge = manual ? 60_000 : lineAt ? Math.max(0, t0 - lineAt - STATIC_AFTER_LINE_MS) : 0;
+    let frame = await this.stream.grab(display, manual ? 0 : STABLE_MS, manual ? 600 : STABLE_MAX_MS, okAge);
     let via = 'поток';
     if (!frame && this.stream.lastMiss === 'silent') {
       // Поток молчит — открыть заново и спросить ещё раз. При «stale» (игра
@@ -278,7 +285,7 @@ export class PrisonAssist {
     }
     for (let i = 0; !frame && this.stream.lastMiss === 'stale' && i < NUDGES; i++) {
       this.layer.nudge(display);
-      frame = await this.stream.grab(display, 0, 900);
+      frame = await this.stream.grab(display, 0, 900, okAge);
       via = `поток после толчка ${i + 1}`;
     }
     // Разовый снимок (getSources в 4K) блокирует главный процесс на секунды,

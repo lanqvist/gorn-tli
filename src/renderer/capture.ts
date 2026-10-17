@@ -122,10 +122,12 @@ const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /**
  * Кадр после запроса, на котором экран уже stableMs не менялся; не дольше
- * maxMs (тогда — последний свежий). Без свежих кадров (экран не
- * пересобирается) — ошибка «stale»: main-процесс подтолкнёт и спросит снова.
+ * maxMs (тогда — последний свежий). Новых кадров нет — поток присылает
+ * кадры только на изменения, и статичный экран (выбор орудий, окно события)
+ * их не даёт: годится последний, если он не старше okAgeMs (снят уже после
+ * события). Иначе — ошибка «stale»: main-процесс подтолкнёт и спросит снова.
  */
-async function grab(stableMs: number, maxMs: number): Promise<{ width: number; height: number; buffer: ArrayBuffer }> {
+async function grab(stableMs: number, maxMs: number, okAgeMs = 0): Promise<{ width: number; height: number; buffer: ArrayBuffer }> {
   if (!stream) throw new Error('поток не открыт');
   const asked = performance.now();
   for (;;) {
@@ -136,7 +138,7 @@ async function grab(stableMs: number, maxMs: number): Promise<{ width: number; h
     await wait(20);
   }
   if (!latest) throw new Error('из потока ещё не пришло ни одного кадра');
-  if (latestAt < asked) throw new Error(`stale: последнему кадру ${Math.round(asked - latestAt)} мс`);
+  if (latestAt < asked && asked - latestAt > okAgeMs) throw new Error(`stale: последнему кадру ${Math.round(asked - latestAt)} мс`);
   const t1 = performance.now();
   const out = pixels(latest);
   console.log(`[поток] ждал ${Math.round(t1 - asked)} мс (спокойно ${Math.round(t1 - changedAt)} мс), пиксели ${Math.round(performance.now() - t1)} мс`);
@@ -151,8 +153,8 @@ api?.onStart((req) => {
   );
 });
 api?.onStop(() => stop());
-api?.onGrab((id, stableMs, maxMs) => {
-  grab(stableMs, maxMs).then(
+api?.onGrab((id, stableMs, maxMs, okAgeMs) => {
+  grab(stableMs, maxMs, okAgeMs).then(
     (frame) => api.frame(id, frame, null),
     (err: unknown) => api.frame(id, null, err instanceof Error ? err.message : String(err)),
   );

@@ -64,9 +64,11 @@ export class ScreenStream {
 
   /**
    * Кадр монитора, на котором экран уже stableMs не менялся (не дольше
-   * maxMs), или null — тогда запасной способ.
+   * maxMs), или null — тогда запасной способ. okAgeMs: если новых кадров
+   * нет (экран не меняется), годится последний не старше этого — статичный
+   * экран после события, а не застывший захват.
    */
-  async grab(display: Display, stableMs = 0, maxMs = 400): Promise<Frame | null> {
+  async grab(display: Display, stableMs = 0, maxMs = 400, okAgeMs = 0): Promise<Frame | null> {
     this.lastMiss = 'silent';
     if (!(await this.ensure(display)) || !this.window) return null;
     this.touch();
@@ -82,7 +84,7 @@ export class ScreenStream {
         clearTimeout(timer);
         resolve(f);
       });
-      this.window?.webContents.send('capture:grab', id, stableMs, maxMs);
+      this.window?.webContents.send('capture:grab', id, stableMs, maxMs, okAgeMs);
     });
   }
 

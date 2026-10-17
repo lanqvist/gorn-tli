@@ -100,7 +100,7 @@ declare global {
     capture: {
       onStart: (cb: (req: { sourceId: string; width: number; height: number }) => void) => () => void;
       onStop: (cb: () => void) => () => void;
-      onGrab: (cb: (id: number, stableMs: number, maxMs: number) => void) => () => void;
+      onGrab: (cb: (id: number, stableMs: number, maxMs: number, okAgeMs: number) => void) => () => void;
       started: (err: string | null) => void;
       frame: (id: number, frame: { width: number; height: number; buffer: ArrayBuffer } | null, err: string | null) => void;
     };
