@@ -15,6 +15,7 @@ import { dirname, join } from 'node:path';
 
 import { isUiLanguage, setUiLanguage, tr, type UiLanguage } from '../core/i18n.js';
 import { resolveLogDirectory } from '../core/locate.js';
+import type { MapCatalogue } from '../core/mapNames.js';
 import { DebugSink } from './debug.js';
 import { Engine, type Snapshot } from './engine.js';
 import { IconCache, registerIconScheme } from './icons.js';
@@ -78,6 +79,22 @@ function loadItems(): CatalogueItem[] {
     }
   }
   return [];
+}
+
+/** Справочник названий карт; без него карты называются именами ассетов. */
+function loadMaps(): MapCatalogue | null {
+  const candidates = [
+    join(__dirname, '../../data/maps.json'),
+    join(process.resourcesPath ?? '', 'data/maps.json'),
+  ];
+  for (const path of candidates) {
+    try {
+      return JSON.parse(readFileSync(path, 'utf8')) as MapCatalogue;
+    } catch {
+      continue;
+    }
+  }
+  return null;
 }
 
 function createWindow(): void {
@@ -216,6 +233,7 @@ app.whenReady().then(async () => {
     allSeasons: settings.allSeasons,
     excludedItems: settings.excludedItems,
     minDropFe: settings.minDropFe,
+    maps: loadMaps(),
   });
 
   // Кнопка «Оверлей» в шапке обязана отражать реальность и когда оверлей

@@ -41,6 +41,7 @@ import {
   type PriceTrend,
 } from '../core/priceStore.js';
 import { heroName } from '../core/heroes.js';
+import { MapNames, type MapCatalogue } from '../core/mapNames.js';
 import { seasonName } from '../core/seasons.js';
 import { tr, uiLanguage } from '../core/i18n.js';
 import { retroScan, runCost, runValue } from '../core/retroScan.js';
@@ -352,6 +353,8 @@ export class Engine extends EventEmitter {
       allSeasons?: boolean;
       excludedItems?: number[];
       minDropFe?: number;
+      /** Справочник названий карт (data/maps.json). Без него — имена ассетов. */
+      maps?: MapCatalogue | null;
     } = {},
   ) {
     super();
@@ -373,12 +376,25 @@ export class Engine extends EventEmitter {
     this.allSeasons = options.allSeasons ?? false;
     this.excluded = new Set(options.excludedItems ?? []);
     this.minDropFe = options.minDropFe ?? 0;
+    this.maps = options.maps ? new MapNames(options.maps) : MapNames.empty();
     this.dataDir = dataDir;
     this.community = new CommunityPriceFeed(dataDir);
     this.community.onUpdate(() => this.emit('snapshot', this.buildSnapshot()));
   }
 
   private language: NameLanguage;
+  private maps: MapNames;
+
+  /**
+   * Название карты для показа: игровое из справочника, на языке названий
+   * предметов (это тоже игровые названия). Русского нет — английское,
+   * карта неизвестна — очищенное имя ассета.
+   */
+  private mapName(asset: string | null, areaId: number): string {
+    const known = this.maps.lookup(asset, areaId);
+    if (!known) return assetName(asset, areaId);
+    return this.language === 'en' ? known.en : (known.ru ?? known.en);
+  }
 
   /** Переключение языка названий: срез пересобирается сразу. */
   setLanguage(language: NameLanguage): void {
@@ -749,15 +765,13 @@ export class Engine extends EventEmitter {
   /**
    * Человекочитаемое имя забега.
    *
-   * В логе есть только внутреннее имя ассета в пиньине — MaNeiLaYuLin,
-   * YuanSuKuangDong. Игровых названий там нет ни на русском, ни на английском.
-   *
-   * Зато известно, чем карта открыта, а маяк называет план Инобытия прямо:
-   * «Voidlands Beacon (Timemark 8)» → «Пустоши · метка 8». Это то, чем игрок
-   * карту и опознаёт, в отличие от транслитерации китайского названия.
+   * Игровых названий в логе нет — только ассет и LevelId; название зоны
+   * даёт справочник (mapName). Перед ним — план с меткой из маяка, которым
+   * карту открыли: «Voidlands Beacon (Timemark 8)» → «Пустоши · метка 8».
+   * По плану и метке игрок карту и опознаёт.
    */
   private runName(run: Run): string {
-    const map = mapName(run.asset, run.areaId);
+    const map = this.mapName(run.asset, run.areaId);
 
     for (const cost of run.costs) {
       const info = this.items.get(cost.configBaseId);
@@ -921,7 +935,10 @@ export class Engine extends EventEmitter {
 
   /** Всё, по чему забег находится поиском, одной строкой в нижнем регистре. */
   private searchText(run: Run): string {
-    const parts = [this.runName(run), mapName(run.asset, run.areaId)];
+    const parts = [this.runName(run), assetName(run.asset, run.areaId)];
+    // Карта находится по названию на любом языке, а не только на текущем.
+    const map = this.maps.lookup(run.asset, run.areaId);
+    if (map) parts.push(map.en, map.ru ?? '');
     for (const d of [...run.drops, ...run.costs]) {
       const info = this.items.get(d.configBaseId);
       if (!info) continue;
@@ -1265,7 +1282,7 @@ export class Engine extends EventEmitter {
             icon: this.items.get(id)?.icon ? iconUrl(id) : null,
           })),
         })),
-      maps: groupByMap(farming, (r) => mapName(r.asset, r.areaId), pricing).slice(0, 8),
+      maps: groupByMap(farming, (r) => this.mapName(r.asset, r.areaId), pricing).slice(0, 8),
       days: dailyTotals(farming, pricing, 14, Date.now()),
       sessions: sessionTotals(this.sessions, farming, pricing).slice(0, 10),
       bag: this.bagView(),
@@ -1489,13 +1506,10 @@ function planeName(itemName: string): string | null {
 }
 
 /**
- * Человекочитаемое имя карты.
- *
- * Ассеты называются пиньинем (YL_MaNeiLaYuLin100). Русские названия появятся,
- * когда будет готов глоссарий; пока показываем очищенный ассет,
- * а не «зона 5348».
+ * Имя карты, которой нет в справочнике: очищенный ассет (YL_MaNeiLaYuLin100 →
+ * MaNeiLaYuLin), а не «зона 5348». Игровые названия — Engine.mapName.
  */
-function mapName(asset: string | null, areaId: number): string {
+function assetName(asset: string | null, areaId: number): string {
   if (!asset) return tr(`Зона ${areaId}`, `Zone ${areaId}`);
   const cleaned = asset
     // Префикс папки бывает любой длины: XZ_, SD_, JH_, KD_.

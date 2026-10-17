@@ -99,7 +99,7 @@ export const demoSnapshot: Snapshot = {
   current: {
     key: 'current',
     areaId: 5348,
-    name: 'MaNeiLaYuLin',
+    name: 'Мерзкий лес',
     startedAt: now - 96_000,
     durationMs: null,
     feGained: 3,
@@ -123,7 +123,7 @@ export const demoSnapshot: Snapshot = {
     {
       key: 'r1',
       areaId: 5348,
-      name: 'MaNeiLaYuLin',
+      name: 'Мерзкий лес',
       startedAt: now - 400_000,
       durationMs: 84_000,
       feGained: 12,
@@ -140,7 +140,7 @@ export const demoSnapshot: Snapshot = {
     {
       key: 'r2',
       areaId: 5351,
-      name: 'KuangReYuLin',
+      name: 'Мерцающее болото',
       startedAt: now - 700_000,
       durationMs: 47_000,
       feGained: 0,
@@ -154,7 +154,7 @@ export const demoSnapshot: Snapshot = {
     {
       key: 'r3',
       areaId: 5348,
-      name: 'MaNeiLaYuLin',
+      name: 'Мерзкий лес',
       startedAt: now - 1_100_000,
       durationMs: 96_000,
       feGained: 44,
@@ -169,7 +169,7 @@ export const demoSnapshot: Snapshot = {
       (perHour, i) => ({
         key: `r${i + 4}`,
         areaId: 5348 + (i % 3),
-        name: ['MaNeiLaYuLin', 'YiWangMiDian', 'XiDiChongGu'][i % 3]!,
+        name: ['Мерзкий лес', 'Святилище агонии', 'Джунгли выводка'][i % 3]!,
         startedAt: now - 1_500_000 - i * 420_000,
         durationMs: 60_000 + (i % 4) * 25_000,
         feGained: Math.round(perHour / 40),
@@ -256,7 +256,7 @@ export const demoSnapshot: Snapshot = {
   ],
   maps: [
     {
-      name: 'MaNeiLaYuLin',
+      name: 'Мерзкий лес',
       runs: 11,
       rate: rateOf(771, 612, 1_104, 11),
       netPerRun: 27,
@@ -264,7 +264,7 @@ export const demoSnapshot: Snapshot = {
       totalActiveMs: 11 * 95_000,
     },
     {
-      name: 'YiWangMiDian',
+      name: 'Святилище агонии',
       runs: 6,
       rate: rateOf(903, 388, 1_418, 6),
       netPerRun: 24,
@@ -272,7 +272,7 @@ export const demoSnapshot: Snapshot = {
       totalActiveMs: 6 * 88_000,
     },
     {
-      name: 'XiDiChongGu',
+      name: 'Джунгли выводка',
       runs: 5,
       rate: rateOf(486, 162, 947, 5),
       netPerRun: 13,
@@ -280,7 +280,7 @@ export const demoSnapshot: Snapshot = {
       totalActiveMs: 5 * 92_000,
     },
     {
-      name: 'KuangReYuLin',
+      name: 'Мерцающее болото',
       runs: 1,
       rate: rateOf(306, 306, 306, 1),
       netPerRun: 4,
