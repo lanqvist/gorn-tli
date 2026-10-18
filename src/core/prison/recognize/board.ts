@@ -245,6 +245,10 @@ export function readBoard(frame: Frame, geo: Geometry, t: BoardTemplates): Board
   // читается как дверь в пределах хода и ни одна не похожа на карточку решения
   // («Завершить день» тоже длинная подпись без цифр).
   if (header === null && looksLikeDoors(frame, geo, centers, board.warden, t)) header = 'patrol';
+  // Ряд решений без надписи (одна карточка «Завершить» после Пожирания,
+  // надпись «Примите решение» ещё не появилась): каждая карточка уверенно
+  // узнаётся как карточка решения.
+  if (header === null && centers.length && centers.every((cx) => classifyCard(frame, geo, cx, t.screens.cards).score >= CARD_MIN)) header = 'manage';
   if (header === null) return board;
   if (header === 'patrol') {
     for (const cx of centers) {
