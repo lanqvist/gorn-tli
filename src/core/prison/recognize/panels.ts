@@ -18,17 +18,25 @@ const slotBuf = new Float32Array(12 * 16 * 3);
 const objBuf = new Float32Array(80 * 15);
 const headBuf = new Float32Array(92 * 20);
 
-/** Орудия на панели слева направо; первое пустое место — конец списка. */
-export function readTools(frame: Frame, geo: Geometry, t: ScreensTemplate): ToolId[] {
-  const out: ToolId[] = [];
+/**
+ * Места панели орудий слева направо: орудие или null — место занято
+ * иконкой, которой нет среди эталонов. Первое пустое место — конец списка.
+ */
+export function readToolSlots(frame: Frame, geo: Geometry, t: ScreensTemplate): (ToolId | null)[] {
+  const out: (ToolId | null)[] = [];
   for (let i = 0; i < TOOL_SLOTS; i++) {
     sample(frame, geo, toolSlot(i), 12, 18, 3, toolBuf);
     normalize(toolBuf);
     const best = nearest(toolBuf, t.tools);
-    if (best.label === 'empty' || best.score < TOOL_MIN) break;
-    if ((TOOL_IDS as readonly string[]).includes(best.label)) out.push(best.label as ToolId);
+    if (best.label === 'empty') break;
+    out.push(best.score >= TOOL_MIN && (TOOL_IDS as readonly string[]).includes(best.label) ? (best.label as ToolId) : null);
   }
   return out;
+}
+
+/** Узнанные орудия на панели (неузнанные иконки пропускаются). */
+export function readTools(frame: Frame, geo: Geometry, t: ScreensTemplate): ToolId[] {
+  return readToolSlots(frame, geo, t).filter((x): x is ToolId => x !== null);
 }
 
 /**
