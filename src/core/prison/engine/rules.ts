@@ -7,8 +7,9 @@
  * камеры не требует буферов и не аллоцирует.
  */
 
+import { EVENT_SPEC, TOOL_OFFER, TOOL_SPEC } from '../client-tables.js';
 import {
-  CELLS, EVENT, EVENT_POOL, LEGENDARY, LION, MAMMOTH, OBJECTIVE, OBJECTIVE_IDS, OFFICE, PRISMATIC, RAT,
+  CELLS, EVENT, EVENT_IDS, EVENT_POOL, LEGENDARY, LION, MAMMOTH, OBJECTIVE, OBJECTIVE_IDS, OFFICE, PRISMATIC, RAT,
   START_EVENT, SUPREME, TOOL, TOOL_IDS, WOLF, type Params, type TierOdds,
 } from '../model.js';
 import type { Rng } from './rng.js';
@@ -31,6 +32,20 @@ export const SECOND_FOOD = [WOLF, RAT, -1, -1] as const;
 
 const ALL_TOOLS = (1 << TOOL_IDS.length) - 1;
 const POOL = EVENT_POOL.map((id) => EVENT[id]);
+
+// Таблицы клиента (client-tables.ts) в виде массивов по номеру события / орудия.
+const SPAWN_ANY = 0, SPAWN_OPENED = 1, SPAWN_UNOPENED = 2;
+const EVENT_W = EVENT_IDS.map((id) => EVENT_SPEC[id].weight);
+const EVENT_SPAWN = EVENT_IDS.map((id) => {
+  const sp = EVENT_SPEC[id].spawn;
+  return sp === 'opened' ? SPAWN_OPENED : sp === 'unopened' ? SPAWN_UNOPENED : SPAWN_ANY;
+});
+/** Маска орудий, при которых событие не выпадает (ExcludeRelic). */
+const EVENT_EXCL = EVENT_IDS.map((id) => EVENT_SPEC[id].excludeTools.reduce((m, t) => m | (1 << TOOL[t]), 0));
+const TOOL_W = TOOL_IDS.map((id) => TOOL_SPEC[id].weight);
+/** Маска орудий, исключённых этим орудием (Exclude). */
+const TOOL_EXCL = TOOL_IDS.map((id) => TOOL_SPEC[id].exclude.reduce((m, t) => m | (1 << TOOL[t]), 0));
+const offerW = new Int32Array(TOOL_IDS.length);
 
 export function popcount(x: number): number {
   x -= (x >>> 1) & 0x55555555;
@@ -69,13 +84,6 @@ export function inmateMask(s: State): number {
   return mask;
 }
 
-function lockedNoEventMask(s: State): number {
-  const m = s.m;
-  let mask = 0;
-  for (let c = 1; c < CELLS; c++) if (m[LOCK + c] === 1 && m[EVT + c] === 0) mask |= 1 << c;
-  return mask;
-}
-
 // ── броски ──────────────────────────────────────────────────────────────────
 
 /** Редкость по долям, не ниже floor. */
@@ -98,21 +106,54 @@ function doorFloor(s: State, c: number): number {
 }
 
 /**
- * Событие из пула: 13 постоянных и текущая ступень Узурпации, если она ещё
- * в пуле (клиент 252–255: ступень заменяет себя в пуле следующей). Доли
- * поровну. [догадка: веса событий не найдены]
+ * Вес события ev для камеры c: базовый Weight (клиент event 201–255), 0 —
+ * событие здесь не выпадает: камера не того состояния (SpawnCellState), у
+ * игрока исключающее орудие (ExcludeRelic) или ступени Узурпации нет в пуле.
+ * Текущая ступень Узурпации после I весит usurpNextWeight. [допущение: её
+ * базовый вес 0, как ступень получает вес — не найдено]
  */
-function randomEvent(s: State, r: Rng): number {
-  const u = s.m[USURP]!;
-  const n = POOL.length + (u >= 0 ? 1 : 0);
-  const k = r.int(n);
-  return k < POOL.length ? POOL[k]! : u;
+export function eventWeight(s: State, p: Params, ev: number, c: number): number {
+  const m = s.m;
+  const sp = EVENT_SPAWN[ev]!;
+  if (sp === SPAWN_OPENED ? m[LOCK + c] === 1 : sp === SPAWN_UNOPENED && m[LOCK + c] !== 1) return 0;
+  if ((m[TOOLS]! & EVENT_EXCL[ev]!) !== 0) return 0;
+  if (ev >= EVENT.usurp1 && ev <= EVENT.usurp4) {
+    if (m[USURP] !== ev) return 0;
+    return ev === EVENT.usurp1 ? EVENT_W[ev]! : p.usurpNextWeight;
+  }
+  return EVENT_W[ev]!;
 }
 
-/** Поставить событие в случайную камеру без события; mask — где можно. */
-function addEvent(s: State, r: Rng, mask: number): void {
+/**
+ * Событие для камеры c: взвешенный выбор среди допустимых для неё (13
+ * постоянных и текущая ступень Узурпации). −1 — допустимых нет. Модель
+ * «сначала камера, потом событие под её состояние» — допущение: порядок
+ * выбора у сервера не найден.
+ */
+function randomEvent(s: State, r: Rng, p: Params, c: number): number {
+  const u = s.m[USURP]!;
+  let total = 0;
+  for (let i = 0; i < POOL.length; i++) total += eventWeight(s, p, POOL[i]!, c);
+  if (u >= 0) total += eventWeight(s, p, u, c);
+  if (total <= 0) return -1;
+  let x = r.int(total);
+  for (let i = 0; i < POOL.length; i++) {
+    x -= eventWeight(s, p, POOL[i]!, c);
+    if (x < 0) return POOL[i]!;
+  }
+  return u;
+}
+
+/** Поставить событие в камеру c (если есть допустимое). */
+function putEvent(s: State, r: Rng, p: Params, c: number): void {
+  const ev = randomEvent(s, r, p, c);
+  if (ev >= 0) s.m[EVT + c] = ev + 1;
+}
+
+/** Поставить событие в случайную камеру из mask. */
+function addEvent(s: State, r: Rng, p: Params, mask: number): void {
   const c = pickBit(mask, r);
-  if (c >= 0) s.m[EVT + c] = randomEvent(s, r) + 1;
+  if (c >= 0) putEvent(s, r, p, c);
 }
 
 function eventCount(s: State): number {
@@ -127,7 +168,7 @@ function eventCount(s: State): number {
  * [догадка: когда и куда добираются]
  */
 export function topUpEvents(s: State, r: Rng, p: Params): void {
-  for (let n = eventCount(s); n < p.eventMin; n++) addEvent(s, r, noEventMask(s));
+  for (let n = eventCount(s); n < p.eventMin; n++) addEvent(s, r, p, noEventMask(s));
 }
 
 function noEventMask(s: State): number {
@@ -191,7 +232,7 @@ export function relock(s: State, r: Rng, p: Params, c: number): void {
   m[PRE_TIER + c] = -1;
   m[PRE_BEAST + c] = -1;
   if (m[CHAIN_EATER] === c) m[CHAIN_EATER] = -1;
-  if (m[EVT + c] === 0 && r.chance(p.relockEvent)) m[EVT + c] = randomEvent(s, r) + 1;
+  if (m[EVT + c] === 0 && r.chance(p.relockEvent)) putEvent(s, r, p, c);
 }
 
 /**
@@ -693,13 +734,17 @@ export function officeRounds(_s: State, _p: Params): number {
   return 1;
 }
 
-/** «Подстрекнуть»: событие за случайную запертую дверь без события. [догадка: только запертые] */
+/**
+ * «Подстрекнуть» (глоссарий 16000108): событие в случайную камеру. Камера —
+ * любая без события, открытая или запертая (события бывают и для открытых,
+ * SpawnCellState 803). [допущение: камеру с событием не выбирает]
+ */
 function instigate(s: State, r: Rng, p: Params): void {
-  let mask = lockedNoEventMask(s);
+  let mask = noEventMask(s);
   for (let i = 0; i < p.instigateDoors && mask; i++) {
     const c = pickBit(mask, r);
     mask &= ~(1 << c);
-    s.m[EVT + c] = randomEvent(s, r) + 1;
+    putEvent(s, r, p, c);
   }
 }
 
@@ -948,7 +993,24 @@ export function revealBest(s: State, r: Rng, p: Params): void {
 
 // ── выбор орудий и подарков ─────────────────────────────────────────────────
 
-/** Предложить выбор: подарки (все 4) раньше орудий (3 из тех, которых нет). false — предлагать нечего. */
+/**
+ * Вес орудия t в выборе: базовый Weight (клиент relic: 40 у обычных, 5 у
+ * особых); 0 — уже есть (MaxObtain 1) или исключено имеющимся (Exclude, в
+ * обе стороны). BuildWeightInc не применяется: как сервер его прибавляет —
+ * не найдено, поэтому выбор — приближение по базовым весам.
+ */
+export function toolWeight(s: State, t: number): number {
+  const own = s.m[TOOLS]!;
+  if ((own >>> t) & 1) return 0;
+  if ((TOOL_EXCL[t]! & own) !== 0) return 0;
+  for (let o = 0; o < TOOL_IDS.length; o++) if ((own >>> o) & 1 && (TOOL_EXCL[o]! >>> t) & 1) return 0;
+  return TOOL_W[t]!;
+}
+
+/**
+ * Предложить выбор: подарки (все 4) раньше орудий. Орудий TOOL_OFFER (config
+ * 320 = 3), взвешенно без повторов среди допустимых. false — предлагать нечего.
+ */
 export function makeOffer(s: State, r: Rng): boolean {
   const m = s.m;
   if (m[PICK_GIFTS]! > 0) {
@@ -957,16 +1019,26 @@ export function makeOffer(s: State, r: Rng): boolean {
     for (let i = 0; i < 4; i++) m[OFFER + i] = i;
     return true;
   }
-  let pool = ALL_TOOLS & ~m[TOOLS]!;
-  if (pool === 0) {
+  let total = 0;
+  for (let t = 0; t < TOOL_IDS.length; t++) {
+    offerW[t] = toolWeight(s, t);
+    total += offerW[t]!;
+  }
+  if (total === 0) {
     m[PICK_TOOLS] = 0;
     return false;
   }
   m[OFFER_KIND] = OFFER_TOOL;
   let n = 0;
-  for (; n < 3 && pool; n++) {
-    const t = pickBit(pool, r);
-    pool &= ~(1 << t);
+  for (; n < TOOL_OFFER && total > 0; n++) {
+    let x = r.int(total);
+    let t = 0;
+    for (; t < TOOL_IDS.length - 1; t++) {
+      x -= offerW[t]!;
+      if (x < 0) break;
+    }
+    total -= offerW[t]!;
+    offerW[t] = 0;
     m[OFFER + n] = t;
   }
   m[OFFER_N] = n;
@@ -1066,7 +1138,7 @@ export function newRun(s: State, r: Rng, p: Params, setup: RunSetup): void {
   m[START] = setup.start;
   // Клиент 309 «开局随机开房数» = 4; на своих кадрах первого дня открыто 4 камеры.
   for (let i = 0; i < p.startOpen; i++) openRandom(s, r, p);
-  for (let c = 1; c < CELLS; c++) if (m[LOCK + c] === 1 && r.chance(p.doorEvent)) m[EVT + c] = randomEvent(s, r) + 1;
+  for (let c = 1; c < CELLS; c++) if (m[LOCK + c] === 1 && r.chance(p.doorEvent)) putEvent(s, r, p, c);
   topUpEvents(s, r, p);
   m[WARDEN] = OFFICE;
   m[DAY_LIMIT] = setup.start === START_EVENT.ironlaw ? p.ironLawDays : p.days;

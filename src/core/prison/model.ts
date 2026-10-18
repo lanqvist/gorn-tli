@@ -278,6 +278,11 @@ export interface Params {
   appetiteChance: number;
   ravenCells: number;
   freedomOpens: number;
+  /**
+   * Вес текущей ступени Узурпации II–IV в пуле. Базовый Weight у 253–255 — 0,
+   * у 252 — 10; как следующая ступень получает вес — не найдено. [допущение: 10, как у I]
+   */
+  usurpNextWeight: number;
   /** Узурпация I…IV (клиент 252–255): сколько случайных узников (−1 — все) и на сколько. */
   usurpCount: readonly [number, number, number, number];
   usurpGain: readonly [number, number, number, number];
@@ -354,6 +359,7 @@ const defaults: Params = {
   appetiteChance: 0.5,
   ravenCells: 4,
   freedomOpens: 3,
+  usurpNextWeight: 10,
   usurpCount: [1, 1, 2, -1],
   usurpGain: [1, 2, 2, 2],
   extraCount: 3,
