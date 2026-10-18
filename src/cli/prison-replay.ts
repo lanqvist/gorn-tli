@@ -37,6 +37,7 @@ interface Saved {
   rerolled?: boolean;
   treasureClosed?: boolean;
   asTreasure?: boolean;
+  theme?: number | null;
   hints?: { type: string; phase?: string; text?: string }[];
 }
 
@@ -135,6 +136,7 @@ for (const f of files) {
     // Флаг «доска снята, когда окно подарков уже открылось» в старых JSON не
     // записан: восстанавливаем по прежнему ответу на этот кадр.
     asTreasure: saved.asTreasure ?? (saved.kind === 'board' && moveKey(lastHint(saved.hints ?? [])) === 'показать доску'),
+    theme: saved.theme ?? null,
     width: frame?.width ?? 1920,
     height: frame?.height ?? 1080,
     buffer: new ArrayBuffer(0),

@@ -4,6 +4,9 @@ import type { Frame, Geometry } from '../../src/core/prison/recognize/types.js';
 import { clearSolveCache } from '../../src/core/prison/solver/solve.js';
 import type { ScreenView } from '../../src/core/prison/view.js';
 import { PrisonTriggers, type PrisonShot } from '../../src/core/prisonTriggers.js';
+import { PrisonAdapter } from '../../src/core/prison/adapter.js';
+import { START_EVENT } from '../../src/core/prison/model.js';
+import { PICK_GIFTS, START } from '../../src/core/prison/engine/state.js';
 import { OwnAdvisor } from '../../src/main/prison/ownAdvisor.js';
 import type { PrisonShotMessage, PrisonWorkerReply } from '../../src/main/prison/protocol.js';
 import { C, MANAGE_ALL, board, pick } from './view-helpers.js';
@@ -29,7 +32,7 @@ function setup() {
     replies.length = 0;
     const msg: PrisonShotMessage = {
       type: 'shot', id: ++id, kind: 'board', fresh: false, after: '', treasureView: false, rerolled: false,
-      treasureClosed: false, asTreasure: false, width: 1920, height: 1080, buffer: new ArrayBuffer(0), format: 'rgba',
+      treasureClosed: false, asTreasure: false, theme: null, width: 1920, height: 1080, buffer: new ArrayBuffer(0), format: 'rgba',
       budgetMs: 2000, savePath: null, ...over,
     };
     await own.handle(msg, view ? FRAME : null);
@@ -177,3 +180,53 @@ describe('свой путь: флаги кадров от PrisonTriggers, как
     }
   });
 });
+
+describe('свой путь: тема забега', () => {
+  it('строки лога → кадр темы → тема в памяти → START в позиции', async () => {
+    const { shot, own } = setup();
+    const L = (t: string, body: string) => `[2026.10.18-09.22.${t}:000][ 1]TLLua: Display: [Game] ${body}`;
+    const jobs: (() => void)[] = [];
+    const shots: PrisonShot[] = [];
+    const triggers = new PrisonTriggers((s) => shots.push(s), { set: (fn) => jobs.push(fn), clear: () => undefined });
+    triggers.feed([
+      L('18', 'S16BoardThemePop Run'),
+      `[2026.10.18-09.22.18:010][ 1]LogDataTable: Warning: UDataTable::FindRow : 'Play_VO_Story_S16_Special_01_Lilim' requested row`,
+    ]);
+    for (const j of jobs.splice(0)) j();
+    const s = shots.at(-1)!;
+    expect(s).toMatchObject({ kind: 'theme', theme: 1 });
+    expect(await shot(null, { kind: s.kind, theme: s.theme })).toEqual([{ type: 'clear', id: 1 }]);
+    expect(own.memory).toMatchObject({ start: 'tyranny' });
+    // Выбор орудий нового забега тему не сбрасывает; доска — тоже.
+    await shot({ screen: 'pick', pick: pick(['crown', 'saw', 'hook']) }, { kind: 'instruments', fresh: true });
+    await shot({ screen: 'board', board: board({ warden: 1, daysLeft: 19, doors: [3, 5, 6], tools: ['crown'] }) });
+    expect(own.memory).toMatchObject({ start: 'tyranny' });
+    const a = new PrisonAdapter(own.memory);
+    const pos = a.position();
+    expect(pos.ok && pos.state.m[START]).toBe(START_EVENT.tyranny);
+    // Следующий забег без окна темы — темы нет.
+    await shot({ screen: 'pick', pick: pick(['crown', 'saw', 'hook']) }, { kind: 'instruments', fresh: true });
+    expect(own.memory).toMatchObject({ start: 'none' });
+  });
+
+  it('неизвестный номер озвучки — тему не выдумываем', async () => {
+    const { shot, own } = setup();
+    await shot(null, { kind: 'theme', theme: 7 });
+    expect(own.memory).toMatchObject({ start: 'none' });
+    await shot(null, { kind: 'theme', theme: null });
+    expect(own.memory).toMatchObject({ start: 'none' });
+  });
+
+  it('«Расточительность» — три подарка, «Железный закон» — 30 дней', async () => {
+    const a = new PrisonAdapter();
+    a.theme(2);
+    a.treasure('consume');
+    a.treasure('view');
+    const pos = a.position();
+    expect(pos.ok && pos.state.m[PICK_GIFTS]).toBe(3);
+    const b = new PrisonAdapter();
+    b.theme(3);
+    expect(b.mem.dayLimit).toBe(30);
+  });
+});
+

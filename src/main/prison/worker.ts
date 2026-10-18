@@ -239,6 +239,11 @@ async function handle(msg: PrisonShotMessage): Promise<void> {
       return;
     }
   }
+  if (kind === 'theme') {
+    // Окно темы прежний путь не читает (его тема — с панели доски).
+    reply({ type: 'clear', id: msg.id });
+    return;
+  }
   if (kind === 'objective') {
     if (advisor.objective(Scan.readObjectiveTitle(img))) saveState();
     reply({ type: 'clear', id: msg.id });

@@ -76,6 +76,8 @@ export interface RunMemory {
   gifts: number;
   /** Выбор орудия в начале забега: доски за ним ещё не было. */
   runStart: boolean;
+  /** Тему забега увидели, а доски нового забега ещё не было (выбор орудий её не сбросит). */
+  themeFresh: boolean;
   /**
    * Что было до выбора орудия в награду или до сокровищницы — куда забег
    * вернётся после выбора (иначе решатель прибавит или отнимет действие дня).
@@ -107,6 +109,7 @@ export function blankMemory(): RunMemory {
     rerolls: 0,
     gifts: 0,
     runStart: false,
+    themeFresh: false,
     resume: 'patrol',
     resumeAfter: '',
   };
@@ -154,6 +157,7 @@ export function loadMemory(x: unknown): RunMemory {
     rerolls: isInt(m.rerolls, 0, 9) ? m.rerolls : 0,
     gifts: isInt(m.gifts, 0, 30) ? m.gifts : 0,
     runStart: !!m.runStart,
+    themeFresh: !!m.themeFresh,
     resume: m.resume && steps.includes(m.resume) ? m.resume : 'patrol',
     resumeAfter: m.resumeAfter === 'swap' || m.resumeAfter === 'consume' ? m.resumeAfter : '',
   };
@@ -163,6 +167,14 @@ export function loadMemory(x: unknown): RunMemory {
 const OBJECTIVE_FROM_VIEW: Record<string, ObjectiveId> = {
   beastking: 'apex', apex: 'apex', jungle: 'jungle', doors: 'doors', walk: 'walk', currents: 'currents',
 };
+
+/**
+ * Тема забега по номеру озвучки окна темы («Play_VO_Story_S16_Special_0N»).
+ * Клиент: THEME_DIALOGUE_MAP 301…304 → реплики 160005…160008 подряд,
+ * озвучек темы ровно четыре. 01 = «Злоупотребление властью» — по живому
+ * забегу; 02–04 — по порядку реплик, сверить по забегам.
+ */
+export const THEME_BY_VOICE: Readonly<Record<number, StartEventId>> = { 1: 'tyranny', 2: 'abundance', 3: 'ironlaw', 4: 'cagefight' };
 
 const beastNo = (b: string | undefined): number => Math.max(0, BEASTS.indexOf((b ?? 'mammoth') as (typeof BEASTS)[number]));
 
@@ -210,6 +222,7 @@ export class PrisonAdapter {
     if (v.chromatic >= 0) m.storage = v.chromatic;
     if (v.objective && OBJECTIVE_FROM_VIEW[v.objective]) m.objective = OBJECTIVE_FROM_VIEW[v.objective]!;
     m.runStart = false;
+    m.themeFresh = false;
     m.offer = [];
 
     if (v.chain) {
@@ -331,6 +344,15 @@ export class PrisonAdapter {
   }
 
   /** Выбор орудий: в начале забега (fresh) или в награду за цель. */
+  /** Окно темы забега: voice — номер озвучки из лога; неизвестный номер — тему не выдумываем. */
+  theme(voice: number | null): void {
+    const id = voice !== null ? THEME_BY_VOICE[voice] : undefined;
+    if (!id) return;
+    this.mem.start = id;
+    this.mem.themeFresh = true;
+    if (id === 'ironlaw') this.mem.dayLimit = this.p.ironLawDays;
+  }
+
   pick(v: PickView, fresh: boolean, rerolled: boolean): void {
     if (!['pick', 'gift', 'wait'].includes(this.mem.step)) {
       this.mem.resume = this.mem.step;
@@ -339,7 +361,13 @@ export class PrisonAdapter {
     if (fresh && !v.reward) {
       // Новый забег: доска за выбором — чистая. Цель и тему с окон перед
       // выбором (если были) не теряем.
-      const keep = { objective: this.mem.runStart ? this.mem.objective : null, start: this.mem.runStart ? this.mem.start : 'none' as StartEventId };
+      const theme = this.mem.runStart || this.mem.themeFresh;
+      const keep = {
+        objective: this.mem.runStart ? this.mem.objective : null,
+        start: theme ? this.mem.start : ('none' as StartEventId),
+        dayLimit: theme ? this.mem.dayLimit : DEFAULT_PARAMS.days,
+        themeFresh: this.mem.themeFresh,
+      };
       this.mem = { ...blankMemory(), ...keep };
       this.mem.runStart = true;
     }
