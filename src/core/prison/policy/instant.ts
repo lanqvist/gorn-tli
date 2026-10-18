@@ -592,16 +592,10 @@ function pickChain(s: State): number {
   return code(A_STOPCHAIN);
 }
 
-function pickEvent(s: State): number {
-  const c = m[WARDEN]!;
-  if (m[EVT + c]! - 1 === EVENT.ratway) {
-    why = R_ACCEPT;
-    return code(A_ACCEPT);
-  }
-  const yes = probeValue(s, 3, PROBE_ACCEPT, 0);
-  const no = probeValue(s, 1, PROBE_SKIP, 0);
-  why = yes >= no ? R_ACCEPT : R_SKIP;
-  return code(yes >= no ? A_ACCEPT : A_SKIP);
+/** Событие пропустить нельзя (в игре только «Подтвердить»). */
+function pickEvent(_s: State): number {
+  why = R_ACCEPT;
+  return code(A_ACCEPT);
 }
 
 function pickOffice(): number {

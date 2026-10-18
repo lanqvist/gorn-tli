@@ -167,17 +167,13 @@ describe('обход', () => {
     expect([beast(s, 4), tier(s, 4)]).toEqual([WOLF, 3]);
   });
 
-  it('событие за дверью: окно, пропуск убирает событие', () => {
+  it('событие за дверью: окно только с «Подтвердить», пропустить нельзя', () => {
     const s = blank();
     s.m[EVT + 2] = EVENT.freedom + 1;
     doorTo(s, 0, 2);
     act(s, { type: 'patrol', cell: 2 });
     expect(s.m[PHASE]).toBe(P_EVENT);
-    expect(legal(s)).toEqual([{ type: 'event', accept: true }, { type: 'event', accept: false }]);
-    act(s, { type: 'event', accept: false });
-    expect(s.m[EVT + 2]).toBe(0);
-    expect(s.m[STAT_EVENTS]).toBe(0);
-    expect(s.m[PHASE]).toBe(P_MANAGE);
+    expect(legal(s)).toEqual([{ type: 'event', accept: true }]);
   });
 
   it('событие в открытой камере срабатывает при обходе в неё', () => {

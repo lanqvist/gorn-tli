@@ -147,8 +147,10 @@ export function legalCodes(s: State, out: Int32Array): number {
       for (let i = 0; i < m[DOORS_N]!; i++) out[n++] = code(A_PATROL, m[DOORS + i]!);
       break;
     case P_EVENT:
+      // В игре у окна события одна кнопка — «Подтвердить»: пропустить нельзя
+      // (по логу: 72 нажатия Btn_S16Board_EventPop_Confirm на 70 окон, других
+      // кнопок нет). A_SKIP остаётся в кодах, но легальным не бывает.
       out[n++] = code(A_ACCEPT);
-      out[n++] = code(A_SKIP);
       break;
     case P_OFFICE:
       out[n++] = code(A_BESTOW);
