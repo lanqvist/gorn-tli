@@ -146,3 +146,17 @@ describe('окно темы забега', () => {
     expect(shots[0]).toMatchObject({ kind: 'theme', theme: null });
   });
 });
+
+describe('день забега по логу', () => {
+  it('последняя строка check cur=N max=M — в каждом кадре; итоги (max=0) не день', () => {
+    const { shots, timer, t } = setup();
+    t.feed([L('19.00.00', '[S16LastDay] check cur=20 max=20 played=false')]);
+    timer.run();
+    expect(shots.at(-1)).toMatchObject({ kind: 'board', day: { cur: 20, max: 20 } });
+    t.feed([L('19.00.05', 'UIButton@ normal-click Btn_S16Board_ActionCell')]);
+    timer.run();
+    expect(shots.at(-1)).toMatchObject({ day: { cur: 20, max: 20 } });
+    t.feed([L('19.01.00', '[S16LastDay] check cur=0 max=0 played=true')]);
+    expect(t.lastDay).toEqual({ cur: 20, max: 20 });
+  });
+});

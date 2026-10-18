@@ -2,7 +2,7 @@
  * Доска тюрьмы: камеры, надзиратель, значки. Работает при известной
  * геометрии (geometry.ts) и читает только маленькие области кадра.
  */
-import type { Beast, BoardView, Box as ViewBox, CellView, Tier } from '../view.js';
+import type { Beast, BoardView, Box as ViewBox, CellView, Tier, ToolId } from '../view.js';
 import { cardBox, cardCenters, classifyCard, readDoorNumber } from './cards.js';
 import {
   borderColor,
@@ -19,7 +19,7 @@ import {
   lockScore,
 } from './cells.js';
 import { CANCEL, CELL_R, CHAIN_BANNER, DAYS, HEADER, HEADER_H, HEADER_W, WARDEN, portrait } from './layout.js';
-import { readChromatic, readObjective, readTools } from './panels.js';
+import { readChromatic, readObjective, readToolSlots } from './panels.js';
 import { boxToFrame, dot, hsv, normalize, sample, toFrame } from './sample.js';
 import type { CellsTemplate, ScreensTemplate } from './templates.js';
 import { nearest } from './templates.js';
@@ -219,6 +219,7 @@ export function readBoard(frame: Frame, geo: Geometry, t: BoardTemplates): Board
   // кадры цепочки они ещё видны. Видна строка дней — читаем и панели.
   const daysLeft = readDays(frame, geo, t.digits);
   const panels = !chain || daysLeft !== null;
+  const toolSlots = panels ? readToolSlots(frame, geo, t.screens) : null;
   const board: BoardView = {
     cells,
     warden: readWarden(frame, geo),
@@ -226,7 +227,8 @@ export function readBoard(frame: Frame, geo: Geometry, t: BoardTemplates): Board
     doors: [],
     decision: null,
     chain: null,
-    tools: panels ? readTools(frame, geo, t.screens) : [],
+    tools: toolSlots ? toolSlots.filter((x): x is ToolId => x !== null) : [],
+    ...(toolSlots ? { toolSlots } : {}),
     chromatic: panels ? readChromatic(frame, geo, t.screens) : -1,
     objective: panels ? readObjective(frame, geo, t.screens) : null,
     at,

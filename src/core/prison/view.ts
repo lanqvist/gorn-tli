@@ -90,6 +90,11 @@ export interface BoardView {
   chain: { targets: number[] } | null;
   /** На экране цепочки панель скрыта — пусто. */
   tools: ToolId[];
+  /**
+   * Места панели орудий: орудие или null — иконка без эталона. Нет поля —
+   * панели не видно.
+   */
+  toolSlots?: (ToolId | null)[];
   /** Призматических в хранилище; −1 — панель не видна (экран цепочки). */
   chromatic: number;
   /** doors | jungle | beastking | walk | currents; null — не видно или не узнана. */

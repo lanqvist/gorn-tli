@@ -32,7 +32,7 @@ function setup() {
     replies.length = 0;
     const msg: PrisonShotMessage = {
       type: 'shot', id: ++id, kind: 'board', fresh: false, after: '', treasureView: false, rerolled: false,
-      treasureClosed: false, asTreasure: false, theme: null, width: 1920, height: 1080, buffer: new ArrayBuffer(0), format: 'rgba',
+      treasureClosed: false, asTreasure: false, theme: null, day: null, width: 1920, height: 1080, buffer: new ArrayBuffer(0), format: 'rgba',
       budgetMs: 2000, savePath: null, ...over,
     };
     await own.handle(msg, view ? FRAME : null);

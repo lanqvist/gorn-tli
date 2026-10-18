@@ -264,3 +264,27 @@ describe.skipIf(!DAY2.every((n) => gornShot('2026-10-18', n)))('ряд реше�
     expect(at('113441-963-board.png').tools).toEqual(['coin']);
   });
 });
+
+const PANELS: Record<string, string[]> = {
+  '125242-629-board.png': ['muzzle', 'scapegoat'],
+  '131213-208-board.png': ['skewer'],
+  '131347-199-board.png': ['skewer', 'axe'],
+  '132431-694-board.png': ['maiden'],
+  '132502-727-board.png': ['maiden', 'revenge'],
+};
+
+describe.skipIf(!Object.keys(PANELS).every((n) => gornShot('2026-10-18', n)))('панель орудий и карты выбора (забеги 2026-10-18)', () => {
+  it('иконки панели: Шампур, Секира, Саркофаг, Дева мстителя, Козёл отпущения; пустое место с отсветом — не орудие', () => {
+    for (const [name, tools] of Object.entries(PANELS)) {
+      const b = board(read(frame(gornShot('2026-10-18', name)!), null).view);
+      expect(b.toolSlots, name).toEqual(tools);
+    }
+  });
+
+  it('карты выбора: Гильотина с волчьими клыками, Весы тюремщика', () => {
+    const p1 = read(frame(gornShot('2026-10-18', '132417-742-instruments.png')!), null).view;
+    const p2 = read(frame(gornShot('2026-10-18', '132439-724-instruments.png')!), null).view;
+    expect(p1.screen === 'pick' && p1.pick.cards).toEqual(['maiden', 'forged', 'guillotine']);
+    expect(p2.screen === 'pick' && p2.pick.cards).toEqual(['hook', 'scales', 'revenge']);
+  });
+});
