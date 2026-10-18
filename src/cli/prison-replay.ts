@@ -187,12 +187,12 @@ for (const f of files) {
     const ranked = [...opts].sort((a, b) => b.mean - a.mean);
     const others = ranked.slice(1, 3).map((o) => `${moveKey(hint(o.action, { warden: null }).text)} ${o.mean.toFixed(2)}`).join(', ');
     // День: как его держит память забега и как его пишет игра (check cur=N max=M).
-    const mem = advisor.memory as { day: number; dayLimit: number; tools: string[]; assumed: { tool: string }[] };
+    const mem = advisor.memory as { day: number; dayLimit: number; tools: string[]; assumed: { tool: string }[]; storage: number };
     const assumed = new Set(mem.assumed.map((a) => a.tool));
     const tools = mem.tools.map((t) => (assumed.has(t) ? `${t}?` : t)).join(',') || '—';
     const cur = /check cur=(\d+) max=(\d+)/.exec((saved.lines ?? []).join(' '));
     const day = `день ${mem.day + 1}/${mem.dayLimit}${cur ? ` (лог ${cur[1]}/${cur[2]})` : ''}`;
-    console.log(`ход ${f.slice(0, 6)} [${screen}] ${day} орудия ${tools} ждём ${ranked[0]!.mean.toFixed(2)} призм. | совет: ${mine || '—'}${others ? ` | дальше: ${others}` : ''}`);
+    console.log(`ход ${f.slice(0, 6)} [${screen}] ${day} орудия ${tools} в хранилище ${mem.storage} ждём ${ranked[0]!.mean.toFixed(2)} призм. | совет: ${mine || '—'}${others ? ` | дальше: ${others}` : ''}`);
   }
   rows.push({ file: f, screen, old, mine, oldKey, mineKey: moveKey(mine), firstMs: Math.max(0, firstMs), totalMs, readMs, gap });
 }
