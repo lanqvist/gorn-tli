@@ -300,3 +300,24 @@ describe.skipIf(!Object.keys(PANELS).every((n) => gornShot('2026-10-18', n)))('�
     expect(p3.screen === 'pick' && p3.pick.cards).toEqual(['collar', 'stake', 'saw']);
   });
 });
+
+/** Хранилище на кадрах, не вошедших в эталоны (забег 18.10 18:05–18:09, «Железный закон»). */
+const VAULT: Record<string, number> = {
+  // Камера сдвинута, справа круглые окна вместо панели — не видно (раньше читалось 0).
+  '180707-942-board.png': -1,
+  '180823-947-board.png': -1,
+  '180848-685-board.png': -1,
+  // Доска из окна подарка (затемнение): тусклые портреты — занятые места.
+  '180724-098-board.png': 6,
+  '180842-459-board.png': 10,
+};
+
+describe.skipIf(!Object.keys(VAULT).every((n) => gornShot('2026-10-18', n)))('хранилище и панель за окном подарка (забег 2026-10-18 18:05)', () => {
+  it('сдвинутая камера — «не видно», затемнение — все портреты; пустая ячейка — не «Плеть»', () => {
+    for (const [name, n] of Object.entries(VAULT)) {
+      const b = board(read(frame(gornShot('2026-10-18', name)!), null).view);
+      expect(b.chromatic, name).toBe(n);
+      expect(b.tools.includes('whip'), name).toBe(false);
+    }
+  });
+});

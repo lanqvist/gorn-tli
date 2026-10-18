@@ -419,7 +419,7 @@ function buildScreens() {
     headers: protoList(headers, 4),
     cards: protoList(cards, 3),
     tools: protoList(tools, 3),
-    chromatic: protoList(chroma, 8),
+    chromatic: protoList(chroma, 16),
     chromaticHeader: prototypes(chromaHeader, 2).map(pack),
     objectives: protoList(objectives, 3),
     pickArt: protoList(art, 2),

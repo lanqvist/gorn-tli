@@ -11,7 +11,13 @@ import type { Frame, Geometry } from './types.js';
 
 const TOOL_MIN = 0.75;
 const OBJECTIVE_MIN = 0.8;
-const HEADER_MIN = 0.35;
+/**
+ * Заголовок «Призматический узник» на обычной доске — 0,8 и выше; в окне
+ * подарка (затемнение) и когда камера сдвинута и панели нет — 0,35–0,6
+ * (кадры 18.10). Ноль при таком заголовке ни разу не был верным: к окну
+ * подарка хранилище уже не пустое.
+ */
+const HEADER_MIN = 0.6;
 
 const toolBuf = new Float32Array(12 * 18 * 3);
 const slotBuf = new Float32Array(12 * 16 * 3);

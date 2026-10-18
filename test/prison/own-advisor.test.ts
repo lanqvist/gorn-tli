@@ -130,6 +130,8 @@ describe('свой путь подсказок', () => {
 
   it('память и геометрия переживают перезапуск', async () => {
     const { shot, replies } = setup();
+    // Орудия без выбора — со второго кадра подряд.
+    await shot({ screen: 'board', board: board({ warden: 2, daysLeft: 12, doors: [4], tools: ['keys', 'coin'], chromatic: 2 }) });
     await shot({ screen: 'board', board: board({ warden: 2, daysLeft: 12, doors: [4], tools: ['keys', 'coin'], chromatic: 2 }) });
     const state = [...replies].reverse().find((r) => r.type === 'state');
     expect(state && state.type === 'state').toBe(true);

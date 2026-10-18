@@ -102,6 +102,12 @@ export interface RunMemory {
   dayStorage: number;
   /** Нижняя граница хранилища: в забеге оно только растёт. */
   storageFloor: number;
+  /**
+   * Орудия, которые панель показала один раз, а выбора с ними не было:
+   * засчитываются со второго кадра подряд (пустая ячейка в окне подарка
+   * однажды читалась как «Плеть» и висела в памяти до конца забега).
+   */
+  toolSightings: ToolId[];
 }
 
 const lockedCell = (): CellMemory => ({ k: 'locked' });
@@ -134,6 +140,7 @@ export function blankMemory(): RunMemory {
     resumeAfter: '',
     dayStorage: 0,
     storageFloor: 0,
+    toolSightings: [],
   };
 }
 
@@ -191,6 +198,7 @@ export function loadMemory(x: unknown): RunMemory {
     resumeAfter: m.resumeAfter === 'swap' || m.resumeAfter === 'consume' || m.resumeAfter === 'morning' ? m.resumeAfter : '',
     dayStorage: isInt(m.dayStorage, 0, 99) ? m.dayStorage : 0,
     storageFloor: isInt(m.storageFloor, 0, 99) ? m.storageFloor : 0,
+    toolSightings: Array.isArray(m.toolSightings) ? (m.toolSightings.filter((t) => tools.includes(t)) as ToolId[]) : [],
   };
 }
 
@@ -404,8 +412,16 @@ export class PrisonAdapter {
   private panelTools(v: BoardView): void {
     const m = this.mem;
     if (!v.toolSlots && !v.tools.length) return;
+    // Орудие из недавнего выбора — сразу; прочие — со второго кадра подряд.
+    const offered = (t: ToolId) => m.pickOffer.includes(t) || m.assumed.some((a) => a.offer.includes(t));
+    const seen = m.toolSightings;
+    m.toolSightings = [];
     for (const t of v.tools) {
       if (m.tools.includes(t)) continue;
+      if (!offered(t) && !seen.includes(t)) {
+        m.toolSightings.push(t);
+        continue;
+      }
       // Панель узнала орудие, а «предположительно» записано другое из того же выбора — исправить.
       const wrong = m.assumed.find((a) => a.offer.includes(t) && a.tool !== t && !v.tools.includes(a.tool));
       if (wrong) {

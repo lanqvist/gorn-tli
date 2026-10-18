@@ -34,8 +34,12 @@ describe('адаптер: память забега', () => {
 
   it('доска: день по «осталось дней», орудия копятся, хранилище, цель с панели', () => {
     const a = new PrisonAdapter();
+    // Орудие без выбора засчитывается со второго кадра подряд.
     a.board(board({ warden: 4, daysLeft: 14, doors: [6, 8], tools: ['keys'], chromatic: 3, objective: 'beastking' }));
-    a.board(board({ warden: 4, daysLeft: 14, doors: [6, 8], tools: ['coin'], chromatic: 3 }));
+    expect(a.mem.tools).toEqual([]);
+    a.board(board({ warden: 4, daysLeft: 14, doors: [6, 8], tools: ['keys'], chromatic: 3 }));
+    a.board(board({ warden: 4, daysLeft: 14, doors: [6, 8], tools: ['keys', 'coin'], chromatic: 3 }));
+    a.board(board({ warden: 4, daysLeft: 14, doors: [6, 8], tools: ['keys', 'coin'], chromatic: 3 }));
     // «Осталось 14» из 20 — день номер 6 с единицы, с нуля 5.
     expect(a.mem.day).toBe(5);
     expect(a.mem.tools).toEqual(['keys', 'coin']);
@@ -47,6 +51,22 @@ describe('адаптер: память забега', () => {
     expect(s.m[TOOLS]).toBe((1 << TOOL.keys) | (1 << TOOL.coin));
     expect(s.m[WARDEN]).toBe(C(4));
     expect([s.m[DOORS_N], s.m[DOORS], s.m[DOORS + 1]]).toEqual([2, C(6), C(8)]);
+  });
+
+  it('орудие с одного кадра без выбора не засчитывается; хранилище «не видно» память не трогает', () => {
+    // Забег 18.10 18:06: в окне подарка пустая ячейка один раз прочиталась как «Плеть».
+    const a = new PrisonAdapter();
+    a.board(board({ doors: [3], tools: ['blacklist'], chromatic: 3 }));
+    a.board(board({ doors: [3], tools: ['blacklist'], chromatic: 3 }));
+    a.board(board({ doors: [3], tools: ['blacklist', 'whip'], chromatic: 3 }));
+    a.board(board({ doors: [3], tools: ['blacklist'], chromatic: -1 }));
+    a.board(board({ doors: [3], tools: ['blacklist'], chromatic: 3 }));
+    expect(a.mem.tools).toEqual(['blacklist']);
+    expect(a.mem.storage).toBe(3);
+    // Орудие из выбора — с первой же доски.
+    a.pick(pick(['scapegoat', 'saw', 'crown'], false, true), false, false);
+    a.board(board({ doors: [3], tools: ['blacklist', 'scapegoat'], chromatic: 3 }));
+    expect(a.mem.tools).toEqual(['blacklist', 'scapegoat']);
   });
 
   it('больше 20 дней осталось — «Железный закон», 30 дней', () => {
@@ -102,6 +122,7 @@ describe('адаптер: выбор орудий', () => {
 
   it('после «Обновить» обновлений нет; награда за цель не сбрасывает забег', () => {
     const a = new PrisonAdapter();
+    a.board(board({ inmates: { 3: 'wolf4' }, doors: [3], tools: ['keys'] }));
     a.board(board({ inmates: { 3: 'wolf4' }, doors: [3], tools: ['keys'] }));
     a.pick(pick(['crown', 'saw', 'keys'], true, true), false, true);
     expect(a.mem.tools).toEqual(['keys']);
@@ -303,7 +324,9 @@ describe('адаптер: орудия из выбора и день из лог
 
   it('экран цепочки (панели не видно) выбор не закрывает — ждёт доску с панелью', () => {
     const a = new PrisonAdapter();
-    a.board(board({ inmates: { 4: 'mammoth1', 6: 'lion1' }, warden: 4, decision: MANAGE_ALL, kinds: ['consume', 'replace', 'end'], tools: ['coin'] }));
+    const coin = () => board({ inmates: { 4: 'mammoth1', 6: 'lion1' }, warden: 4, decision: MANAGE_ALL, kinds: ['consume', 'replace', 'end'], tools: ['coin'] });
+    a.board(coin());
+    a.board(coin());
     a.pick(pick(['revenge', 'hook', 'scales'], true, true), false, false);
     a.advised('revenge');
     a.board(board({ inmates: { 4: 'mammoth1', 6: 'lion1' }, warden: 4, daysLeft: null, chain: [6] }));
