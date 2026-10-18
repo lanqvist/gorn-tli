@@ -133,7 +133,8 @@ function prepare(s: State, p: Params, w: Float64Array): void {
   guillotine = has(TOOL.guillotine);
   pWhip = has(TOOL.whip) ? p.whipChance : 0;
   pCollar = has(TOOL.collar) ? p.collarChance : 0;
-  muzzle = has(TOOL.muzzle) && inmateCount - 1 <= p.muzzleLeft ? p.muzzleBonus : 0;
+  // Намордник: на поле до укуса (с едоком и жертвой) не больше muzzleLeft узников.
+  muzzle = has(TOOL.muzzle) && inmateCount <= p.muzzleLeft ? p.muzzleBonus : 0;
   chainDiffers = pCollar > 0;
   chainReady = false;
 }
@@ -166,17 +167,17 @@ function next(t: number, b: number): number {
   return anyTier ? F[(t * 4 + b) * 2 + 1]! : A[t * 2 + 1]!;
 }
 
-/** Базовый прирост укуса: 1, Молот, добавки Шампура, Короны и Намордника. */
-function baseGain(be: number, te: number, food: boolean, tt: number): number {
+/** Базовый прирост укуса: 1, Молот, добавки Шампура (крыса ест крысу), Короны и Намордника. */
+function baseGain(be: number, te: number, food: boolean, tt: number, victimRat = false): number {
   let g = be === MAMMOTH && food && maul ? Math.max(1, tt + 2 - te) : 1;
-  if (be === RAT && skewer) g += P.skewerBonus;
+  if (be === RAT && victimRat && skewer) g += P.skewerBonus;
   if (be === LION && crown) g += P.crownBonus;
   return g + muzzle;
 }
 
 /** Вариант укуса: съесть узника редкости u. */
-function biteOption(t: number, b: number, c: number, u: number, isFood: boolean): number {
-  return -val[u]! + cageBonus + afterBite(t, b, baseGain(b, t, isFood, u), c);
+function biteOption(t: number, b: number, c: number, u: number, isFood: boolean, victimRat = false): number {
+  return -val[u]! + cageBonus + afterBite(t, b, baseGain(b, t, isFood, u, victimRat), c);
 }
 
 function hasFood(u: number, f1: number, f2: number): boolean {
@@ -191,7 +192,7 @@ function bestBite(t: number, b: number, c: number): number {
   const row = t * 4;
   if (hasFood(t, f1, f2)) best = biteOption(t, b, c, t, true);
   else if (b === LION && crown && cnt[row]! + cnt[row + 1]! + cnt[row + 2]! + cnt[row + 3]! > 0) best = biteOption(t, b, c, t, false);
-  else if (b === RAT && skewer && cnt[row + RAT]! > 0) best = biteOption(t, b, c, t, false);
+  if (b === RAT && skewer && cnt[row + RAT]! > 0) best = Math.max(best, biteOption(t, b, c, t, false, true));
   // «Схватка узников» (клиент 304) — еда ниже по редкости; Молот (142) — выше.
   if (anyTier) for (let u = 0; u < t; u++) if (hasFood(u, f1, f2)) best = Math.max(best, biteOption(t, b, c, u, true));
   if (b === MAMMOTH && maul) for (let u = t + 1; u < 5; u++) if (hasFood(u, f1, f2)) best = Math.max(best, biteOption(t, b, c, u, true));
@@ -240,7 +241,7 @@ function biteGain(e: number, j: number, chain: number): number {
     const bt = m[BEAST + j]!;
     const food = bt === FIRST_FOOD[be] || bt === SECOND_FOOD[be];
     cost = val[tt]! - cageBonus;
-    base = baseGain(be, te, food, tt);
+    base = baseGain(be, te, food, tt, bt === RAT);
   }
   return -cost + afterBite(te, be, base, chain) - val[te]!;
 }
@@ -466,7 +467,7 @@ function hornBite(e: number, j: number): number {
   const tt = m[TIER + j]!;
   const bt = m[BEAST + j]!;
   const food = bt === FIRST_FOOD[be] || (te >= LEGENDARY && bt === SECOND_FOOD[be]);
-  return -val[tt]! + riseV(te, baseGain(be, te, food, tt)) - val[te]!;
+  return -val[tt]! + riseV(te, baseGain(be, te, food, tt, bt === RAT)) - val[te]!;
 }
 
 /**

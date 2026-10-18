@@ -108,7 +108,8 @@ describe('полный забег', () => {
     expect(Array.from(s.m)).toEqual(Array.from(t.m));
   });
 
-  it('скорость плейаута (цель ≤ 0,1 мс на забег)', () => {
+  // Таймаут с запасом: под vitest и рядом с тестами других копий прогон в разы медленнее.
+  it('скорость плейаута (цель ≤ 0,1 мс на забег)', { timeout: 60_000 }, () => {
     const r = new Rng(1);
     const start = new State();
     const s = new State();
