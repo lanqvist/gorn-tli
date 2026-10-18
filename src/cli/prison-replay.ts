@@ -43,6 +43,8 @@ interface Saved {
   treasureClosed?: boolean;
   asTreasure?: boolean;
   theme?: number | null;
+  /** Строки лога, вызвавшие кадр. */
+  lines?: string[];
   hints?: { type: string; phase?: string; text?: string }[];
 }
 
@@ -174,7 +176,11 @@ for (const f of files) {
     // Ожидание забега на этом решении: лучший ход и его оценка к концу забега.
     const ranked = [...opts].sort((a, b) => b.mean - a.mean);
     const others = ranked.slice(1, 3).map((o) => `${moveKey(hint(o.action, { warden: null }).text)} ${o.mean.toFixed(2)}`).join(', ');
-    console.log(`ход ${f.slice(0, 6)} [${screen}] ждём ${ranked[0]!.mean.toFixed(2)} призм. | совет: ${mine || '—'}${others ? ` | дальше: ${others}` : ''}`);
+    // День: как его держит память забега и как его пишет игра (check cur=N max=M).
+    const mem = advisor.memory as { day: number; dayLimit: number };
+    const cur = /check cur=(\d+) max=(\d+)/.exec((saved.lines ?? []).join(' '));
+    const day = `день ${mem.day + 1}/${mem.dayLimit}${cur ? ` (лог ${cur[1]}/${cur[2]})` : ''}`;
+    console.log(`ход ${f.slice(0, 6)} [${screen}] ${day} ждём ${ranked[0]!.mean.toFixed(2)} призм. | совет: ${mine || '—'}${others ? ` | дальше: ${others}` : ''}`);
   }
   rows.push({ file: f, screen, old, mine, oldKey, mineKey: moveKey(mine), firstMs: Math.max(0, firstMs), totalMs, readMs, gap });
 }
