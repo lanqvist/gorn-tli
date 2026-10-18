@@ -271,26 +271,32 @@ const PANELS: Record<string, string[]> = {
   '131347-199-board.png': ['skewer', 'axe'],
   '132431-694-board.png': ['maiden'],
   '132502-727-board.png': ['maiden', 'revenge'],
-  // Кадры для проверки (в эталоны не входят): «Крюк отбора», «Шипастый ошейник».
+  // Кадры для проверки (в эталоны не входят): «Крюк отбора», «Шипастый ошейник», «Переполненная клетка».
   '171022-899-board.png': ['coin', 'hook'],
   '171102-232-board.png': ['coin', 'hook'],
   '173758-268-board.png': ['collar'],
   '174011-513-board.png': ['collar', 'skewer'],
   '174028-246-board.png': ['collar', 'skewer'],
+  '175936-705-board.png': ['collar', 'cage'],
+  '180035-952-board.png': ['collar', 'cage'],
+  '180055-997-board.png': ['collar', 'cage'],
 };
 
 describe.skipIf(!Object.keys(PANELS).every((n) => gornShot('2026-10-18', n)))('панель орудий и карты выбора (забеги 2026-10-18)', () => {
-  it('иконки панели: Шампур, Секира, Саркофаг, Дева мстителя, Козёл отпущения, Крюк, Ошейник; пустое место с отсветом — не орудие', () => {
+  it('иконки панели: Шампур, Секира, Саркофаг, Дева мстителя, Козёл отпущения, Крюк, Ошейник, Клетка; пустое место с отсветом — не орудие', () => {
     for (const [name, tools] of Object.entries(PANELS)) {
       const b = board(read(frame(gornShot('2026-10-18', name)!), null).view);
       expect(b.toolSlots, name).toEqual(tools);
     }
   });
 
-  it('карты выбора: Гильотина с волчьими клыками, Весы тюремщика', () => {
+  it('карты выбора: Гильотина с волчьими клыками, Весы тюремщика, Столб под курсором', () => {
     const p1 = read(frame(gornShot('2026-10-18', '132417-742-instruments.png')!), null).view;
     const p2 = read(frame(gornShot('2026-10-18', '132439-724-instruments.png')!), null).view;
     expect(p1.screen === 'pick' && p1.pick.cards).toEqual(['maiden', 'forged', 'guillotine']);
     expect(p2.screen === 'pick' && p2.pick.cards).toEqual(['hook', 'scales', 'revenge']);
+    // Курсор на «Столбе для сожжения»: карта подсвечена (17:57:46).
+    const p3 = read(frame(gornShot('2026-10-18', '175746-589-instruments.png')!), null).view;
+    expect(p3.screen === 'pick' && p3.pick.cards).toEqual(['collar', 'stake', 'saw']);
   });
 });
