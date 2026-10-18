@@ -271,7 +271,7 @@ const PANELS: Record<string, string[]> = {
   '131347-199-board.png': ['skewer', 'axe'],
   '132431-694-board.png': ['maiden'],
   '132502-727-board.png': ['maiden', 'revenge'],
-  // Кадры для проверки (в эталоны не входят): «Крюк отбора», «Шипастый ошейник», «Переполненная клетка».
+  // Кадры для проверки (в эталоны не входят): «Крюк отбора», «Шипастый ошейник», «Переполненная клетка», «Кишащий железный ящик».
   '171022-899-board.png': ['coin', 'hook'],
   '171102-232-board.png': ['coin', 'hook'],
   '173758-268-board.png': ['collar'],
@@ -280,10 +280,13 @@ const PANELS: Record<string, string[]> = {
   '175936-705-board.png': ['collar', 'cage'],
   '180035-952-board.png': ['collar', 'cage'],
   '180055-997-board.png': ['collar', 'cage'],
+  '184015-567-board.png': ['hook', 'ironbox'],
+  '184118-933-board.png': ['hook', 'ironbox'],
+  '184201-534-board.png': ['hook', 'ironbox'],
 };
 
 describe.skipIf(!Object.keys(PANELS).every((n) => gornShot('2026-10-18', n)))('панель орудий и карты выбора (забеги 2026-10-18)', () => {
-  it('иконки панели: Шампур, Секира, Саркофаг, Дева мстителя, Козёл отпущения, Крюк, Ошейник, Клетка; пустое место с отсветом — не орудие', () => {
+  it('иконки панели: Шампур, Секира, Саркофаг, Дева мстителя, Козёл отпущения, Крюк, Ошейник, Клетка, Железный ящик; пустое место с отсветом — не орудие', () => {
     for (const [name, tools] of Object.entries(PANELS)) {
       const b = board(read(frame(gornShot('2026-10-18', name)!), null).view);
       expect(b.toolSlots, name).toEqual(tools);
