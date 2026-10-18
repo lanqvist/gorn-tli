@@ -200,6 +200,7 @@ export function readBoard(frame: Frame, geo: Geometry, t: BoardTemplates): Board
     }),
     doorCards: [],
     decisionCards: [],
+    decisionKinds: [],
     cancel: chain ? (boxToFrame(geo, CANCEL) as ViewBox) : null,
   };
   // На экране цепочки доска обычно затемнена и панели скрыты; в первые
@@ -247,6 +248,7 @@ export function readBoard(frame: Frame, geo: Geometry, t: BoardTemplates): Board
     if (r.score < CARD_MIN) continue;
     kinds.push(r.label);
     at.decisionCards.push(boxToFrame(geo, cardBox(cx)) as ViewBox);
+    at.decisionKinds!.push(r.label);
   }
   if (kinds.includes('bestow') || kinds.includes('instigate')) board.decision = { kind: 'office' };
   else if (kinds.length > 0) {

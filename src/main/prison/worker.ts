@@ -1,13 +1,14 @@
 /**
  * Поток подсказок в тюрьме: кадр игры → распознавание → ход → метки.
  *
- * Распознавание и расчёт хода — код «Tartarus Simulator» (vendor/tartarus):
- * сканер доски, движок, решатель и перенос анализатора без страницы
- * (advisor.js). Здесь только связка: кадр приходит из main-процесса
- * (BGRA, как отдаёт desktopCapturer), уходят тексты и метки в пикселях
- * кадра. Расчёт тяжёлый (до пары секунд на ход), поэтому он в отдельном
- * процессе (utilityProcess) с пониженным приоритетом: не тормозит ни
- * интерфейс и разбор лога Горна, ни саму игру.
+ * Два пути, выбор — настройка разработчика prisonEngine (ключ
+ * --gorn-engine): 'own' — свой симулятор (src/core/prison, связка в
+ * ownAdvisor.ts), 'vendor' — код «Tartarus Simulator» (vendor/tartarus:
+ * сканер доски, движок, решатель и перенос анализатора без страницы,
+ * advisor.js). Здесь связка: кадр приходит из main-процесса (BGRA, как
+ * отдаёт desktopCapturer), уходят тексты и метки в пикселях кадра. Расчёт
+ * тяжёлый, поэтому он в отдельном процессе (utilityProcess) с пониженным
+ * приоритетом: не тормозит ни интерфейс и разбор лога Горна, ни саму игру.
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -15,31 +16,45 @@ import { dirname, join } from 'node:path';
 import { deflateSync } from 'node:zlib';
 import { constants, setPriority } from 'node:os';
 
+import type { Frame } from '../../core/prison/recognize/types.js';
 import type { PrisonFrameKind } from '../../core/prisonTriggers.js';
-import type { BoardNear, PrisonHint, PrisonShotMessage, PrisonWorkerReply } from './protocol.js';
+import { OwnAdvisor } from './ownAdvisor.js';
+import type { BoardNear, PrisonHint, PrisonShotMessage, PrisonWorkerReply, SavedNear } from './protocol.js';
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- код симулятора без типов */
 type Any = any;
 
 /** Канал к main-процессу Горна (Electron utilityProcess). */
 const port = (process as unknown as { parentPort: { postMessage(m: unknown): void; on(ev: 'message', fn: (e: { data: unknown }) => void): void } }).parentPort;
-const vendorDir: string = process.argv[process.argv.indexOf('--gorn-vendor') + 1] ?? '';
+const arg = (name: string): string | null => (process.argv.includes(name) ? (process.argv[process.argv.indexOf(name) + 1] ?? null) : null);
+const vendorDir: string = arg('--gorn-vendor') ?? '';
+const engine: 'own' | 'vendor' = arg('--gorn-engine') === 'own' ? 'own' : 'vendor';
 try {
   // Игра важнее подсказки: процессор ей, расчёт — в остаток.
   setPriority(constants.priority.PRIORITY_BELOW_NORMAL);
 } catch {
   // Нет прав на смену приоритета — считаем как есть.
 }
-const req = createRequire(join(vendorDir, 'advisor.js'));
-const Scan: Any = req('./scan.js');
-const SCAN: Any = req('./scan-data.js');
-const PICK: Any = req('./pick-data.js');
-req('./scan-data-ru.js');
-const { createAdvisor, hint } = req('./advisor.js') as { createAdvisor: () => Any; hint: (rec: Any, ctx: Any) => { text: string; marks: Any[] } | null };
-const REF: Any = Scan.withPanelIcons(SCAN, PICK);
-const SIMS: string[] = [...new Set<string>(REF.tools.map((x: Any) => (SCAN.toolNames[x.id] || {}).sim).filter(Boolean))];
-
-const advisor = createAdvisor();
+// Код симулятора грузится только для прежнего пути.
+let Scan: Any;
+let SCAN: Any;
+let PICK: Any;
+let hint: (rec: Any, ctx: Any) => { text: string; marks: Any[] } | null = () => null;
+let REF: Any;
+let SIMS: string[] = [];
+let advisor: Any;
+if (engine === 'vendor') {
+  const req = createRequire(join(vendorDir, 'advisor.js'));
+  Scan = req('./scan.js');
+  SCAN = req('./scan-data.js');
+  PICK = req('./pick-data.js');
+  req('./scan-data-ru.js');
+  const vendor = req('./advisor.js') as { createAdvisor: () => Any; hint: typeof hint };
+  hint = vendor.hint;
+  REF = Scan.withPanelIcons(SCAN, PICK);
+  SIMS = [...new Set<string>(REF.tools.map((x: Any) => (SCAN.toolNames[x.id] || {}).sim).filter(Boolean))];
+  advisor = vendor.createAdvisor();
+}
 
 /** Сканер настроен на картинки до ~2600 px: 4K уменьшаем вдвое. */
 const MAX_WIDTH = 2600;
@@ -80,6 +95,19 @@ function toImage(width: number, height: number, bgra: Uint8Array, rgba: boolean)
     }
   }
   return { img: { width: w, height: h, data: out }, scale: f };
+}
+
+/** BGRA/RGBA → RGBA без уменьшения: своё распознавание берёт выборки и не зависит от размера кадра. */
+function toFrame(width: number, height: number, buf: Uint8Array, rgba: boolean): Frame {
+  if (rgba) return { width, height, data: new Uint8ClampedArray(buf.buffer, buf.byteOffset, width * height * 4) };
+  const data = new Uint8ClampedArray(width * height * 4);
+  for (let i = 0; i < data.length; i += 4) {
+    data[i] = buf[i + 2]!;
+    data[i + 1] = buf[i + 1]!;
+    data[i + 2] = buf[i]!;
+    data[i + 3] = 255;
+  }
+  return { width, height, data };
 }
 
 /** Метки из пикселей уменьшенной картинки — в пиксели кадра. */
@@ -353,10 +381,25 @@ async function handle(msg: PrisonShotMessage): Promise<void> {
   send(rec, 'final');
 }
 
+const own = engine === 'own' ? new OwnAdvisor(reply) : null;
+
 port.on('message', (e) => {
-  const msg = e.data as PrisonShotMessage | { type: 'reset' } | { type: 'init'; state: unknown; near: BoardNear | null };
+  const msg = e.data as PrisonShotMessage | { type: 'reset' } | { type: 'init'; state: unknown; near: SavedNear | null };
+  if (own) {
+    if (msg.type === 'init') own.init(msg.state, msg.near);
+    else if (msg.type === 'reset') own.reset();
+    else {
+      const keep = msg.savePath ? new Uint8Array(msg.buffer.slice(0)) : null;
+      const frame = msg.buffer.byteLength ? toFrame(msg.width, msg.height, new Uint8Array(msg.buffer), msg.format === 'rgba') : null;
+      void own
+        .handle(msg, frame)
+        .catch((err: unknown) => reply({ type: 'error', id: msg.id, message: err instanceof Error ? err.message : String(err) }))
+        .finally(() => savePng(msg, keep));
+    }
+    return;
+  }
   if (msg.type === 'init') {
-    near = msg.near;
+    near = msg.near && 'size' in msg.near ? msg.near : null;
     if (msg.state) {
       try {
         advisor.load(msg.state);
@@ -375,14 +418,16 @@ port.on('message', (e) => {
   const keep = msg.savePath ? new Uint8Array(msg.buffer.slice(0)) : null;
   void handle(msg)
     .catch((err: unknown) => reply({ type: 'error', id: msg.id, message: err instanceof Error ? err.message : String(err) }))
-    .finally(() => {
-      // PNG — после совета: игроку важнее подсказка, чем файл.
-      if (!keep || !msg.savePath) return;
-      try {
-        mkdirSync(dirname(msg.savePath), { recursive: true });
-        writeFileSync(msg.savePath, encodePng(msg.width, msg.height, keep, msg.format === 'rgba'));
-      } catch (err) {
-        console.warn('[тюрьма] кадр не сохранён:', err instanceof Error ? err.message : err);
-      }
-    });
+    .finally(() => savePng(msg, keep));
 });
+
+/** PNG — после совета: игроку важнее подсказка, чем файл. */
+function savePng(msg: PrisonShotMessage, keep: Uint8Array | null): void {
+  if (!keep || !msg.savePath) return;
+  try {
+    mkdirSync(dirname(msg.savePath), { recursive: true });
+    writeFileSync(msg.savePath, encodePng(msg.width, msg.height, keep, msg.format === 'rgba'));
+  } catch (err) {
+    console.warn('[тюрьма] кадр не сохранён:', err instanceof Error ? err.message : err);
+  }
+}

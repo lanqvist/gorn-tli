@@ -76,6 +76,16 @@ export function readPick(frame: Frame, geo: Geometry, t: ScreensTemplate, kind: 
   return { cards, boxes, reroll, reward: kind === 'reward' };
 }
 
+/** Места четырёх подарков сокровищницы — по геометрии, без пикселей (окно приходит без снимка). */
+export function treasureBoxes(geo: Geometry): Box[] {
+  return TREASURE_CARDS.map((cx) => boxToFrame(geo, treasureCard(cx)) as Box);
+}
+
+/** Кнопка «Обновить» на выборе орудий. */
+export function rerollBox(geo: Geometry): Box {
+  return boxToFrame(geo, PICK_REROLL) as Box;
+}
+
 /** Сокровищница: все четыре места похожи на подарки. */
 export function readTreasure(frame: Frame, geo: Geometry, t: ScreensTemplate): Box[] | null {
   for (const cx of TREASURE_CARDS) {

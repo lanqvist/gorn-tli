@@ -1,0 +1,502 @@
+/**
+ * Адаптер: экраны тюрьмы (ScreenView) и память забега между кадрами →
+ * позиция движка для совета.
+ *
+ * Один кадр видит не всё: орудия (на экране цепочки панель скрыта), цель,
+ * сколько дней в забеге, хранилище, что было на доске до затемнения
+ * цепочки, сколько подарков подряд. Это хранит память забега — обычный
+ * JSON, переживает перезапуск Горна (сохраняется через ответ 'state').
+ *
+ * Чего игрок не видит, адаптер не выдумывает: узники за дверями не
+ * закреплены (кроме показанной редкости), вид события за «!» неизвестен —
+ * решатель перебрасывает это на каждом раунде.
+ */
+
+import {
+  BEASTS, CELLS, DEFAULT_PARAMS, EVENT, GIFT_IDS, OBJECTIVE, OFFICE, START_EVENT, SUPREME, TOOL, TOOL_IDS, type Action,
+  type ObjectiveId, type Params, type StartEventId, type ToolId,
+} from './model.js';
+import type { BoardView, PickView } from './view.js';
+import {
+  A_DEVOUR, A_END, A_SWAP, legalCodes,
+} from './engine/actions.js';
+import { Rng } from './engine/rng.js';
+import { newRun, officeRounds, targets } from './engine/rules.js';
+import {
+  BEAST, CHAIN_EATER, DAY, DAY_LIMIT, DOORS, DOORS_N, EVT, FLAGS, F_SCRATCH, F_VIS_TIER, HUNT_LION, HUNT_PREY, LOCK,
+  NEST, NEXT, OBJECTIVE_ID, OFFER, OFFER_GIFT, OFFER_KIND, OFFER_N, OFFER_TOOL, OFFICE_LEFT, PHASE, PICK_GIFTS,
+  PICK_TOOLS, PRE_BEAST, PRE_TIER, P_CHAIN, P_DAYEND, P_MANAGE, P_OFFICE, P_PATROL, P_PICK, P_RATWAY, REROLLS, START,
+  STORAGE, State, TIER, TOOLS, USED, USED_DEVOUR, USURP, WARDEN,
+} from './engine/state.js';
+
+// ── память забега ───────────────────────────────────────────────────────────
+
+/** Что ждём от игрока по последнему понятому экрану. */
+export type Step = 'patrol' | 'manage' | 'office' | 'ratway' | 'chain' | 'pick' | 'gift' | 'wait';
+
+export interface CellMemory {
+  k: 'office' | 'locked' | 'empty' | 'inmate';
+  /** Зверь 0…3 (BEASTS). */
+  b?: number;
+  t?: number;
+  /** «!» — событие. */
+  ev?: boolean;
+  nest?: boolean;
+  /** Показанная редкость за дверью. */
+  shown?: number;
+}
+
+export interface RunMemory {
+  v: 1;
+  cells: CellMemory[];
+  warden: number;
+  /** День с нуля и дней в забеге. */
+  day: number;
+  dayLimit: number;
+  tools: ToolId[];
+  objective: ObjectiveId | null;
+  start: StartEventId;
+  storage: number;
+  step: Step;
+  doors: number[];
+  /** Карточки ряда решений; null — ряда не было. */
+  decision: { consume: boolean; replace: boolean; end: boolean } | null;
+  /** Подсвеченные цели на экране цепочки. */
+  chainTargets: number[];
+  /**
+   * Экран «Выберите узника для пожирания» до первого укуса: это ещё выбор
+   * Пожирания, «Отменить» возвращает к ряду решений (а не завершает день).
+   */
+  firstBite: boolean;
+  offer: ToolId[];
+  rerolls: number;
+  /** Сколько подарков подряд ещё выбрать. */
+  gifts: number;
+  /** Выбор орудия в начале забега: доски за ним ещё не было. */
+  runStart: boolean;
+}
+
+const lockedCell = (): CellMemory => ({ k: 'locked' });
+
+export function blankMemory(): RunMemory {
+  return {
+    v: 1,
+    cells: Array.from({ length: CELLS }, (_, c) => (c === OFFICE ? { k: 'office' } : lockedCell())),
+    warden: OFFICE,
+    day: 0,
+    dayLimit: DEFAULT_PARAMS.days,
+    tools: [],
+    objective: null,
+    start: 'none',
+    storage: 0,
+    step: 'patrol',
+    doors: [],
+    decision: null,
+    chainTargets: [],
+    firstBite: false,
+    offer: [],
+    rerolls: 0,
+    gifts: 0,
+    runStart: false,
+  };
+}
+
+const isInt = (x: unknown, lo: number, hi: number): x is number => Number.isInteger(x) && (x as number) >= lo && (x as number) <= hi;
+
+/** Память из сохранения; испорченное — чистый забег. */
+export function loadMemory(x: unknown): RunMemory {
+  const base = blankMemory();
+  if (!x || typeof x !== 'object') return base;
+  const m = x as Partial<RunMemory>;
+  if (m.v !== 1 || !Array.isArray(m.cells) || m.cells.length !== CELLS) return base;
+  const cells = m.cells.map((c, i): CellMemory => {
+    if (i === OFFICE) return { k: 'office' };
+    if (!c || typeof c !== 'object') return lockedCell();
+    if (c.k === 'inmate' && isInt(c.b, 0, 3) && isInt(c.t, 0, SUPREME)) return { k: 'inmate', b: c.b, t: c.t, ...(c.ev ? { ev: true } : {}) };
+    if (c.k === 'empty') return { k: 'empty' };
+    const out: CellMemory = lockedCell();
+    if (c.ev) out.ev = true;
+    if (c.nest) out.nest = true;
+    if (isInt(c.shown, 0, SUPREME)) out.shown = c.shown;
+    return out;
+  });
+  const steps: Step[] = ['patrol', 'manage', 'office', 'ratway', 'chain', 'pick', 'gift', 'wait'];
+  const tools = (TOOL_IDS as readonly string[]);
+  const cellList = (a: unknown) => (Array.isArray(a) ? a.filter((n) => isInt(n, 0, CELLS - 1)) : []);
+  return {
+    ...base,
+    cells,
+    warden: isInt(m.warden, 0, CELLS - 1) ? m.warden : OFFICE,
+    dayLimit: m.dayLimit === 30 ? 30 : DEFAULT_PARAMS.days,
+    day: isInt(m.day, 0, 29) ? m.day : 0,
+    tools: Array.isArray(m.tools) ? (m.tools.filter((t) => tools.includes(t)) as ToolId[]) : [],
+    objective: m.objective && m.objective in OBJECTIVE ? m.objective : null,
+    start: m.start && m.start in START_EVENT ? m.start : 'none',
+    storage: isInt(m.storage, 0, 99) ? m.storage : 0,
+    step: m.step && steps.includes(m.step) ? m.step : 'patrol',
+    doors: cellList(m.doors),
+    decision: m.decision && typeof m.decision === 'object' ? { consume: !!m.decision.consume, replace: !!m.decision.replace, end: !!m.decision.end } : null,
+    chainTargets: cellList(m.chainTargets),
+    firstBite: !!m.firstBite,
+    offer: Array.isArray(m.offer) ? (m.offer.filter((t) => tools.includes(t)) as ToolId[]) : [],
+    rerolls: isInt(m.rerolls, 0, 9) ? m.rerolls : 0,
+    gifts: isInt(m.gifts, 0, 30) ? m.gifts : 0,
+    runStart: !!m.runStart,
+  };
+}
+
+/** Цель с панели распознавания → цель движка. */
+const OBJECTIVE_FROM_VIEW: Record<string, ObjectiveId> = {
+  beastking: 'apex', apex: 'apex', jungle: 'jungle', doors: 'doors', walk: 'walk', currents: 'currents',
+};
+
+const beastNo = (b: string | undefined): number => Math.max(0, BEASTS.indexOf((b ?? 'mammoth') as (typeof BEASTS)[number]));
+
+// ── позиция для совета ──────────────────────────────────────────────────────
+
+export type Position =
+  | {
+      ok: true;
+      state: State;
+      /** Можно ли этот ход на экране (карточки ряда решений). */
+      allowed: (code: number) => boolean;
+    }
+  | {
+      ok: false;
+      problem: string;
+      /** Совет без расчёта, когда модель не сходится с экраном (цепочка). */
+      fallback?: Action;
+    };
+
+export class PrisonAdapter {
+  mem: RunMemory;
+
+  constructor(saved?: unknown, private readonly p: Readonly<Params> = DEFAULT_PARAMS) {
+    this.mem = loadMemory(saved);
+  }
+
+  reset(): void {
+    this.mem = blankMemory();
+  }
+
+  /** Доска со строкой дней, панелями и рядом карточек (или экран цепочки). */
+  board(v: BoardView): void {
+    const m = this.mem;
+    if (v.daysLeft !== null) {
+      if (v.daysLeft > m.dayLimit) {
+        // Больше 20 дней осталось — забег «Железного закона».
+        m.dayLimit = this.p.ironLawDays;
+        if (m.start === 'none') m.start = 'ironlaw';
+      }
+      m.day = Math.max(0, Math.min(m.dayLimit - 1, m.dayLimit - v.daysLeft));
+    }
+    if (v.tools.length) for (const t of v.tools) if (!m.tools.includes(t)) m.tools.push(t);
+    if (v.chromatic >= 0) m.storage = v.chromatic;
+    if (v.objective && OBJECTIVE_FROM_VIEW[v.objective]) m.objective = OBJECTIVE_FROM_VIEW[v.objective]!;
+    m.runStart = false;
+    m.offer = [];
+
+    if (v.chain) {
+      this.chainBoard(v);
+      return;
+    }
+    m.firstBite = false;
+    v.cells.forEach((c, n) => {
+      if (n === OFFICE) return;
+      const was = m.cells[n]!;
+      if (c.kind === 'inmate') {
+        const cell: CellMemory = { k: 'inmate', b: beastNo(c.beast), t: Math.min(c.tier ?? 0, SUPREME) };
+        if (c.event) cell.ev = true;
+        m.cells[n] = cell;
+      } else if (c.kind === 'locked') {
+        const cell: CellMemory = lockedCell();
+        if (c.event) cell.ev = true;
+        if (c.nest) cell.nest = true;
+        const shown = c.shownTier ?? (was.k === 'locked' ? was.shown : undefined);
+        if (shown !== undefined) cell.shown = Math.min(shown, SUPREME);
+        m.cells[n] = cell;
+      } else {
+        m.cells[n] = { k: 'empty' };
+      }
+    });
+    if (v.warden !== null) m.warden = v.warden;
+    m.chainTargets = [];
+    if (v.decision?.kind === 'ratway') {
+      m.step = 'ratway';
+      m.doors = [];
+      m.decision = null;
+    } else if (v.decision?.kind === 'office') {
+      m.step = 'office';
+      m.doors = [];
+      m.decision = null;
+    } else if (v.decision?.kind === 'manage') {
+      m.step = 'manage';
+      m.doors = [];
+      m.decision = { consume: v.decision.consume, replace: v.decision.replace, end: v.decision.end };
+    } else if (v.doors.length) {
+      m.step = 'patrol';
+      m.doors = v.doors.filter((n) => n !== m.warden);
+      m.decision = null;
+    }
+  }
+
+  /**
+   * Экран цепочки: доска затемнена, редкости читаются хуже. Едок только
+   * растёт, съеденные запираются — остальное берём из доски до укуса.
+   */
+  private chainBoard(v: BoardView): void {
+    const m = this.mem;
+    const warden = v.warden ?? m.warden;
+    const after = m.warden === warden && (m.step === 'manage' || m.step === 'chain');
+    const walked = m.step === 'patrol' && m.doors.includes(warden);
+    const known = after || walked;
+    const was = m.cells[warden]!;
+    let eaten = 0;
+    v.cells.forEach((c, n) => {
+      if (n === OFFICE || n === warden) return;
+      const prev = m.cells[n]!;
+      if (known) {
+        // Съеденный за этот укус — заперт; остальные — как до укуса.
+        if (c.kind === 'locked' && prev.k === 'inmate') {
+          m.cells[n] = lockedCell();
+          eaten++;
+        }
+        else if (c.kind === 'inmate' && prev.k !== 'inmate') m.cells[n] = { k: 'inmate', b: beastNo(c.beast), t: Math.min(c.tier ?? 0, SUPREME) };
+        return;
+      }
+      if (c.kind === 'inmate') m.cells[n] = { k: 'inmate', b: beastNo(c.beast), t: Math.min(c.tier ?? 0, SUPREME) };
+      else if (c.kind === 'locked') m.cells[n] = { ...lockedCell(), ...(c.event ? { ev: true } : {}) };
+      else m.cells[n] = { k: 'empty' };
+    });
+    const eater = v.cells[warden];
+    const prevTier = known && was.k === 'inmate' ? was.t! : 0;
+    if (eater?.kind === 'inmate') {
+      m.cells[warden] = { k: 'inmate', b: beastNo(eater.beast), t: Math.min(Math.max(eater.tier ?? 0, prevTier), SUPREME) };
+    } else if (was.k !== 'inmate') {
+      m.cells[warden] = { k: 'inmate', b: 0, t: prevTier };
+    }
+    const tier = m.cells[warden]!.t!;
+    // Никого не съели, едок не вырос, а прошлый экран — ряд решений: это
+    // выбор цели первого укуса. Тот же экран снова — остаётся, чем был.
+    const unchanged = walked || (was.k === 'inmate' && eater?.kind === 'inmate' && was.t === (eater.tier ?? 0));
+    m.firstBite = m.step === 'chain' ? m.firstBite && eaten === 0 : known && eaten === 0 && unchanged;
+    // Подсвеченная цель той же редкости, что и едок (если орудие не меняет правило).
+    for (const n of v.chain!.targets) {
+      const c = m.cells[n]!;
+      if (c.k === 'locked') continue; // сквозь дверь (Когти)
+      const seen = v.cells[n];
+      if (c.k === 'inmate' && c.t! <= tier && (!seen?.beast || c.b === beastNo(seen.beast))) continue;
+      m.cells[n] = { k: 'inmate', b: seen?.beast ? beastNo(seen.beast) : (c.b ?? 0), t: tier };
+    }
+    m.warden = warden;
+    m.step = 'chain';
+    m.chainTargets = [...v.chain!.targets];
+    m.doors = [];
+    m.decision = null;
+    // Портрет едока на тёмном экране читается и другим зверем: берём того,
+    // кто ест все подсвеченные цели (прочитанный, прежний, любой).
+    if (m.chainTargets.length) {
+      const order = [m.cells[warden]!.b!, ...(was.k === 'inmate' ? [was.b!] : []), 0, 1, 2, 3];
+      for (const b of order) {
+        m.cells[warden]!.b = b;
+        if (this.chainFits()) break;
+      }
+      if (!this.chainFits()) m.cells[warden]!.b = order[0]!;
+    }
+  }
+
+  private chainFits(): boolean {
+    const s = this.build();
+    const mask = targets(s, this.mem.warden);
+    return this.mem.chainTargets.every((n) => (mask >>> n) & 1);
+  }
+
+  /** Выбор орудий: в начале забега (fresh) или в награду за цель. */
+  pick(v: PickView, fresh: boolean, rerolled: boolean): void {
+    if (fresh && !v.reward) {
+      // Новый забег: доска за выбором — чистая. Цель и тему с окон перед
+      // выбором (если были) не теряем.
+      const keep = { objective: this.mem.runStart ? this.mem.objective : null, start: this.mem.runStart ? this.mem.start : 'none' as StartEventId };
+      this.mem = { ...blankMemory(), ...keep };
+      this.mem.runStart = true;
+    }
+    this.mem.step = 'pick';
+    this.mem.offer = v.cards.filter((c): c is ToolId => c !== null && !this.mem.tools.includes(c));
+    this.mem.rerolls = v.reroll && !rerolled ? 1 : 0;
+  }
+
+  /**
+   * Сокровищница. after — что к ней привело ('swap' — заменённый стал
+   * Призматическим и ушёл в хранилище); 'view' — доска за окном уже
+   * видна, по ней можно советовать подарок.
+   */
+  treasure(after: '' | 'swap' | 'consume' | 'view'): void {
+    const m = this.mem;
+    if (after === 'view') {
+      m.step = 'gift';
+      m.gifts = Math.max(1, m.gifts);
+      return;
+    }
+    const w = m.cells[m.warden];
+    if (after === 'swap' && w?.k === 'inmate') {
+      m.cells[m.warden] = lockedCell();
+      m.storage++;
+    }
+    m.gifts = m.start === 'abundance' ? this.p.abundanceGifts : 1;
+    m.step = 'wait';
+  }
+
+  /** Позиция движка по памяти. */
+  position(): Position {
+    const m = this.mem;
+    switch (m.step) {
+      case 'wait':
+        return { ok: false, problem: 'сокровищница: доска за окном ещё не видна' };
+      case 'patrol':
+        if (!m.doors.length) return { ok: false, problem: 'нет дверей' };
+        break;
+      case 'pick':
+        if (!m.offer.length) return { ok: false, problem: 'нет карт выбора' };
+        break;
+      case 'chain': {
+        if (m.cells[m.warden]?.k !== 'inmate') return { ok: false, problem: 'нет едока' };
+        if (m.chainTargets.length && !this.chainFits()) {
+          // Модель не объясняет подсвеченные цели (орудие меняет правило,
+          // редкость на тёмном экране прочиталась не так): экрану верить
+          // больше — совет по самой редкой из подсвеченных.
+          const best = m.chainTargets.reduce((a, b) => ((m.cells[b]?.t ?? -1) > (m.cells[a]?.t ?? -1) ? b : a));
+          return { ok: false, problem: 'модель не сходится с подсвеченными целями', fallback: { type: 'chain', to: best } };
+        }
+        break;
+      }
+    }
+    const state = this.build();
+    const d = m.step === 'manage' ? m.decision : null;
+    const targetsShown = m.step === 'chain' && m.firstBite ? m.chainTargets : null;
+    const allowed = (code: number): boolean => {
+      const kind = code >> 6;
+      if (targetsShown && kind === A_DEVOUR) return targetsShown.includes(code & 63);
+      if (!d) return true;
+      if (kind === A_DEVOUR) return d.consume;
+      if (kind === A_SWAP) return d.replace;
+      if (kind === A_END) return true;
+      return true;
+    };
+    const buf = new Int32Array(32);
+    const n = legalCodes(state, buf);
+    let any = false;
+    for (let i = 0; i < n; i++) if (allowed(buf[i]!)) any = true;
+    if (!any) return { ok: false, problem: 'ни один ход движка не виден на экране' };
+    return { ok: true, state, allowed };
+  }
+
+  /** Состояние движка по памяти. */
+  build(): State {
+    const m = this.mem;
+    const p = this.p;
+    const s = new State();
+    const x = s.m;
+    let tools = 0;
+    for (const t of m.tools) tools |= 1 << TOOL[t];
+    const objective = m.objective ? OBJECTIVE[m.objective] : -1;
+
+    if (m.step === 'pick' && m.runStart) {
+      // Начало забега: доска за выбором ещё не открыта — как в движке.
+      newRun(s, new Rng(0x9e3779b1), p, { start: START_EVENT[m.start], objective, tools, startPick: true });
+      this.offer(s);
+      return s;
+    }
+
+    x.fill(0);
+    for (let c = 0; c < CELLS; c++) {
+      x[BEAST + c] = -1;
+      x[TIER + c] = -1;
+      x[PRE_TIER + c] = -1;
+      x[PRE_BEAST + c] = -1;
+      const cell = m.cells[c]!;
+      if (c === OFFICE) continue;
+      if (cell.k === 'locked') {
+        x[LOCK + c] = 1;
+        if (cell.nest) x[NEST + c] = 2;
+        if (cell.shown !== undefined) {
+          x[PRE_TIER + c] = cell.shown;
+          x[PRE_BEAST + c] = 0;
+          x[FLAGS + c] = F_VIS_TIER | ((tools >>> TOOL.claws) & 1 ? F_SCRATCH : 0);
+        }
+      } else if (cell.k === 'inmate') {
+        x[BEAST + c] = cell.b!;
+        x[TIER + c] = cell.t!;
+      }
+      // Вид события неизвестен: любой из пула, решатель его перебросит.
+      if (cell.ev && cell.k !== 'empty') x[EVT + c] = EVENT.chain + 1;
+    }
+    x[WARDEN] = m.warden;
+    x[DAY] = m.day;
+    x[DAY_LIMIT] = m.dayLimit;
+    x[START] = START_EVENT[m.start];
+    x[TOOLS] = tools;
+    x[STORAGE] = Math.min(m.storage, p.storage);
+    x[OBJECTIVE_ID] = objective;
+    x[USURP] = EVENT.usurp1;
+    x[CHAIN_EATER] = -1;
+    x[HUNT_LION] = -1;
+    x[HUNT_PREY] = -1;
+    x[REROLLS] = m.rerolls;
+
+    let phase = P_PATROL;
+    switch (m.step) {
+      case 'patrol':
+        for (let i = 0; i < Math.min(3, m.doors.length); i++) x[DOORS + i] = m.doors[i]!;
+        x[DOORS_N] = Math.min(3, m.doors.length);
+        break;
+      case 'manage':
+        phase = P_MANAGE;
+        break;
+      case 'office':
+        phase = P_OFFICE;
+        x[OFFICE_LEFT] = officeRounds(s, p);
+        break;
+      case 'ratway':
+        phase = P_RATWAY;
+        break;
+      case 'chain':
+        if (m.firstBite) {
+          // До первого укуса: выбор Пожирания; «Отменить» → Замена или конец дня.
+          phase = P_MANAGE;
+          break;
+        }
+        phase = P_CHAIN;
+        x[CHAIN_EATER] = m.warden;
+        x[USED] = USED_DEVOUR;
+        break;
+      case 'pick':
+        // Награда за цель посреди дня: после выбора день доигрывается.
+        this.offer(s);
+        x[NEXT] = P_DAYEND;
+        return s;
+      case 'gift':
+      case 'wait':
+        x[OFFER_KIND] = OFFER_GIFT;
+        x[OFFER_N] = GIFT_IDS.length;
+        for (let i = 0; i < GIFT_IDS.length; i++) x[OFFER + i] = i;
+        x[PICK_GIFTS] = Math.max(1, m.gifts);
+        x[PHASE] = P_PICK;
+        x[NEXT] = P_DAYEND;
+        return s;
+    }
+    x[PHASE] = phase;
+    x[NEXT] = phase;
+    return s;
+  }
+
+  private offer(s: State): void {
+    const x = s.m;
+    const ids = this.mem.offer.slice(0, 3);
+    x[OFFER_KIND] = OFFER_TOOL;
+    x[OFFER_N] = ids.length;
+    ids.forEach((id, i) => (x[OFFER + i] = TOOL[id]));
+    x[PICK_TOOLS] = Math.max(1, x[PICK_TOOLS]!);
+    x[REROLLS] = this.mem.rerolls;
+    x[PHASE] = P_PICK;
+  }
+}

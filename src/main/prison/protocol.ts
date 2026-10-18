@@ -1,4 +1,5 @@
 /** Сообщения между main-процессом и потоком подсказок в тюрьме. */
+import type { Geometry } from '../../core/prison/recognize/types.js';
 import type { PrisonFrameKind } from '../../core/prisonTriggers.js';
 
 export type PrisonMark =
@@ -31,13 +32,16 @@ export interface PrisonShotMessage {
   savePath: string | null;
 }
 
-/** Положение доски на кадре такого размера (масштаб и сдвиг). */
+/** Положение доски на кадре такого размера (масштаб и сдвиг) — прежний путь (vendor). */
 export interface BoardNear {
   s: number;
   tx: number;
   ty: number;
   size: string;
 }
+
+/** Где доска: у прежнего пути — BoardNear, у своего — Geometry распознавания. */
+export type SavedNear = BoardNear | Geometry;
 
 /** Подсказка в пикселях кадра: окно стрелок само переводит их в экран. */
 export interface PrisonHint {
@@ -56,4 +60,4 @@ export type PrisonWorkerReply =
   /** Модель доски после кадра — сохранить на диск (id всегда 0). */
   | { type: 'state'; id: number; model: unknown }
   /** Где доска на кадре: сохраняется, чтобы первый кадр после запуска не искал её по всему экрану. */
-  | { type: 'near'; id: number; near: BoardNear };
+  | { type: 'near'; id: number; near: SavedNear };

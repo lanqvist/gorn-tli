@@ -1,0 +1,262 @@
+/**
+ * Свой путь подсказок в тюрьме: распознавание (recognize) → память забега
+ * (adapter) → проверка вариантами (solver) → метки (hint). Без Electron:
+ * им пользуются поток подсказок (worker.ts) и сравнение на сохранённых
+ * кадрах (src/cli/prison-replay.ts).
+ *
+ * Механизмы прежнего пути сохранены: окно подарков без снимка (рамка по
+ * месту подарка), доска за сокровищницей, переходная доска без карточек —
+ * не совет, доска после подарка — только запомнить, цепочка, которую
+ * модель не объясняет, — совет по подсвеченным целям, неузнанная карта
+ * выбора не глушит совет, геометрия доски переживает перезапуск.
+ *
+ * Показывается сразу проверенный ход: мгновенный совет стратегии меняется
+ * проверкой почти в половине ходов, и стрелка прыгала бы. Решатель
+ * считает до 300 мс; не уложился — уходит лучший на этот момент, потом
+ * окончательный.
+ */
+import { advise as policyAdvise } from '../../core/prison/policy/instant.js';
+import { PrisonAdapter, type Position } from '../../core/prison/adapter.js';
+import { decode, encode } from '../../core/prison/engine/actions.js';
+import type { Action } from '../../core/prison/model.js';
+import { hint, type HintContext } from '../../core/prison/hint.js';
+import { defaultGeometry, read, rerollBox, treasureBoxes, type Frame, type Geometry } from '../../core/prison/recognize/index.js';
+import { clearSolveCache, solve, stateKey, type SolveStep } from '../../core/prison/solver/solve.js';
+import type { PrisonShotMessage, PrisonWorkerReply } from './protocol.js';
+
+/** Столько решатель ищет ответ до первого показа. */
+export const QUICK_MS = 300;
+const MIN_ROUNDS = 64;
+const MAX_ROUNDS = 1500;
+
+const TREASURE_ASK = 'Подарок: нажми «Посмотреть состояние тюрьмы» и вернись — подскажу, какой взять';
+
+export function isGeometry(x: unknown): x is Geometry {
+  const g = x as Geometry | null;
+  return !!g && typeof g === 'object' && [g.width, g.height, g.s, g.tx, g.ty].every((v) => typeof v === 'number');
+}
+
+function seedOf(key: string): number {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < key.length; i++) h = Math.imul(h ^ key.charCodeAt(i), 0x01000193);
+  return h >>> 0;
+}
+
+/**
+ * Причина хода от стратегии — хвост её подписи («Камера 4: новый узник» →
+ * «новый узник»). Только там, где она что-то добавляет к самому ходу: у
+ * обхода, «Отменить» и «Обновить».
+ */
+function shortReason(text: string, code: number): string {
+  const kind = decode(code).type;
+  if (kind !== 'patrol' && kind !== 'stopchain' && kind !== 'reroll') return '';
+  const i = text.indexOf(': ');
+  return i >= 0 ? text.slice(i + 2) : '';
+}
+
+const defaultSleep = () => new Promise<void>((r) => setImmediate(r));
+
+export interface OwnAdvisorOptions {
+  /** Пауза между кусками расчёта: дать дойти новому кадру. */
+  sleep?: () => Promise<void>;
+  quickMs?: number;
+  /** Распознавание (подменяется в тестах). */
+  read?: typeof read;
+}
+
+export class OwnAdvisor {
+  private adapter = new PrisonAdapter();
+  private geo: Geometry | null = null;
+  private current = 0;
+  /** Доска, увиденная сразу после окна сокровищницы: по ней советуется подарок. */
+  private boardBehindTreasure = false;
+  /** Варианты последней проверки (для сравнения на кадрах). */
+  lastOptions: { action: Action; mean: number }[] = [];
+  private readonly sleep: () => Promise<void>;
+  private readonly quickMs: number;
+  private readonly readFrame: typeof read;
+
+  constructor(private readonly reply: (m: PrisonWorkerReply) => void, opts: OwnAdvisorOptions = {}) {
+    this.sleep = opts.sleep ?? defaultSleep;
+    this.quickMs = opts.quickMs ?? QUICK_MS;
+    this.readFrame = opts.read ?? read;
+  }
+
+  init(state: unknown, near: unknown): void {
+    this.adapter = new PrisonAdapter(state);
+    this.geo = isGeometry(near) ? near : null;
+  }
+
+  reset(): void {
+    this.adapter.reset();
+    this.boardBehindTreasure = false;
+    clearSolveCache();
+    this.saveState();
+  }
+
+  /** Память забега (для сохранения и тестов). */
+  get memory(): unknown {
+    return this.adapter.mem;
+  }
+
+  private saveState(): void {
+    this.reply({ type: 'state', id: 0, model: this.adapter.mem });
+  }
+
+  /** Кадр: frame — RGBA (null — окно подарков без снимка). */
+  async handle(msg: PrisonShotMessage, frame: Frame | null): Promise<void> {
+    this.current = msg.id;
+    this.lastOptions = [];
+    const size = { w: msg.width, h: msg.height };
+    const ctx: HintContext = { warden: null };
+    const plainGeo = () => this.geo && this.geo.width === msg.width && this.geo.height === msg.height ? this.geo : defaultGeometry({ width: msg.width, height: msg.height, data: new Uint8ClampedArray(0) });
+    let kind: string = msg.kind;
+    let seen = frame ? this.read(frame) : null;
+
+    if (msg.asTreasure && seen) {
+      // Доска снята, а окно подарков уже открыто: обновить по ней доску,
+      // совет — по подаркам.
+      if (seen.screen === 'board') {
+        this.adapter.board(seen.board);
+        if (msg.treasureClosed) this.boardBehindTreasure = true;
+      }
+      kind = 'treasure';
+      seen = null;
+    }
+    if (seen?.screen === 'treasure') {
+      kind = 'treasure';
+      ctx.gifts = seen.gifts;
+    }
+
+    if (kind === 'treasure') {
+      ctx.gifts ??= treasureBoxes(plainGeo());
+      if (this.boardBehindTreasure) {
+        this.adapter.treasure('view');
+      } else {
+        this.adapter.treasure(msg.after);
+        this.saveState();
+        this.reply({ type: 'hint', id: msg.id, phase: 'final', frame: size, text: TREASURE_ASK, marks: [], live: false });
+        return;
+      }
+    } else if (kind === 'objective' || !seen) {
+      // Окно цели и темы забега своё распознавание пока не читает.
+      this.reply({ type: 'clear', id: msg.id });
+      return;
+    } else if (seen.screen === 'board' && kind !== 'instruments') {
+      const b = seen.board;
+      // Доска без дверей, ряда решений и цепочки — экран между состояниями
+      // (карточки выезжают) или доска после взятого подарка: не совет.
+      // После подарка её только запомнить — по ней советуется следующий.
+      if (!msg.treasureView && !b.doors.length && !b.decision && !b.chain) {
+        if (msg.treasureClosed) {
+          this.adapter.board(b);
+          this.boardBehindTreasure = true;
+          this.saveState();
+        }
+        this.reply({ type: 'clear', id: msg.id });
+        return;
+      }
+      this.adapter.board(b);
+      this.boardBehindTreasure = !!msg.treasureClosed;
+      // Просмотр доски из сокровищницы: совет по подарку сразу (текстом).
+      if (msg.treasureView) this.adapter.treasure('view');
+      ctx.board = b;
+    } else if (seen.screen === 'pick' && kind !== 'board') {
+      const p = seen.pick;
+      // Неузнанная карта не глушит совет по двум остальным и по «Обновить».
+      const known = p.cards.filter((c) => c !== null).length;
+      if (known < 2) {
+        this.reply({ type: 'clear', id: msg.id });
+        return;
+      }
+      this.adapter.pick(p, msg.fresh, msg.rerolled);
+      ctx.pick = p;
+      ctx.reroll = rerollBox(plainGeo());
+      if (known < p.cards.length) ctx.reason = 'одну карту не узнал';
+    } else {
+      this.reply({ type: 'clear', id: msg.id });
+      return;
+    }
+    this.saveState();
+    ctx.warden = this.adapter.mem.warden;
+    ctx.ratway = this.adapter.mem.step === 'ratway';
+    ctx.cancelFirst = this.adapter.mem.step === 'chain' && this.adapter.mem.firstBite;
+
+    const pos = this.adapter.position();
+    if (!pos.ok) {
+      if (pos.fallback) {
+        console.log(`[тюрьма] кадр ${msg.id}: ${pos.problem}, совет по подсвеченным целям`);
+        this.reply({ type: 'hint', id: msg.id, phase: 'final', frame: size, live: false, ...hint(pos.fallback, ctx) });
+      } else {
+        console.log(`[тюрьма] кадр ${msg.id}: нет совета (${pos.problem})`);
+        this.reply({ type: 'clear', id: msg.id });
+      }
+      return;
+    }
+    await this.advise(msg, pos, ctx, size);
+  }
+
+  private read(frame: Frame): ReturnType<typeof read>['view'] {
+    const r = this.readFrame(frame, this.geo);
+    if (r.geo && r.geo !== this.geo) {
+      const moved = !this.geo || this.geo.width !== r.geo.width || this.geo.height !== r.geo.height || Math.abs(this.geo.s - r.geo.s) > 0.002 || Math.abs(this.geo.tx - r.geo.tx) > 2 || Math.abs(this.geo.ty - r.geo.ty) > 2;
+      this.geo = r.geo;
+      if (moved) this.reply({ type: 'near', id: 0, near: r.geo });
+    }
+    return r.view;
+  }
+
+  /** Лучший ход решателя среди видимых на экране. */
+  private pickBest(res: SolveStep, allowed: (code: number) => boolean): number | null {
+    this.lastOptions = res.options.filter((o) => allowed(encode(o.action))).map((o) => ({ action: o.action, mean: o.mean }));
+    const ranked = res.options.map((o) => ({ code: encode(o.action), mean: o.mean })).sort((a, b) => b.mean - a.mean);
+    const leader = encode(res.best);
+    if (allowed(leader)) return leader;
+    return ranked.find((o) => allowed(o.code))?.code ?? null;
+  }
+
+  private async advise(msg: PrisonShotMessage, pos: Extract<Position, { ok: true }>, ctx: HintContext, size: { w: number; h: number }): Promise<void> {
+    const t0 = Date.now();
+    const key = stateKey(pos.state);
+    const search = solve(pos.state, { seed: seedOf(key), minRounds: MIN_ROUNDS, maxRounds: MAX_ROUNDS });
+    const instant = policyAdvise(pos.state);
+    const instantCode = encode(instant.action);
+    let sent = -1;
+    const send = (code: number | null, phase: 'instant' | 'final', live: boolean) => {
+      if (code === null) {
+        if (phase === 'final') this.reply({ type: 'clear', id: msg.id });
+        return;
+      }
+      if (phase === 'final' && code === sent) {
+        this.reply({ type: 'settled', id: msg.id, live });
+        return;
+      }
+      sent = code;
+      const reason = code === instantCode ? shortReason(instant.text, code) : '';
+      const h = hint(decode(code), { ...ctx, reason: [ctx.reason, reason].filter(Boolean).join(' · ') });
+      this.reply({ type: 'hint', id: msg.id, phase, frame: size, live, ...h });
+    };
+
+    let res = search.step(Math.min(50, this.quickMs));
+    while (!res.done && Date.now() - t0 < this.quickMs) {
+      await this.sleep();
+      if (this.current !== msg.id) return;
+      res = search.step(50);
+    }
+    if (res.done) {
+      send(this.pickBest(res, pos.allowed), 'final', res.rounds > 0);
+      console.log(`[тюрьма] кадр ${msg.id}: совет через ${Date.now() - t0} мс (${res.rounds} раундов)`);
+      return;
+    }
+    send(this.pickBest(res, pos.allowed), 'instant', false);
+    const until = t0 + Math.max(this.quickMs, msg.budgetMs);
+    while (!res.done && Date.now() < until) {
+      await this.sleep();
+      if (this.current !== msg.id) return;
+      res = search.step(100);
+    }
+    if (this.current !== msg.id) return;
+    send(this.pickBest(res, pos.allowed), 'final', true);
+    console.log(`[тюрьма] кадр ${msg.id}: окончательный совет через ${Date.now() - t0} мс (${res.rounds} раундов)`);
+  }
+}
