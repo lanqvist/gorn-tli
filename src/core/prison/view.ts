@@ -88,9 +88,9 @@ export interface BoardView {
   doors: number[];
   decision:
     | null
-    | { kind: 'manage'; consume: boolean; replace: boolean; end: boolean }
+    | { kind: 'manage'; consume: boolean; replace: boolean; end: boolean; hunt?: boolean }
     | { kind: 'office' }
-    | { kind: 'ratway' } // «Выберите цель»
+    | { kind: 'ratway' } // «Выберите цель»: крысиная тропа или добыча «Выслеживания»
     | { kind: 'event' }; // окно события
   /** «Выберите узника для пожирания». */
   chain: { targets: number[] } | null;
@@ -110,7 +110,7 @@ export interface BoardView {
     cells: { x: number; y: number; r: number }[];
     doorCards: Box[];
     decisionCards: Box[];
-    /** Вид каждой карточки ряда решений (consume, replace, end, bestow, instigate), в порядке decisionCards. */
+    /** Вид каждой карточки ряда решений (consume, replace, hunt, end, bestow, instigate), в порядке decisionCards. */
     decisionKinds?: string[];
     cancel: Box | null;
   };

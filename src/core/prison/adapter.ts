@@ -19,7 +19,7 @@ import {
 import type { ShotCause } from '../prisonTriggers.js';
 import type { BoardView, PickView } from './view.js';
 import {
-  A_DEVOUR, A_END, A_SWAP, legalCodes,
+  A_DEVOUR, A_END, A_HUNT, A_SWAP, legalCodes,
 } from './engine/actions.js';
 import { Rng } from './engine/rng.js';
 import { newRun, officeRounds, targets } from './engine/rules.js';
@@ -33,7 +33,8 @@ import {
 // ── память забега ───────────────────────────────────────────────────────────
 
 /** Что ждём от игрока по последнему понятому экрану. */
-export type Step = 'patrol' | 'manage' | 'office' | 'ratway' | 'chain' | 'pick' | 'gift' | 'wait';
+/** hunt — «Выберите цель» после «Выслеживания»: добыча для льва надзирателя. */
+export type Step = 'patrol' | 'manage' | 'office' | 'ratway' | 'hunt' | 'chain' | 'pick' | 'gift' | 'wait';
 
 export interface CellMemory {
   k: 'office' | 'locked' | 'empty' | 'inmate';
@@ -63,7 +64,7 @@ export interface RunMemory {
   step: Step;
   doors: number[];
   /** Карточки ряда решений; null — ряда не было. */
-  decision: { consume: boolean; replace: boolean; end: boolean } | null;
+  decision: { consume: boolean; replace: boolean; end: boolean; hunt?: boolean } | null;
   /** Подсвеченные цели на экране цепочки. */
   chainTargets: number[];
   /**
@@ -164,7 +165,7 @@ export function loadMemory(x: unknown): RunMemory {
     if (isInt(c.shown, 0, SUPREME)) out.shown = c.shown;
     return out;
   });
-  const steps: Step[] = ['patrol', 'manage', 'office', 'ratway', 'chain', 'pick', 'gift', 'wait'];
+  const steps: Step[] = ['patrol', 'manage', 'office', 'ratway', 'hunt', 'chain', 'pick', 'gift', 'wait'];
   const tools = (TOOL_IDS as readonly string[]);
   const cellList = (a: unknown) => (Array.isArray(a) ? a.filter((n) => isInt(n, 0, CELLS - 1)) : []);
   return {
@@ -179,7 +180,9 @@ export function loadMemory(x: unknown): RunMemory {
     storage: isInt(m.storage, 0, 99) ? m.storage : 0,
     step: m.step && steps.includes(m.step) ? m.step : 'patrol',
     doors: cellList(m.doors),
-    decision: m.decision && typeof m.decision === 'object' ? { consume: !!m.decision.consume, replace: !!m.decision.replace, end: !!m.decision.end } : null,
+    decision: m.decision && typeof m.decision === 'object'
+      ? { consume: !!m.decision.consume, replace: !!m.decision.replace, end: !!m.decision.end, ...(m.decision.hunt ? { hunt: true } : {}) }
+      : null,
     chainTargets: cellList(m.chainTargets),
     firstBite: !!m.firstBite,
     offer: Array.isArray(m.offer) ? (m.offer.filter((t) => tools.includes(t)) as ToolId[]) : [],
@@ -272,8 +275,11 @@ export class PrisonAdapter {
       return;
     }
     m.firstBite = false;
+    // Выбор добычи «Выслеживания»: доска та же, что в ряде решений, но
+    // затемнена кроме целей — редкости с неё не перечитываем.
+    const huntScreen = v.decision?.kind === 'ratway' && (m.step === 'hunt' || (m.step === 'manage' && !!m.decision?.hunt));
     v.cells.forEach((c, n) => {
-      if (n === OFFICE) return;
+      if (n === OFFICE || huntScreen) return;
       const was = m.cells[n]!;
       if (c.kind === 'inmate') {
         // Редкость не нарисована (после переподключения) — тот же узник в
@@ -299,7 +305,12 @@ export class PrisonAdapter {
     });
     if (v.warden !== null) m.warden = v.warden;
     m.chainTargets = [];
-    if (v.decision?.kind === 'ratway') {
+    if (huntScreen) {
+      // «Выберите цель» сразу после ряда с «Выслеживанием» — добыча, не крысиная тропа
+      // (надпись та же). Ряд решений помним: «Отменить» вернёт к нему.
+      m.step = 'hunt';
+      m.doors = [];
+    } else if (v.decision?.kind === 'ratway') {
       m.step = 'ratway';
       m.doors = [];
       m.decision = null;
@@ -310,7 +321,7 @@ export class PrisonAdapter {
     } else if (v.decision?.kind === 'manage') {
       m.step = 'manage';
       m.doors = [];
-      m.decision = { consume: v.decision.consume, replace: v.decision.replace, end: v.decision.end };
+      m.decision = { consume: v.decision.consume, replace: v.decision.replace, end: v.decision.end, ...(v.decision.hunt ? { hunt: true } : {}) };
     } else if (v.doors.length) {
       m.step = 'patrol';
       m.doors = v.doors.filter((n) => n !== m.warden);
@@ -556,11 +567,14 @@ export class PrisonAdapter {
     }
     const state = this.build();
     const d = m.step === 'manage' ? m.decision : null;
+    const hunting = m.step === 'hunt';
     const targetsShown = m.step === 'chain' && m.firstBite ? m.chainTargets : null;
     const allowed = (code: number): boolean => {
       const kind = code >> 6;
       if (targetsShown && kind === A_DEVOUR) return targetsShown.includes(code & 63);
+      if (hunting) return kind === A_HUNT;
       if (!d) return true;
+      if (kind === A_HUNT) return !!d.hunt;
       if (kind === A_DEVOUR) return d.consume;
       if (kind === A_SWAP) return d.replace;
       if (kind === A_END) return true;
@@ -634,6 +648,8 @@ export class PrisonAdapter {
         x[DOORS_N] = Math.min(3, m.doors.length);
         break;
       case 'manage':
+      case 'hunt':
+        // Выбор добычи — тот же ряд решений, разрешено только «Выслеживание».
         phase = P_MANAGE;
         break;
       case 'office':

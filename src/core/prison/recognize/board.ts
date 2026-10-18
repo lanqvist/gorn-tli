@@ -287,6 +287,7 @@ export function readBoard(frame: Frame, geo: Geometry, t: BoardTemplates): Board
       consume: kinds.includes('consume'),
       replace: kinds.includes('replace'),
       end: kinds.includes('end'),
+      ...(kinds.includes('hunt') ? { hunt: true } : {}),
     };
   }
   return board;

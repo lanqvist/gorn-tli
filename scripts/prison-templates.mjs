@@ -390,7 +390,8 @@ function buildScreens() {
   const picks = [];
   for (const [key, list] of Object.entries(labels('picks-panels-digits.json').picks)) picks.push([key, { cards: list, ...(ru[key] ?? {}) }]);
   for (const [key, v] of Object.entries(labels('gorn-picks.json'))) picks.push([key, v]);
-  for (const [key, v] of Object.entries(labels('gorn-new-screens.json'))) if (v.cards) picks.push([key, v]);
+  // Карты выбора — только с кадров выбора; на кадрах доски cards — ряд решений.
+  for (const [key, v] of Object.entries(labels('gorn-new-screens.json'))) if (v.cards && !key.endsWith('-board.png')) picks.push([key, v]);
   for (const [key, v] of picks) {
     const frame = load(framePath(key));
     const geo = plainGeo(frame);

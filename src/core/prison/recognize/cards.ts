@@ -16,8 +16,11 @@ export const CARD_TITLE: Box = [440, 862, 1480, 904];
 export const CARD_Y0 = 748;
 export const CARD_Y1 = 926;
 export const CARD_HALF_W = 166;
-/** Центры карточек при 3, 2 и 1 карточке. */
-export const SLOTS: Record<number, number[]> = { 3: [614, 959, 1304], 2: [787, 1132], 1: [959] };
+/**
+ * Центры карточек при 4, 3, 2 и 1 карточке. Четыре — ряд решений с
+ * «Выслеживанием» (Окровавленный капкан): шаг тот же, 345 опорных px.
+ */
+export const SLOTS: Record<number, number[]> = { 4: [442, 787, 1133, 1478], 3: [614, 959, 1304], 2: [787, 1132], 1: [959] };
 
 export function cardBox(cx: number): Box {
   return [cx - CARD_HALF_W, CARD_Y0, cx + CARD_HALF_W, CARD_Y1];
@@ -41,7 +44,7 @@ export function titleGroups(frame: Frame, geo: Geometry): Glyph[][] {
 /** Центры карточек (опорные px) по подписям; пусто — карточек нет. */
 export function cardCenters(frame: Frame, geo: Geometry): number[] {
   const groups = titleGroups(frame, geo);
-  if (groups.length === 0 || groups.length > 3) return [];
+  if (groups.length === 0 || groups.length > 4) return [];
   const centers = groups.map((gr) => ((gr[0]!.x0 + gr[gr.length - 1]!.x1) / 2 - geo.tx) / geo.s);
   const slots = SLOTS[groups.length]!;
   // Подписи должны стоять у центров своей раскладки.

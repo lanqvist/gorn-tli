@@ -283,10 +283,12 @@ const PANELS: Record<string, string[]> = {
   '184015-567-board.png': ['hook', 'ironbox'],
   '184118-933-board.png': ['hook', 'ironbox'],
   '184201-534-board.png': ['hook', 'ironbox'],
+  '191640-677-board.png': ['trap'],
+  '191642-891-board.png': ['trap'],
 };
 
 describe.skipIf(!Object.keys(PANELS).every((n) => gornShot('2026-10-18', n)))('панель орудий и карты выбора (забеги 2026-10-18)', () => {
-  it('иконки панели: Шампур, Секира, Саркофаг, Дева мстителя, Козёл отпущения, Крюк, Ошейник, Клетка, Железный ящик; пустое место с отсветом — не орудие', () => {
+  it('иконки панели: Шампур, Секира, Саркофаг, Дева мстителя, Козёл отпущения, Крюк, Ошейник, Клетка, Железный ящик, Капкан; пустое место с отсветом — не орудие', () => {
     for (const [name, tools] of Object.entries(PANELS)) {
       const b = board(read(frame(gornShot('2026-10-18', name)!), null).view);
       expect(b.toolSlots, name).toEqual(tools);
@@ -339,5 +341,18 @@ describe.skipIf(!['185837-234-board.png', '185907-643-board.png', '184201-534-bo
     expect([c[9]!.tier, c[9]!.tierUnknown, c[10]!.tier, c[10]!.tierUnknown]).toEqual([0, undefined, 0, undefined]);
     expect(unknown('185907-643-board.png')).toEqual([8, 15]);
     expect(unknown('184201-534-board.png')).toEqual([]);
+  });
+});
+
+describe.skipIf(!['191617-510-board.png', '191646-199-board.png', '191647-757-board.png'].every((n) => gornShot('2026-10-18', n)))('ряд решений с «Выслеживанием» (забег 2026-10-18 19:16)', () => {
+  it('три и четыре карточки; «Выслеживание» — не «Завершить»', () => {
+    const kinds = (name: string) => board(read(frame(gornShot('2026-10-18', name)!), null).view).at.decisionKinds;
+    expect(kinds('191617-510-board.png')).toEqual(['consume', 'hunt', 'end']);
+    for (const n of ['191646-199-board.png', '191647-757-board.png']) {
+      const b = board(read(frame(gornShot('2026-10-18', n)!), null).view);
+      expect(b.at.decisionKinds, n).toEqual(['consume', 'replace', 'hunt', 'end']);
+      expect(b.decision, n).toMatchObject({ kind: 'manage', hunt: true });
+      expect(b.at.decisionCards.length, n).toBe(4);
+    }
   });
 });

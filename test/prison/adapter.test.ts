@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { DEFAULT_PARAMS, EVENT, LION, MAMMOTH, OBJECTIVE, START_EVENT, TOOL, WOLF } from '../../src/core/prison/model.js';
 import { PrisonAdapter, blankMemory, loadMemory } from '../../src/core/prison/adapter.js';
-import { Rng, applyCode, codeBuffer, decode, encode, legalCodes } from '../../src/core/prison/engine/actions.js';
+import { A_HUNT, Rng, applyCode, codeBuffer, decode, encode, legalCodes } from '../../src/core/prison/engine/actions.js';
 import {
   BEAST, CHAIN_EATER, DAY, DAY_LIMIT, DOORS, DOORS_N, EVT, FLAGS, F_VIS_TIER, LOCK, NEST, NEXT, OBJECTIVE_ID, OFFER, OFFER_GIFT,
   OFFER_KIND, OFFER_N, PHASE, PICK_GIFTS, PRE_TIER, P_CHAIN, P_DAYEND, P_MANAGE, P_PATROL, P_PICK, REROLLS, START, STORAGE,
@@ -79,6 +79,30 @@ describe('адаптер: память забега', () => {
     expect(a.mem.cells[C(4)]).toMatchObject({ k: 'inmate', t: 4 });
     // В №9 теперь другой зверь — прежняя редкость не его.
     expect(a.mem.cells[C(9)]).toMatchObject({ k: 'inmate', t: 0 });
+  });
+
+  it('«Выслеживание»: ряд из четырёх карточек, затем «Выберите цель» — добыча, а не крысиная тропа', () => {
+    // Забег 18.10 19:16: лев надзирателя, «Окровавленный капкан».
+    const a = new PrisonAdapter({ ...blankMemory(), tools: ['trap'] });
+    const row = { kind: 'manage' as const, consume: true, replace: true, end: true, hunt: true };
+    a.board(board({ inmates: { 4: 'lion2', 6: 'wolf2', 9: 'rat2' }, warden: 4, decision: row, kinds: ['consume', 'replace', 'hunt', 'end'] }));
+    const manage = ok(a);
+    expect(legal(manage.state).filter(manage.allowed).some((c) => c >> 6 === A_HUNT)).toBe(true);
+    // Экран выбора затемнён: редкости с него не перечитываются, разрешена только метка.
+    a.board(board({ inmates: { 4: 'lion2', 6: 'wolf0', 9: 'rat0' }, warden: 4, decision: { kind: 'ratway' } }));
+    expect(a.mem.step).toBe('hunt');
+    expect(a.mem.cells[C(6)]).toMatchObject({ k: 'inmate', t: 2 });
+    const pos = ok(a);
+    const shown = legal(pos.state).filter(pos.allowed);
+    expect(shown.length).toBeGreaterThan(0);
+    expect(shown.every((c) => c >> 6 === A_HUNT)).toBe(true);
+  });
+
+  it('«Выберите цель» после обхода — крысиная тропа, как раньше', () => {
+    const a = new PrisonAdapter({ ...blankMemory(), tools: ['trap'] });
+    a.board(board({ inmates: { 4: 'lion2', 6: 'wolf2' }, warden: 2, doors: [4, 6] }));
+    a.board(board({ inmates: { 4: 'lion2', 6: 'wolf2' }, warden: 4, decision: { kind: 'ratway' } }));
+    expect(a.mem.step).toBe('ratway');
   });
 
   it('больше 20 дней осталось — «Железный закон», 30 дней', () => {
