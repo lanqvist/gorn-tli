@@ -6,7 +6,7 @@ const head = (file: string, kind: string, fresh = false) => ({ file, kind, fresh
 
 function rec(time: string, over: Partial<FrameRec> = {}, mem: Partial<FrameRec['mem']> = {}): FrameRec {
   return {
-    file: `${time}-000-board.json`, time, kind: 'board', hasPng: true, logDay: null, live: 'Иди в №3', screen: 'patrol', actionable: true,
+    file: `${time}-000-board.json`, time, kind: 'board', hasPng: true, logDay: null, live: 'Иди в №3', answered: true, screen: 'patrol', actionable: true,
     pickUnknown: 0, mine: 'Иди в №3', best: 5, liveGap: null,
     mem: { day: 3, dayLimit: 20, storage: 1, tools: ['coin'], assumed: [], step: 'patrol', start: 'none', ...mem },
     ...over,
@@ -53,6 +53,17 @@ describe('аудит забегов: находки', () => {
       rec('130050', { best: 8.17, live: 'Иди в №16', mine: 'Иди в допросную', liveGap: 0.3 }, { storage: 8 }),
     ]);
     expect(f.map((x) => x.kind)).toEqual(['хранилище', 'скачок', 'день', 'расхождение']);
+  });
+
+  it('не зависание: кадр прерван следующим; совет на том же экране пришёл через секунду', () => {
+    const f = findings([
+      // Горн не успел ответить — расчёт прервал следующий кадр.
+      rec('170000', { live: '', answered: false, screen: 'manage', mine: 'Заменить' }),
+      // Окно выбора снято как доска (20:38:22), через 0,1 с — кадр выбора с советом.
+      rec('170010', { kind: 'board', live: '', screen: 'pick', mine: '' }),
+      rec('170010', { kind: 'instruments', live: 'Обновить выбор', screen: 'pick', mine: 'Обновить выбор' }),
+    ]);
+    expect(f.filter((x) => x.kind === 'зависание')).toEqual([]);
   });
 
   it('та же находка на кадрах подряд — одна, со счётчиком', () => {

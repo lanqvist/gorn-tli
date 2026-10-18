@@ -56,7 +56,7 @@ export class PrisonAssist {
   private staleTimer: NodeJS.Timeout | null = null;
   /** Куда сохранять кадры (null — не сохранять) и что о каждом уже известно. */
   private saveRoot: string | null = null;
-  private readonly saving = new Map<number, { base: string; info: Record<string, unknown> }>();
+  private readonly saving = new Map<number, { base: string; info: Record<string, unknown>; written: Promise<void> }>();
   private pruneTimer: NodeJS.Timeout | null = null;
   /** Снимок идёт; следующий кадр ждёт (только последний). */
   private capturing = false;
@@ -451,7 +451,13 @@ export class PrisonAssist {
     const day = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
     const time = `${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}-${pad(now.getMilliseconds(), 3)}`;
     const base = join(this.saveRoot, day, `${time}-${kind}`);
-    this.saving.set(id, { base, info: { kind, fresh: shot.fresh, after: shot.after, treasureView: shot.treasureView, treasureClosed: shot.treasureClosed, rerolled: shot.rerolled, theme: shot.theme, day: shot.day, lines: shot.lines, hints: [] } });
+    const info = { kind, fresh: shot.fresh, after: shot.after, treasureView: shot.treasureView, treasureClosed: shot.treasureClosed, rerolled: shot.rerolled, theme: shot.theme, day: shot.day, lines: shot.lines, hints: [] };
+    // Описание — сразу: следующий кадр может прервать расчёт, и окончательного
+    // ответа не будет (а картинка останется без JSON). Ответ его перепишет.
+    const written = this.writeInfo(base, info);
+    this.saving.set(id, { base, info, written });
+    // Прерванные кадры ответа не дождутся — не копить их.
+    while (this.saving.size > 50) this.saving.delete(this.saving.keys().next().value!);
     return `${base}.png`;
   }
 
@@ -462,8 +468,12 @@ export class PrisonAssist {
     (entry.info['hints'] as unknown[]).push(msg);
     if (!done) return;
     this.saving.delete(msg.id);
-    void mkdir(dirname(entry.base), { recursive: true })
-      .then(() => writeFile(`${entry.base}.json`, JSON.stringify(entry.info, null, 1)))
+    void entry.written.then(() => this.writeInfo(entry.base, entry.info));
+  }
+
+  private writeInfo(base: string, info: Record<string, unknown>): Promise<void> {
+    return mkdir(dirname(base), { recursive: true })
+      .then(() => writeFile(`${base}.json`, JSON.stringify(info, null, 1)))
       .catch((err: unknown) => console.warn('[тюрьма] описание кадра не сохранено:', err instanceof Error ? err.message : err));
   }
 

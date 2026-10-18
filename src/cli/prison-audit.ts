@@ -96,7 +96,9 @@ async function replay(dir: string, files: string[]): Promise<{ recs: FrameRec[];
       if (v.screen === 'board') {
         const b = v.board;
         screen = b.chain ? 'chain' : b.decision ? b.decision.kind : b.doors.length ? 'patrol' : 'board';
-        actionable = screen !== 'board';
+        // «Выберите цель» на кадре с началом дня — вчерашняя надпись после «Выслеживания»: хода нет.
+        const dayStart = (s.lines ?? []).some((l) => /check cur=\d+/.test(l));
+        actionable = screen !== 'board' && !(screen === 'ratway' && dayStart);
       } else if (v.screen === 'pick') {
         screen = 'pick';
         actionable = true;
@@ -126,7 +128,7 @@ async function replay(dir: string, files: string[]): Promise<{ recs: FrameRec[];
     }
     const mem = advisor.memory as { day: number; dayLimit: number; storage: number; tools: string[]; assumed: { tool: string }[]; step: string; start: string };
     recs.push({
-      file: f, time: f.slice(0, 6), kind: s.kind, hasPng: !!frame, logDay: s.day ?? logDay, live, screen, actionable, pickUnknown, mine, best, liveGap,
+      file: f, time: f.slice(0, 6), kind: s.kind, hasPng: !!frame, logDay: s.day ?? logDay, live, answered: (s.hints ?? []).length > 0, screen, actionable, pickUnknown, mine, best, liveGap,
       mem: { day: mem.day, dayLimit: mem.dayLimit, storage: mem.storage, tools: [...mem.tools], assumed: mem.assumed.map((a) => a.tool), step: mem.step, start: mem.start },
     });
   }

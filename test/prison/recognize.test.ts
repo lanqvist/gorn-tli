@@ -285,10 +285,20 @@ const PANELS: Record<string, string[]> = {
   '184201-534-board.png': ['hook', 'ironbox'],
   '191640-677-board.png': ['trap'],
   '191642-891-board.png': ['trap'],
+  // «Голодная удушающая цепь» (читалась как «Плеть»), «Кандалы с длинной цепью», «Молот».
+  '202455-005-board.png': ['rope', 'ravenous'],
+  '202508-004-board.png': ['rope', 'ravenous'],
+  '202521-837-board.png': ['rope', 'ravenous'],
+  '204001-427-board.png': ['trap', 'shackles'],
+  '204034-268-board.png': ['trap', 'shackles'],
+  '204052-277-board.png': ['trap', 'shackles'],
+  '210427-523-board.png': ['maul', 'coin'],
+  '210447-789-board.png': ['maul', 'coin'],
+  '210500-681-board.png': ['maul', 'coin'],
 };
 
 describe.skipIf(!Object.keys(PANELS).every((n) => gornShot('2026-10-18', n)))('панель орудий и карты выбора (забеги 2026-10-18)', () => {
-  it('иконки панели: Шампур, Секира, Саркофаг, Дева мстителя, Козёл отпущения, Крюк, Ошейник, Клетка, Железный ящик, Капкан; пустое место с отсветом — не орудие', () => {
+  it('иконки панели: Шампур, Секира, Саркофаг, Дева мстителя, Козёл отпущения, Крюк, Ошейник, Клетка, Железный ящик, Капкан, Цепь, Кандалы, Молот; пустое место с отсветом — не орудие', () => {
     for (const [name, tools] of Object.entries(PANELS)) {
       const b = board(read(frame(gornShot('2026-10-18', name)!), null).view);
       expect(b.toolSlots, name).toEqual(tools);
@@ -306,6 +316,9 @@ describe.skipIf(!Object.keys(PANELS).every((n) => gornShot('2026-10-18', n)))('�
     // «Молот Слоновья нога» и «Клещи порока» (20:48; кадр не из эталонов).
     const p4 = read(frame(gornShot('2026-10-18', '204846-672-instruments.png')!), null).view;
     expect(p4.screen === 'pick' && p4.pick.cards).toEqual(['revenge', 'maul', 'tongs']);
+    // «Пыточный намордник» под курсором (21:21:33).
+    const p5 = read(frame(gornShot('2026-10-18', '212133-440-instruments.png')!), null).view;
+    expect(p5.screen === 'pick' && p5.pick.cards).toEqual(['scales', 'shortchain', 'muzzle']);
   });
 });
 

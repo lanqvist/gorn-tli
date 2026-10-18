@@ -43,8 +43,10 @@ export interface FrameRec {
   hasPng: boolean;
   /** День по логу (cur с единицы), если строка check cur была. */
   logDay: { cur: number; max: number } | null;
-  /** Последняя живая подсказка ('' — только «clear»). */
+  /** Последняя живая подсказка ('' — только «clear» или ответа не было). */
   live: string;
+  /** Горн ответил на кадр (иначе расчёт прервал следующий кадр — не зависание). */
+  answered: boolean;
   /** Что на кадре по распознаванию: patrol, manage, chain, ratway, office, pick, treasure, board, other. */
   screen: string;
   /** На кадре есть ход (двери, ряд решений, выбор, цепочка). */
@@ -79,6 +81,9 @@ export const AUDIT = {
 
 const NO_JUMP = new Set(['pick', 'treasure', 'board']);
 const hhmmss = (t: string) => `${t.slice(0, 2)}:${t.slice(2, 4)}:${t.slice(4, 6)}`;
+const seconds = (t: string) => (Number(t.slice(0, 2)) * 60 + Number(t.slice(2, 4))) * 60 + Number(t.slice(4, 6));
+/** Совет на тот же экран пришёл со следующим кадром почти сразу (кадр снят чуть раньше окна). */
+const ANSWER_SOON_S = 3;
 
 /** Находки по записям одного забега. */
 export function findings(recs: readonly FrameRec[]): Finding[] {
@@ -91,8 +96,10 @@ export function findings(recs: readonly FrameRec[]): Finding[] {
   };
   let maxStorage = -1;
   let prev: FrameRec | null = null;
-  for (const r of recs) {
-    if (r.hasPng && r.actionable && !r.live && r.kind !== 'manual') {
+  recs.forEach((r, i) => {
+    const next = recs[i + 1];
+    const soon = !!next && next.screen === r.screen && !!next.live && seconds(next.time) - seconds(r.time) <= ANSWER_SOON_S;
+    if (r.hasPng && r.actionable && !r.live && r.answered && !soon && r.kind !== 'manual') {
       add('зависание', r, `подсказки не было на экране «${r.screen}»${r.mine ? `; сейчас Горн советует «${r.mine}»` : '; Горн молчит и сейчас'}`);
     }
     if (r.pickUnknown > 0) add('карта', r, `на выборе орудий не узнано карт: ${r.pickUnknown}`);
@@ -112,7 +119,7 @@ export function findings(recs: readonly FrameRec[]): Finding[] {
       }
     }
     if (r.best !== null) prev = r;
-  }
+  });
   const last = [...recs].reverse().find((r) => r.mem.tools.length || r.mem.assumed.length);
   if (last && last.mem.assumed.length) {
     out.push({ kind: 'иконка', time: hhmmss(last.time), text: `иконка на панели не узнаётся, орудие только «предположительно»: ${last.mem.assumed.join(', ')}` });
