@@ -18,7 +18,8 @@ import {
   F_VIS_RARE, F_VIS_TIER, HUNT_LEFT, HUNT_LION, HUNT_PREY, LOCK, NEST, NEXT, OBJECTIVE_ID, OBJ_DONE, OBJ_PROGRESS,
   OFFER, OFFER_GIFT, OFFER_KIND, OFFER_N, OFFER_TOOL, OFFICE_LEFT, PICK_TOOLS, PICK_GIFTS, PRE_BEAST, PRE_TIER,
   P_CHAIN, P_DAYEND, P_END, P_EVENT, P_MANAGE, P_MORNING, P_OFFICE, P_PATROL, P_RATWAY, REROLLS, START, STAT_BITES,
-  STAT_DEVOURS, STAT_EVENTS, STAT_OPENED, STAT_STEPS, STORAGE, TIER, TOOLS, USED, USED_DEVOUR, USED_HUNT, USED_SWAP, USURP,
+  START_PENDING, STAT_DEVOURS, STAT_EVENTS, STAT_OPENED, STAT_STEPS, STORAGE, TIER, TOOLS, USED, USED_DEVOUR, USED_HUNT,
+  USED_SWAP, USURP,
   WARDEN,
   type State, dist, hasTool,
 } from './state.js';
@@ -392,13 +393,18 @@ export function bite(s: State, r: Rng, p: Params, e: number, t: number, inChain:
   const door = m[LOCK + t] === 1;
   const tt = door ? m[PRE_TIER + t]! : m[TIER + t]!;
   const bt = door ? m[PRE_BEAST + t]! : m[BEAST + t]!;
+  // Намордник (101): «на поле не более 4 узников» — до укуса, считая едока и жертву.
+  // Кадры 18.10: при 4 узниках после укуса (5 до) +2 не было ни разу (4 из 4), при 3 до — было.
+  const fieldBefore = popcount(inmateMask(s));
 
   let gain = 1;
   if (door) gain = p.clawsGain;
   else if (be === MAMMOTH && hasTool(s, TOOL.maul) && isFood(be, bt)) gain = Math.max(1, tt + 2 - te);
   // Клиент 146: после поедания ниже по редкости Гильотиной — «Подавление».
   else if (tt < te && be === WOLF && bt === RAT && hasTool(s, TOOL.guillotine) && !r.chance(1 - p.oppressStep * (te - tt))) gain = 0;
-  if (be === RAT && hasTool(s, TOOL.skewer)) gain += p.skewerBonus;
+  // Шампур (148): +2 за поедание крысы крысой. Кадры 18.10: крыса, съевшая мамонта
+  // с Шампуром, получала только +1 (2 цепочки в забеге 13:11).
+  if (be === RAT && bt === RAT && hasTool(s, TOOL.skewer)) gain += p.skewerBonus;
   if (be === LION && hasTool(s, TOOL.crown)) gain += p.crownBonus;
   if (hasTool(s, TOOL.whip) && r.chance(p.whipChance)) gain++;
   if (inChain && hasTool(s, TOOL.collar) && r.chance(p.collarChance)) gain++;
@@ -415,7 +421,7 @@ export function bite(s: State, r: Rng, p: Params, e: number, t: number, inChain:
     relock(s, r, p, t);
   }
 
-  if (hasTool(s, TOOL.muzzle) && popcount(inmateMask(s)) <= p.muzzleLeft) gain += p.muzzleBonus;
+  if (hasTool(s, TOOL.muzzle) && fieldBefore <= p.muzzleLeft) gain += p.muzzleBonus;
 
   m[STAT_BITES] = m[STAT_BITES]! + 1;
   if (p.jungleCountsBites) progress(s, r, p, OBJECTIVE.jungle, 1);
@@ -506,6 +512,10 @@ export function finishDevour(s: State): void {
  */
 export function morning(s: State, r: Rng, p: Params): void {
   const m = s.m;
+  if (m[START_PENDING] === 1) {
+    m[START_PENDING] = 0;
+    startBoard(s, r, p);
+  }
 
   // Гнёзда «Железного ящика»: через ironboxDays утр — Редкая крыса.
   for (let c = 1; c < CELLS; c++) {
@@ -1136,10 +1146,6 @@ export function newRun(s: State, r: Rng, p: Params, setup: RunSetup): void {
   m[OBJECTIVE_ID] = -1; // цель ставится в конце: стартовые камеры её не двигают
   m[TOOLS] = setup.tools & ALL_TOOLS;
   m[START] = setup.start;
-  // Клиент 309 «开局随机开房数» = 4; на своих кадрах первого дня открыто 4 камеры.
-  for (let i = 0; i < p.startOpen; i++) openRandom(s, r, p);
-  for (let c = 1; c < CELLS; c++) if (m[LOCK + c] === 1 && r.chance(p.doorEvent)) putEvent(s, r, p, c);
-  topUpEvents(s, r, p);
   m[WARDEN] = OFFICE;
   m[DAY_LIMIT] = setup.start === START_EVENT.ironlaw ? p.ironLawDays : p.days;
   m[REROLLS] = p.rerolls;
@@ -1148,5 +1154,29 @@ export function newRun(s: State, r: Rng, p: Params, setup: RunSetup): void {
   m[HUNT_PREY] = -1;
   m[PICK_TOOLS] = setup.startPick ? 1 : 0;
   m[NEXT] = P_MORNING;
+  // С выбором орудия доска за ним ещё не видна: её разыграет первое утро. Иначе
+  // решатель на экране выбора считал бы от одной заранее выпавшей доски.
+  if (setup.startPick) m[START_PENDING] = 1;
+  else startBoard(s, r, p);
   setObjective(s, r, p, setup.objective);
+}
+
+/**
+ * Стартовая доска: startOpen случайных камер открыто (клиент config 309 = 4;
+ * на кадрах первого дня — 4 в 11 забегах из 12), метки событий до eventMin
+ * (config 310; на кадрах — ровно 1 во всех 12). Узники по шансам двери без
+ * Крюка и не в зачёт «За дверью камеры». [допущение: доска создаётся до
+ * выбора стартового орудия]
+ */
+function startBoard(s: State, r: Rng, p: Params): void {
+  const m = s.m;
+  for (let i = 0; i < p.startOpen; i++) {
+    const c = pickBit(lockedMask(s), r);
+    if (c < 0) break;
+    const tier = rollTier(r, p.doorOdds, 0);
+    m[STAT_OPENED] = m[STAT_OPENED]! + 1;
+    place(s, r, p, c, r.int(4), tier);
+  }
+  for (let c = 1; c < CELLS; c++) if (m[LOCK + c] === 1 && r.chance(p.doorEvent)) putEvent(s, r, p, c);
+  topUpEvents(s, r, p);
 }

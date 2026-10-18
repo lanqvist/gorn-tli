@@ -159,17 +159,18 @@ describe('орудия пожирания', () => {
     expect(tier(s, 1)).toBe(2);
   });
 
-  it('Пыточный намордник: +2, если после укуса узников не больше 4', () => {
+  it('Пыточный намордник: +2, если до укуса на поле не больше 4 узников (с едоком и жертвой)', () => {
     const s = withTools('muzzle');
+    for (let c = 3; c <= 4; c++) put(s, c, WOLF, 0);
     put(s, 1, MAMMOTH, 1);
     put(s, 2, LION, 1);
-    bite(s, NO, P, 1, 2, false);
+    bite(s, NO, P, 1, 2, false); // 4 до укуса
     expect(tier(s, 1)).toBe(4);
     const t = withTools('muzzle');
-    for (let c = 1; c <= 6; c++) put(t, c, WOLF, 0);
+    for (let c = 3; c <= 5; c++) put(t, c, WOLF, 0);
     put(t, 1, MAMMOTH, 1);
     put(t, 2, LION, 1);
-    bite(t, NO, P, 1, 2, false);
+    bite(t, NO, P, 1, 2, false); // 5 до укуса, 4 после — без добавки (кадры 18.10)
     expect(tier(t, 1)).toBe(2);
   });
 
@@ -207,8 +208,8 @@ describe('орудия пожирания', () => {
     const u = withTools('skewer');
     put(u, 1, RAT, 0);
     put(u, 2, MAMMOTH, 0);
-    bite(u, NO, P, 1, 2, false); // и при обычной еде: «Когда Огромная крыса пожирает»
-    expect(tier(u, 1)).toBe(3);
+    bite(u, NO, P, 1, 2, false); // за мамонта — обычный +1 (кадры 18.10: Крыса 3 съела Мамонта 3 → Крыса 4)
+    expect(tier(u, 1)).toBe(1);
   });
 
   it('Железная корона: лев ест любого той же редкости, укус льва +2', () => {

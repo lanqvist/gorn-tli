@@ -240,6 +240,7 @@ export interface Params {
   whipChance: number;
   sawChance: number;
   collarChance: number;
+  /** Намордник (101): +muzzleBonus, если до укуса на поле не больше muzzleLeft узников (с едоком и жертвой). [кадры 18.10] */
   muzzleLeft: number;
   muzzleBonus: number;
   revengeChance: number;
@@ -249,7 +250,7 @@ export interface Params {
    * Срабатывает после поедания Гильотиной (клиент 146). [догадка: от базового 100 %]
    */
   oppressStep: number;
-  /** Шампур (клиент 148): крыса после Пожирания дополнительно +2. */
+  /** Шампур (клиент 148): крыса, съевшая крысу, дополнительно +2; за другую еду — нет. [кадры 18.10] */
   skewerBonus: number;
   /** Корона (клиент 144): лев после Пожирания дополнительно +2. */
   crownBonus: number;

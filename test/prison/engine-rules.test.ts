@@ -11,7 +11,7 @@ import {
   bite, canEat, dealDoors, eventDecision, openCell, raise, relock, rollTier, runEvent, takeGift, targets,
 } from '../../src/core/prison/engine/rules.js';
 import {
-  CHAIN_EATER, CHAIN_REACTION, DAY, DAY_LIMIT, DOORS, DOORS_N, EVT, FLAGS, F_VIS_RARE, F_VIS_TIER, NEXT,
+  CHAIN_EATER, CHAIN_REACTION, DAY, DAY_LIMIT, DOORS, DOORS_N, EVT, FLAGS, F_VIS_RARE, F_VIS_TIER, LOCK, NEXT,
   OBJECTIVE_ID, OBJ_DONE, OBJ_PROGRESS, OFFER_KIND, OFFER_N, OFFER_GIFT, OFFER_TOOL, OFFER, PHASE, PICK_GIFTS,
   PICK_TOOLS, PRE_TIER, P_CHAIN, P_EVENT, P_MANAGE, P_MORNING, P_OFFICE, P_PATROL, P_PICK, P_RATWAY, REROLLS, STAT_BITES,
   STAT_EVENTS, STAT_STEPS, STORAGE, State, TOOLS, USED, USURP, WARDEN, dist,
@@ -58,16 +58,33 @@ describe('поле и начало забега', () => {
     expect(blank({ start: 'ironlaw' }).m[DAY_LIMIT]).toBe(30);
   });
 
-  it('события за дверями в начале забега — по шансу doorEvent', () => {
+  it('доска за стартовым выбором орудия не видна: 4 камеры и метка события появляются после выбора', () => {
     const s = new State();
     const e = createEngine();
-    let events = 0;
     const r = new Rng(11);
-    for (let i = 0; i < 2000; i++) {
+    const counts = new Set<string>();
+    for (let i = 0; i < 200; i++) {
       e.start(s, r);
-      for (let c = 1; c < 16; c++) if (s.m[EVT + c] !== 0) events++;
+      let open = 0;
+      let events = 0;
+      for (let c = 1; c < 16; c++) {
+        if (s.m[LOCK + c] !== 1) open++;
+        if (s.m[EVT + c] !== 0) events++;
+      }
+      expect([open, events]).toEqual([0, 0]);
+      // утренние Удушающая цепь и Монета убирают узников уже в первое утро
+      const pick = e.legal(s).find((a) => a.type === 'choose' && a.id !== 'ravenous' && a.id !== 'coin');
+      if (!pick) continue;
+      e.apply(s, pick, r);
+      open = 0;
+      events = 0;
+      for (let c = 1; c < 16; c++) {
+        if (s.m[LOCK + c] !== 1) open++;
+        if (s.m[EVT + c] !== 0) events++;
+      }
+      counts.add(`${open}/${events}`);
     }
-    expect(events / (2000 * 15)).toBeCloseTo(0.064, 1);
+    expect([...counts]).toEqual(['4/1']);
   });
 });
 
