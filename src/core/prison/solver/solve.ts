@@ -73,8 +73,7 @@ export interface SolveStep {
 }
 
 export interface Search {
-  /** more — считать дальше и после остановки (уточнить почти равные ходы). */
-  step(ms: number, more?: boolean): SolveStep;
+  step(ms: number): SolveStep;
   /** Ход a (код) против хода b: разница средних и её парная SE (отсечённый — SE 0). */
   compare(a: number, b: number): { d: number; se: number };
 }
@@ -276,9 +275,9 @@ class MonteCarlo implements Search {
     if (enough && settled) this.done = true;
   }
 
-  step(ms: number, more = false): SolveStep {
+  step(ms: number): SolveStep {
     const deadline = performance.now() + ms;
-    while (more || !this.done) {
+    while (!this.done) {
       this.round();
       this.check();
       if (performance.now() >= deadline) break;

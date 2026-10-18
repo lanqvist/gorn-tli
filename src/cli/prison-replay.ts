@@ -11,7 +11,7 @@
  */
 import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { basename, join } from 'node:path';
+import { join } from 'node:path';
 
 import { read } from '../core/prison/recognize/index.js';
 import { decodePng } from '../core/prison/recognize/png.js';
@@ -94,8 +94,6 @@ interface Row {
   screen: string;
   old: string;
   mine: string;
-  /** Равноценный второй ход из подписи («или …»). */
-  alt: string;
   oldKey: string;
   mineKey: string;
   firstMs: number;
@@ -172,14 +170,13 @@ for (const f of files) {
     const theirs = opts.find((o) => moveKey(hint(o.action, { warden: null }).text) === oldKey);
     if (theirs) gap = best - theirs.mean;
   }
-  const alt = [...replies].reverse().find((r): r is Extract<PrisonWorkerReply, { type: 'hint' }> => r.type === 'hint')?.alt ?? '';
   if (trace && opts.length) {
     // Ожидание забега на этом решении: лучший ход и его оценка к концу забега.
     const ranked = [...opts].sort((a, b) => b.mean - a.mean);
     const others = ranked.slice(1, 3).map((o) => `${moveKey(hint(o.action, { warden: null }).text)} ${o.mean.toFixed(2)}`).join(', ');
     console.log(`ход ${f.slice(0, 6)} [${screen}] ждём ${ranked[0]!.mean.toFixed(2)} призм. | совет: ${mine || '—'}${others ? ` | дальше: ${others}` : ''}`);
   }
-  rows.push({ file: f, screen, old, mine, alt, oldKey, mineKey: moveKey(mine), firstMs: Math.max(0, firstMs), totalMs, readMs, gap });
+  rows.push({ file: f, screen, old, mine, oldKey, mineKey: moveKey(mine), firstMs: Math.max(0, firstMs), totalMs, readMs, gap });
 }
 
 // ── отчёт ───────────────────────────────────────────────────────────────────
@@ -221,9 +218,6 @@ console.log(`кадры с советом: до первой подсказки 
 const withPng = rows.filter((r) => r.readMs > 0);
 console.log(`распознавание: медиана ${q(withPng.map((r) => r.readMs), 0.5).toFixed(1)} мс, p95 ${q(withPng.map((r) => r.readMs), 0.95).toFixed(1)} мс`);
 console.log(`до первой подсказки (распознавание + совет): медиана ${q(rows.map((r) => r.firstMs), 0.5).toFixed(0)} мс, p95 ${q(rows.map((r) => r.firstMs), 0.95).toFixed(0)} мс`);
-const withAlt = rows.filter((r) => r.mineKey && r.alt);
-console.log(`равноценный второй ход в подписи: ${withAlt.length} из ${rows.filter((r) => r.mineKey).length} советов`);
-for (const r of withAlt.slice(0, 12)) console.log(`  ${basename(r.file)}: ${r.mine} | ${r.alt}`);
 console.log(`до окончательной: медиана ${q(rows.map((r) => r.totalMs), 0.5).toFixed(0)} мс, p95 ${q(rows.map((r) => r.totalMs), 0.95).toFixed(0)} мс`);
 
 const diffs = rows.filter((r) => r.oldKey !== r.mineKey && (r.oldKey || r.mineKey));
