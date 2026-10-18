@@ -71,6 +71,11 @@ export interface PrisonShot {
    * (null — не было). Какая это тема — решает память забега.
    */
   theme: number | null;
+  /**
+   * День по логу: последняя строка «[S16LastDay] check cur=N max=M» (cur с
+   * единицы, 0 — выбор перед первым днём). null — строки ещё не было.
+   */
+  day: { cur: number; max: number } | null;
   lines: string[];
 }
 
@@ -96,11 +101,17 @@ export class PrisonTriggers {
   private lastEat = 0;
   private lastGift = 0;
   private lastSpecial: { n: number; at: number } | null = null;
+  private day: { cur: number; max: number } | null = null;
 
   constructor(
     private readonly onShot: (shot: PrisonShot) => void,
     private readonly timer: Scheduler = { set: (fn, ms) => setTimeout(fn, ms), clear: (h) => clearTimeout(h as NodeJS.Timeout) },
   ) {}
+
+  /** День забега по последней строке «check cur=N max=M» (null — не было). */
+  get lastDay(): { cur: number; max: number } | null {
+    return this.day;
+  }
 
   /** Ускорение в игре включено: анимации короче, ждать меньше. */
   get speedUp(): boolean {
@@ -122,6 +133,9 @@ export class PrisonTriggers {
     if (/Eating_red_screen/.test(line)) this.lastEat = stampMs(line) ?? 0;
     if (!line.includes('S16')) return;
     const at = stampMs(line) ?? 0;
+    // На итогах забега игра пишет max=0 — это не день.
+    const day = /check cur=(\d+) max=(\d+)/.exec(line);
+    if (day && Number(day[2]) > 0) this.day = { cur: Number(day[1]), max: Number(day[2]) };
     const special = /S16_Special_(\d+)/.exec(line);
     if (special) this.lastSpecial = { n: Number(special[1]), at };
     if (/Btn_S16Board_ActionCell/.test(line)) this.lastAction = at;
@@ -172,6 +186,6 @@ export class PrisonTriggers {
       const pop = stampMs(b.lines.find((l) => /S16BoardThemePop Run/i.test(l)) ?? '') ?? 0;
       if (Math.abs(this.lastSpecial.at - pop) <= 3000) theme = this.lastSpecial.n;
     }
-    this.onShot({ kind: b.kind, fresh, after, treasureView, rerolled, treasureClosed: !!shut, theme, lines: b.lines });
+    this.onShot({ kind: b.kind, fresh, after, treasureView, rerolled, treasureClosed: !!shut, theme, day: this.day, lines: b.lines });
   }
 }

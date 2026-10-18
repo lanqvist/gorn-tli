@@ -79,6 +79,15 @@ export interface RunMemory {
   /** Тему забега увидели, а доски нового забега ещё не было (выбор орудий её не сбросит). */
   themeFresh: boolean;
   /**
+   * Последний выбор орудий, ещё не подтверждённый доской: карты и
+   * посоветованная. На следующей доске с панелью орудие из выбора либо
+   * узнаётся на панели, либо считается взятым посоветованное.
+   */
+  pickOffer: ToolId[];
+  pickAdvised: ToolId | null;
+  /** Орудия, взятые «предположительно» (иконка на панели не узнана): с картами своего выбора. */
+  assumed: { tool: ToolId; offer: ToolId[] }[];
+  /**
    * Что было до выбора орудия в награду или до сокровищницы — куда забег
    * вернётся после выбора (иначе решатель прибавит или отнимет действие дня).
    */
@@ -110,6 +119,9 @@ export function blankMemory(): RunMemory {
     gifts: 0,
     runStart: false,
     themeFresh: false,
+    pickOffer: [],
+    pickAdvised: null,
+    assumed: [],
     resume: 'patrol',
     resumeAfter: '',
   };
@@ -158,6 +170,13 @@ export function loadMemory(x: unknown): RunMemory {
     gifts: isInt(m.gifts, 0, 30) ? m.gifts : 0,
     runStart: !!m.runStart,
     themeFresh: !!m.themeFresh,
+    pickOffer: Array.isArray(m.pickOffer) ? (m.pickOffer.filter((t) => tools.includes(t)) as ToolId[]) : [],
+    pickAdvised: m.pickAdvised && tools.includes(m.pickAdvised) ? m.pickAdvised : null,
+    assumed: Array.isArray(m.assumed)
+      ? m.assumed
+          .filter((a) => a && tools.includes(a.tool) && Array.isArray(a.offer))
+          .map((a) => ({ tool: a.tool, offer: a.offer.filter((t) => tools.includes(t)) as ToolId[] }))
+      : [],
     resume: m.resume && steps.includes(m.resume) ? m.resume : 'patrol',
     resumeAfter: m.resumeAfter === 'swap' || m.resumeAfter === 'consume' ? m.resumeAfter : '',
   };
@@ -196,6 +215,8 @@ export type Position =
 
 export class PrisonAdapter {
   mem: RunMemory;
+  /** День этого кадра взят из лога — экранный не нужен. */
+  private dayFromLog = false;
 
   constructor(saved?: unknown, private readonly p: Readonly<Params> = DEFAULT_PARAMS) {
     this.mem = loadMemory(saved);
@@ -208,7 +229,8 @@ export class PrisonAdapter {
   /** Доска со строкой дней, панелями и рядом карточек (или экран цепочки). */
   board(v: BoardView): void {
     const m = this.mem;
-    if (v.daysLeft !== null) {
+    // День — по логу, если он есть (экран на последнем дне «осталось 0» не читается).
+    if (v.daysLeft !== null && !this.dayFromLog) {
       if (v.daysLeft > m.dayLimit) {
         // Больше 20 дней осталось — забег «Железного закона».
         m.dayLimit = this.p.ironLawDays;
@@ -218,7 +240,7 @@ export class PrisonAdapter {
       // строкам «check cur=…» рядом с кадрами): день с нуля — лимит − N − 1.
       m.day = Math.max(0, Math.min(m.dayLimit - 1, m.dayLimit - v.daysLeft - 1));
     }
-    if (v.tools.length) for (const t of v.tools) if (!m.tools.includes(t)) m.tools.push(t);
+    this.panelTools(v);
     if (v.chromatic >= 0) m.storage = v.chromatic;
     if (v.objective && OBJECTIVE_FROM_VIEW[v.objective]) m.objective = OBJECTIVE_FROM_VIEW[v.objective]!;
     m.runStart = false;
@@ -344,6 +366,53 @@ export class PrisonAdapter {
   }
 
   /** Выбор орудий: в начале забега (fresh) или в награду за цель. */
+  /** День по логу кадра; null — строки «check cur» не было (день — с экрана). */
+  logDay(d: { cur: number; max: number } | null): void {
+    this.dayFromLog = !!d && d.max > 0;
+    if (!d || d.max <= 0) return;
+    const m = this.mem;
+    m.dayLimit = d.max;
+    if (d.max === this.p.ironLawDays && m.start === 'none') m.start = 'ironlaw';
+    // cur — номер дня с единицы; 0 — выбор орудий перед первым днём.
+    m.day = Math.max(0, Math.min(d.max - 1, d.cur - 1));
+  }
+
+  /** Совет на выборе орудий: какое орудие посоветовано (для памяти, если панель его не узнает). */
+  advised(tool: ToolId): void {
+    this.mem.pickAdvised = tool;
+  }
+
+  /**
+   * Орудия с панели. Узнанные — в память (и подтверждают «предположительные»);
+   * после выбора на доске с панелью орудие из выбора либо узнано, либо
+   * взято посоветованное — «предположительно», пока панель не подтвердит.
+   */
+  private panelTools(v: BoardView): void {
+    const m = this.mem;
+    if (!v.toolSlots && !v.tools.length) return;
+    for (const t of v.tools) {
+      if (m.tools.includes(t)) continue;
+      // Панель узнала орудие, а «предположительно» записано другое из того же выбора — исправить.
+      const wrong = m.assumed.find((a) => a.offer.includes(t) && a.tool !== t && !v.tools.includes(a.tool));
+      if (wrong) {
+        m.tools = m.tools.filter((x) => x !== wrong.tool);
+        wrong.tool = t;
+      }
+      m.tools.push(t);
+    }
+    m.assumed = m.assumed.filter((a) => !v.tools.includes(a.tool));
+    if (!v.toolSlots || !m.pickOffer.length) return;
+    const offer = m.pickOffer;
+    const advised = m.pickAdvised;
+    m.pickOffer = [];
+    m.pickAdvised = null;
+    if (v.tools.some((t) => offer.includes(t))) return;
+    if (advised && !m.tools.includes(advised)) {
+      m.tools.push(advised);
+      m.assumed.push({ tool: advised, offer });
+    }
+  }
+
   /** Окно темы забега: voice — номер озвучки из лога; неизвестный номер — тему не выдумываем. */
   theme(voice: number | null): void {
     const id = voice !== null ? THEME_BY_VOICE[voice] : undefined;
@@ -373,6 +442,8 @@ export class PrisonAdapter {
     }
     this.mem.step = 'pick';
     this.mem.offer = v.cards.filter((c): c is ToolId => c !== null && !this.mem.tools.includes(c));
+    this.mem.pickOffer = [...this.mem.offer];
+    this.mem.pickAdvised = null;
     this.mem.rerolls = v.reroll && !rerolled ? 1 : 0;
   }
 

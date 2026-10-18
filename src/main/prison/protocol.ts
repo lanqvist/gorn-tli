@@ -18,6 +18,8 @@ export interface PrisonShotMessage {
   treasureClosed: boolean;
   /** Окно темы забега: номер озвучки Special_0N из лога (null — нет). */
   theme: number | null;
+  /** День по логу (check cur=N max=M; cur с единицы); null — не было строки. */
+  day: { cur: number; max: number } | null;
   /**
    * Доска, снятая, пока уже открылось окно подарков: обновить по ней
    * доску, а совет дать по подаркам.

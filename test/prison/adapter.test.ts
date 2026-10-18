@@ -230,3 +230,70 @@ describe('адаптер: куда вернуться после выбора, �
     expect(ok(a).state.m[NEST + C(9)]).toBe(1);
   });
 });
+
+describe('адаптер: орудия из выбора и день из лога', () => {
+  it('выбор → доска с неузнанной иконкой: взято посоветованное («предположительно»), панель подтверждает', () => {
+    const a = new PrisonAdapter();
+    a.pick(pick(['maiden', 'forged', 'guillotine']), true, false);
+    a.advised('maiden');
+    const b = board({ warden: 1, doors: [3] });
+    b.toolSlots = [null];
+    a.board(b);
+    expect(a.mem.tools).toEqual(['maiden']);
+    expect(a.mem.assumed).toEqual([{ tool: 'maiden', offer: ['maiden', 'forged', 'guillotine'] }]);
+    expect(ok(a).state.m[TOOLS]).toBe(1 << TOOL.maiden);
+    // Панель узнала иконку — «предположительно» снято.
+    const c = board({ warden: 1, doors: [3], tools: ['maiden'] });
+    c.toolSlots = ['maiden'];
+    a.board(c);
+    expect(a.mem.tools).toEqual(['maiden']);
+    expect(a.mem.assumed).toEqual([]);
+  });
+
+  it('панель узнала другое орудие из того же выбора — «предположительное» исправляется', () => {
+    const a = new PrisonAdapter();
+    a.pick(pick(['maiden', 'forged', 'guillotine']), true, false);
+    a.advised('forged');
+    const b = board({ warden: 1, doors: [3] });
+    b.toolSlots = [null];
+    a.board(b);
+    expect(a.mem.tools).toEqual(['forged']);
+    const c = board({ warden: 1, doors: [3], tools: ['guillotine'] });
+    c.toolSlots = ['guillotine'];
+    a.board(c);
+    expect(a.mem.tools).toEqual(['guillotine']);
+    expect(a.mem.assumed).toEqual([]);
+  });
+
+  it('экран цепочки (панели не видно) выбор не закрывает — ждёт доску с панелью', () => {
+    const a = new PrisonAdapter();
+    a.board(board({ inmates: { 4: 'mammoth1', 6: 'lion1' }, warden: 4, decision: MANAGE_ALL, kinds: ['consume', 'replace', 'end'], tools: ['coin'] }));
+    a.pick(pick(['revenge', 'hook', 'scales'], true, true), false, false);
+    a.advised('revenge');
+    a.board(board({ inmates: { 4: 'mammoth1', 6: 'lion1' }, warden: 4, daysLeft: null, chain: [6] }));
+    expect(a.mem.tools).toEqual(['coin']);
+    const b = board({ warden: 4, doors: [6], tools: ['coin'] });
+    b.toolSlots = ['coin', null];
+    a.board(b);
+    expect(a.mem.tools).toEqual(['coin', 'revenge']);
+  });
+
+  it('день по логу — главный источник: последний день при нечитаемом «осталось 0»', () => {
+    const a = new PrisonAdapter();
+    a.logDay({ cur: 20, max: 20 });
+    a.board(board({ warden: 4, daysLeft: null, doors: [6] }));
+    expect([a.mem.day, a.mem.dayLimit]).toEqual([19, 20]);
+    // Экран говорит другое — верим логу.
+    a.logDay({ cur: 5, max: 20 });
+    a.board(board({ warden: 4, daysLeft: 3, doors: [6] }));
+    expect(a.mem.day).toBe(4);
+    // Без строки лога — запасной источник, экран.
+    a.logDay(null);
+    a.board(board({ warden: 4, daysLeft: 3, doors: [6] }));
+    expect(a.mem.day).toBe(16);
+    // 30 дней — «Железный закон».
+    const b = new PrisonAdapter();
+    b.logDay({ cur: 0, max: 30 });
+    expect([b.mem.day, b.mem.dayLimit, b.mem.start]).toEqual([0, 30, 'ironlaw']);
+  });
+});

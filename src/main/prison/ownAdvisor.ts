@@ -23,7 +23,7 @@
 import { advise as policyAdvise } from '../../core/prison/policy/instant.js';
 import { PrisonAdapter, type Position } from '../../core/prison/adapter.js';
 import { decode, encode } from '../../core/prison/engine/actions.js';
-import type { Action } from '../../core/prison/model.js';
+import { TOOL_IDS, type Action, type ToolId } from '../../core/prison/model.js';
 import { hint, type HintContext } from '../../core/prison/hint.js';
 import { defaultGeometry, read, rerollBox, treasureBoxes, type Frame, type Geometry } from '../../core/prison/recognize/index.js';
 import { clearSolveCache, clearlyBetter, solve, stateKey, type SolveOptions, type SolveStep } from '../../core/prison/solver/solve.js';
@@ -119,6 +119,8 @@ export class OwnAdvisor {
   async handle(msg: PrisonShotMessage, frame: Frame | null): Promise<void> {
     this.current = msg.id;
     this.lastOptions = [];
+    // День — по логу (главный источник), экран — запасной.
+    this.adapter.logDay(msg.day);
     const size = { w: msg.width, h: msg.height };
     const ctx: HintContext = { warden: null };
     const plainGeo = () => this.geo && this.geo.width === msg.width && this.geo.height === msg.height ? this.geo : defaultGeometry({ width: msg.width, height: msg.height, data: new Uint8ClampedArray(0) });
@@ -196,6 +198,8 @@ export class OwnAdvisor {
       this.reply({ type: 'clear', id: msg.id });
       return;
     }
+    // Новый забег с выбора орудий сбрасывает память — день из лога ещё раз.
+    this.adapter.logDay(msg.day);
     this.saveState();
     ctx.warden = this.adapter.mem.warden;
     ctx.ratway = this.adapter.mem.step === 'ratway';
@@ -252,6 +256,11 @@ export class OwnAdvisor {
     const instant = policyAdvise(pos.state);
     const instantCode = encode(instant.action);
     const show = (code: number, phase: 'instant' | 'final', live: boolean, note = '') => {
+      const a = decode(code);
+      if (a.type === 'choose' && (TOOL_IDS as readonly string[]).includes(a.id)) {
+        this.adapter.advised(a.id as ToolId);
+        this.saveState();
+      }
       const reason = code === instantCode ? shortReason(instant.text, code) : '';
       const h = hint(decode(code), { ...ctx, reason: [ctx.reason, reason, note].filter(Boolean).join(' · ') });
       this.reply({ type: 'hint', id: msg.id, phase, frame: size, live, ...h });
