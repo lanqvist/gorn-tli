@@ -214,7 +214,12 @@ export interface Params {
   relockEvent: number;
   /** «Закон джунглей» (клиент task 2) считает каждое Пожирание, укус цепочки тоже. [догадка по тексту 103] */
   jungleCountsBites: boolean;
-  /** После выполнения цели выпадает следующая (другая случайная). [догадка] */
+  /**
+   * После выполнения цели выпадает следующая (другая случайная). В игре —
+   * нет: одна цель и одна награда за забег (логи 17–18.10: 25 забегов из 25,
+   * клиент — цели только в состоянии начала забега, изменения «новая цель»
+   * в протоколе нет). Параметр оставлен для опытов.
+   */
   objectiveRepeat: boolean;
   /** Сколько нужно для цели (клиент task 1–5). */
   objectiveTarget: Readonly<Record<ObjectiveId, number>>;
@@ -314,7 +319,7 @@ const defaults: Params = {
   doorEvent: 0,
   relockEvent: 0,
   jungleCountsBites: true,
-  objectiveRepeat: true,
+  objectiveRepeat: false,
   objectiveTarget: { apex: 1, jungle: 4, doors: 10, walk: 18, currents: 2 },
   tyrannyExtra: 3,
   abundanceGifts: 3,

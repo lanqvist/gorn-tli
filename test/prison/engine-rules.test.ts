@@ -4,7 +4,7 @@ import {
   DEFAULT_PARAMS, EVENT, LION, MAMMOTH, OBJECTIVE, RAT, TOOL, TOOL_IDS, WOLF,
 } from '../../src/core/prison/model.js';
 import {
-  applyCode, codeBuffer, createEngine, decode, encode, legalCodes, settle,
+  applyCode, codeBuffer, createEngine, decode, encode, legalCodes, settle, startRun,
 } from '../../src/core/prison/engine/actions.js';
 import { Rng } from '../../src/core/prison/engine/rng.js';
 import {
@@ -13,7 +13,7 @@ import {
 import {
   CHAIN_EATER, CHAIN_REACTION, DAY, DAY_LIMIT, DOORS, DOORS_N, EVT, FLAGS, F_VIS_RARE, F_VIS_TIER, LOCK, NEXT,
   OBJECTIVE_ID, OBJ_DONE, OBJ_PROGRESS, OFFER_KIND, OFFER_N, OFFER_GIFT, OFFER_TOOL, OFFER, PHASE, PICK_GIFTS,
-  PICK_TOOLS, PRE_TIER, P_CHAIN, P_EVENT, P_MANAGE, P_MORNING, P_OFFICE, P_PATROL, P_PICK, P_RATWAY, REROLLS, STAT_BITES,
+  PICK_TOOLS, PRE_TIER, P_CHAIN, P_END, P_EVENT, P_MANAGE, P_MORNING, P_OFFICE, P_PATROL, P_PICK, P_RATWAY, REROLLS, STAT_BITES,
   STAT_EVENTS, STAT_STEPS, STORAGE, State, TOOLS, USED, USURP, WARDEN, dist,
 } from '../../src/core/prison/engine/state.js';
 import { NO, P, Seq, YES, beast, blank, hide, inmates, locked, manageAt, put, tier } from './engine-helpers.js';
@@ -719,12 +719,44 @@ describe('цели', () => {
     expect(s.m[OBJ_DONE]).toBe(1);
   });
 
-  it('без повтора целей после выполнения цели нет', () => {
-    const p = { ...P, objectiveRepeat: false };
+  it('цель одна на забег: после выполнения новой нет (логи 17–18.10)', () => {
+    const s = blank({ objective: OBJECTIVE.apex });
+    put(s, 2, RAT, 3);
+    raise(s, NO, P, 2, 1);
+    expect(s.m[OBJ_DONE]).toBe(1);
+    expect(s.m[PICK_TOOLS]).toBe(1);
+    expect(s.m[OBJECTIVE_ID]).toBe(-1);
+    // Дальше рост ничего не даёт.
+    put(s, 5, LION, 3);
+    raise(s, NO, P, 5, 1);
+    expect(s.m[OBJ_DONE]).toBe(1);
+  });
+
+  it('с objectiveRepeat (для опытов) — следующая цель, другая', () => {
+    const p = { ...P, objectiveRepeat: true };
     const s = blank({ objective: OBJECTIVE.apex, params: p });
     put(s, 2, RAT, 3);
     raise(s, NO, p, 2, 1);
-    expect(s.m[OBJECTIVE_ID]).toBe(-1);
+    expect(s.m[OBJECTIVE_ID]).not.toBe(OBJECTIVE.apex);
+    expect(s.m[OBJECTIVE_ID]).toBeGreaterThanOrEqual(0);
+  });
+
+  it('целый забег: не больше двух выборов орудий — старт и награда за цель', () => {
+    const s = new State();
+    const buf = codeBuffer();
+    const r = new Rng(2027);
+    for (let run = 0; run < 200; run++) {
+      startRun(s, r, P);
+      let picks = 0;
+      while (s.m[PHASE] !== P_END) {
+        const n = legalCodes(s, buf);
+        const c = buf[r.int(n)]!;
+        if (s.m[PHASE] === P_PICK && s.m[OFFER_KIND] === OFFER_TOOL && c >> 6 !== 13) picks++;
+        applyCode(s, c, r, P);
+      }
+      expect(picks).toBeLessThanOrEqual(2);
+      expect(s.m[OBJ_DONE]).toBeLessThanOrEqual(1);
+    }
   });
 });
 
