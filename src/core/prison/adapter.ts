@@ -42,6 +42,8 @@ export interface CellMemory {
   /** «!» — событие. */
   ev?: boolean;
   nest?: boolean;
+  /** День, когда гнездо увидели впервые: от него — срок вылупления. */
+  nestDay?: number;
   /** Показанная редкость за дверью. */
   shown?: number;
 }
@@ -74,6 +76,13 @@ export interface RunMemory {
   gifts: number;
   /** Выбор орудия в начале забега: доски за ним ещё не было. */
   runStart: boolean;
+  /**
+   * Что было до выбора орудия в награду или до сокровищницы — куда забег
+   * вернётся после выбора (иначе решатель прибавит или отнимет действие дня).
+   */
+  resume: Step;
+  /** Что привело к сокровищнице: Замена, Пожирание или иное. */
+  resumeAfter: '' | 'swap' | 'consume';
 }
 
 const lockedCell = (): CellMemory => ({ k: 'locked' });
@@ -98,6 +107,8 @@ export function blankMemory(): RunMemory {
     rerolls: 0,
     gifts: 0,
     runStart: false,
+    resume: 'patrol',
+    resumeAfter: '',
   };
 }
 
@@ -117,6 +128,7 @@ export function loadMemory(x: unknown): RunMemory {
     const out: CellMemory = lockedCell();
     if (c.ev) out.ev = true;
     if (c.nest) out.nest = true;
+    if (c.nest && isInt(c.nestDay, 0, 29)) out.nestDay = c.nestDay;
     if (isInt(c.shown, 0, SUPREME)) out.shown = c.shown;
     return out;
   });
@@ -142,6 +154,8 @@ export function loadMemory(x: unknown): RunMemory {
     rerolls: isInt(m.rerolls, 0, 9) ? m.rerolls : 0,
     gifts: isInt(m.gifts, 0, 30) ? m.gifts : 0,
     runStart: !!m.runStart,
+    resume: m.resume && steps.includes(m.resume) ? m.resume : 'patrol',
+    resumeAfter: m.resumeAfter === 'swap' || m.resumeAfter === 'consume' ? m.resumeAfter : '',
   };
 }
 
@@ -188,7 +202,9 @@ export class PrisonAdapter {
         m.dayLimit = this.p.ironLawDays;
         if (m.start === 'none') m.start = 'ironlaw';
       }
-      m.day = Math.max(0, Math.min(m.dayLimit - 1, m.dayLimit - v.daysLeft));
+      // «Осталось N» в день номер cur (с единицы) — это лимит − cur (замер по
+      // строкам «check cur=…» рядом с кадрами): день с нуля — лимит − N − 1.
+      m.day = Math.max(0, Math.min(m.dayLimit - 1, m.dayLimit - v.daysLeft - 1));
     }
     if (v.tools.length) for (const t of v.tools) if (!m.tools.includes(t)) m.tools.push(t);
     if (v.chromatic >= 0) m.storage = v.chromatic;
@@ -211,7 +227,10 @@ export class PrisonAdapter {
       } else if (c.kind === 'locked') {
         const cell: CellMemory = lockedCell();
         if (c.event) cell.ev = true;
-        if (c.nest) cell.nest = true;
+        if (c.nest) {
+          cell.nest = true;
+          cell.nestDay = was.k === 'locked' && was.nest && was.nestDay !== undefined ? was.nestDay : m.day;
+        }
         const shown = c.shownTier ?? (was.k === 'locked' ? was.shown : undefined);
         if (shown !== undefined) cell.shown = Math.min(shown, SUPREME);
         m.cells[n] = cell;
@@ -313,6 +332,10 @@ export class PrisonAdapter {
 
   /** Выбор орудий: в начале забега (fresh) или в награду за цель. */
   pick(v: PickView, fresh: boolean, rerolled: boolean): void {
+    if (!['pick', 'gift', 'wait'].includes(this.mem.step)) {
+      this.mem.resume = this.mem.step;
+      this.mem.resumeAfter = '';
+    }
     if (fresh && !v.reward) {
       // Новый забег: доска за выбором — чистая. Цель и тему с окон перед
       // выбором (если были) не теряем.
@@ -336,6 +359,10 @@ export class PrisonAdapter {
       m.step = 'gift';
       m.gifts = Math.max(1, m.gifts);
       return;
+    }
+    if (!['pick', 'gift', 'wait'].includes(m.step)) {
+      m.resume = m.step;
+      m.resumeAfter = after;
     }
     const w = m.cells[m.warden];
     if (after === 'swap' && w?.k === 'inmate') {
@@ -417,7 +444,7 @@ export class PrisonAdapter {
       if (c === OFFICE) continue;
       if (cell.k === 'locked') {
         x[LOCK + c] = 1;
-        if (cell.nest) x[NEST + c] = 2;
+        if (cell.nest) x[NEST + c] = Math.max(1, (cell.nestDay ?? m.day) + p.ironboxDays - m.day);
         if (cell.shown !== undefined) {
           x[PRE_TIER + c] = cell.shown;
           x[PRE_BEAST + c] = 0;
@@ -472,7 +499,7 @@ export class PrisonAdapter {
       case 'pick':
         // Награда за цель посреди дня: после выбора день доигрывается.
         this.offer(s);
-        x[NEXT] = P_DAYEND;
+        this.resumeAfterPick(s);
         return s;
       case 'gift':
       case 'wait':
@@ -481,12 +508,30 @@ export class PrisonAdapter {
         for (let i = 0; i < GIFT_IDS.length; i++) x[OFFER + i] = i;
         x[PICK_GIFTS] = Math.max(1, m.gifts);
         x[PHASE] = P_PICK;
-        x[NEXT] = P_DAYEND;
+        this.resumeAfterPick(s);
         return s;
     }
     x[PHASE] = phase;
     x[NEXT] = phase;
     return s;
+  }
+
+  /**
+   * Куда забег вернётся после выбора: после обхода (цель «прогулка»,
+   * «двери») — к ряду решений; после Пожирания — к цепочке (движок сам
+   * завершит её, если есть некого); после Замены — к концу дня.
+   */
+  private resumeAfterPick(s: State): void {
+    const m = this.mem;
+    const x = s.m;
+    let next = P_DAYEND;
+    if (m.resume === 'patrol' || m.resume === 'office' || m.resume === 'ratway') next = P_MANAGE;
+    else if (m.resume === 'chain' || (m.resume === 'manage' && m.resumeAfter === 'consume')) next = P_CHAIN;
+    if (next === P_CHAIN) {
+      x[CHAIN_EATER] = m.warden;
+      x[USED] = USED_DEVOUR;
+    }
+    x[NEXT] = next;
   }
 
   private offer(s: State): void {

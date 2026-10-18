@@ -17,7 +17,9 @@ function setup() {
   let screen: ScreenView = { screen: 'other' };
   const own = new OwnAdvisor((m) => replies.push(m), {
     sleep: () => Promise.resolve(),
-    quickMs: 2000,
+    // Под vitest решатель в разы медленнее: в тестах — дорешать до остановки.
+    quickMs: 600_000,
+    stop: { minRounds: 32, pruneFrom: 16, maxRounds: 120 },
     read: () => ({ view: screen, geo: GEO }),
   });
   own.init(null, null);
@@ -115,7 +117,7 @@ describe('свой путь подсказок', () => {
     expect(state && state.type === 'state').toBe(true);
     const again = new OwnAdvisor(() => undefined);
     again.init(state!.type === 'state' ? JSON.parse(JSON.stringify(state!.model)) : null, GEO);
-    expect(again.memory).toMatchObject({ tools: ['keys', 'coin'], storage: 2, day: 8, warden: C(2) });
+    expect(again.memory).toMatchObject({ tools: ['keys', 'coin'], storage: 2, day: 7, warden: C(2) });
   });
 });
 

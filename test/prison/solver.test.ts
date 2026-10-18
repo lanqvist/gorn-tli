@@ -4,7 +4,7 @@ import { DEFAULT_PARAMS, EVENT, EVENT_POOL, LION, MAMMOTH, WOLF } from '../../sr
 import { startRun } from '../../src/core/prison/engine/actions.js';
 import { Rng } from '../../src/core/prison/engine/rng.js';
 import {
-  DAY, DOORS, DOORS_N, EVT, FLAGS, F_VIS_TIER, PHASE, PRE_BEAST, PRE_TIER, P_PATROL, State, WARDEN,
+  DAY, DOORS, DOORS_N, EVT, FLAGS, F_VIS_TIER, PHASE, PRE_BEAST, PRE_TIER, P_EVENT, P_PATROL, State, USURP, WARDEN,
 } from '../../src/core/prison/engine/state.js';
 import { clearSolveCache, redeterminize, solve, stateKey } from '../../src/core/prison/solver/solve.js';
 import { blank, manageAt, put } from './engine-helpers.js';
@@ -70,7 +70,8 @@ describe('проверка вариантами', () => {
     s.m[PRE_BEAST + 5] = LION;
     s.m[FLAGS + 5] = F_VIS_TIER;
     s.m[EVT + 7] = EVENT.ratway + 1;
-    const pool = EVENT_POOL.map((id) => EVENT[id] + 1);
+    // Пул — как у движка: постоянные события и текущая ступень Узурпации.
+    const pool = [...EVENT_POOL.map((id) => EVENT[id] + 1), s.m[USURP]! + 1];
     const beasts = new Set<number>();
     for (let i = 0; i < 50; i++) {
       const t = new State();
@@ -86,6 +87,24 @@ describe('проверка вариантами', () => {
     k.m.set(s.m);
     redeterminize(k, new Rng(1), true);
     expect(k.m[EVT + 7]).toBe(EVENT.ratway + 1);
+  });
+
+  it('событие в окне (фаза события, камера надзирателя) не перебрасывается', () => {
+    const s = blank();
+    put(s, 4, WOLF, 1);
+    s.m[WARDEN] = 4;
+    s.m[EVT + 4] = EVENT.ratway + 1;
+    s.m[EVT + 9] = EVENT.ratway + 1;
+    s.m[PHASE] = P_EVENT;
+    const seen = new Set<number>();
+    for (let i = 0; i < 40; i++) {
+      const t = new State();
+      t.m.set(s.m);
+      redeterminize(t, new Rng(i), false);
+      expect(t.m[EVT + 4]).toBe(EVENT.ratway + 1);
+      seen.add(t.m[EVT + 9]!);
+    }
+    expect(seen.size).toBeGreaterThan(1);
   });
 
   it('ключ позиции различает состояния', () => {

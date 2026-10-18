@@ -9,9 +9,17 @@
  * совпадает с утра. Сравнение — по парам раундов: SE разницы с лидером в
  * разы меньше SE каждого среднего.
  *
- * Остановка: каждый соперник позади лидера на ≥ 3 SE либо не может
- * обогнать его больше чем на 0,1 призм. (разница + 2 SE < 0,1). Явно
- * худшие (≥ 4 SE позади) отсекаются раньше и больше не играют.
+ * Остановка (не раньше 256 раундов): каждый соперник позади лидера на
+ * ≥ 4 SE либо не может обогнать его больше чем на 0,01 призм. (разница +
+ * 2 SE < 0,01). Явно худшие (≥ 5 SE позади, со 128 раундов) отсекаются и
+ * больше не играют. Потолок — время, которое даёт вызывающий (step(ms)).
+ * Пороги подобраны аудитом против эталона на 20–80 тыс. раундов: прежние
+ * (64 раунда, 3 SE, 0,1) останавливались на минимуме и теряли ~0,5 призм.
+ * за забег.
+ *
+ * Счёт доигрывания — призматические плюс малая добавка за выполненные цели
+ * и прогресс цели: при полном хранилище лучшие ходы часто равны точно, и
+ * без добавки выбирался бы просто первый легальный.
  *
  * Тот же кадр снова (та же позиция, те же зерно и настройки) — продолжаем
  * накопленный поиск, а не начинаем заново.
@@ -22,16 +30,25 @@ import { applyCode, decode, legalCodes } from '../engine/actions.js';
 import { instantCode } from '../policy/instant.js';
 import { Rng } from '../engine/rng.js';
 import {
-  DAY, EVT, FLAGS, F_VIS_BEAST, F_VIS_TIER, LOCK, PHASE, PRE_BEAST, PRE_TIER, P_END, STORAGE, State, copy,
+  DAY, EVT, FLAGS, F_VIS_BEAST, F_VIS_TIER, LOCK, OBJ_DONE, OBJ_PROGRESS, PHASE, PRE_BEAST, PRE_TIER, P_END, P_EVENT,
+  STORAGE, State, USURP, WARDEN, copy,
 } from '../engine/state.js';
 import { DEFAULT_WEIGHTS } from '../policy/weights.js';
 
 export interface SolveOptions {
   seed: number;
-  /** Раундов до первой проверки остановки. */
-  minRounds: number;
-  /** Потолок раундов. */
-  maxRounds: number;
+  /** Раундов до первой проверки остановки (256). */
+  minRounds?: number;
+  /** Потолок раундов (по умолчанию нет — потолок временем через step(ms)). */
+  maxRounds?: number;
+  /** Остановка: соперник позади на столько SE (4). */
+  zStop?: number;
+  /** Отсечение: соперник позади на столько SE (5)… */
+  zPrune?: number;
+  /** …начиная с этого раунда (128). */
+  pruneFrom?: number;
+  /** Остановка: соперник не лучше лидера больше чем на столько призм. (0,01). */
+  eps?: number;
   params?: Readonly<Params>;
   weights?: Float64Array;
   /** Виды событий за «!» известны (по умолчанию нет — перебрасываются). */
@@ -69,8 +86,10 @@ class DayRng extends Rng {
   }
 }
 
-/** Порог «соперник не лучше лидера больше чем на» (призм.). */
-const EPS = 0.1;
+export const STOP_DEFAULTS = { minRounds: 256, maxRounds: Infinity, zStop: 4, zPrune: 5, pruneFrom: 128, eps: 0.01 } as const;
+
+/** Добавка к счёту за выполненную цель (и её квадрат — за единицу прогресса цели). */
+const TIE = 1e-3;
 
 function mix(a: number, b: number): number {
   let x = Math.imul(a ^ Math.imul(b, 0x9e3779b1), 0x85ebca6b);
@@ -81,10 +100,16 @@ function mix(a: number, b: number): number {
 
 /**
  * Перебросить то, чего игрок не видит: закреплённых без показа узников за
- * дверями, зверя при показанной только редкости, виды событий.
+ * дверями, зверя при показанной только редкости, виды событий. Событие в
+ * окне (фаза события, камера надзирателя) игрок видит — оно остаётся.
+ * Пул переброса — как у движка: постоянные события и текущая ступень
+ * Узурпации.
  */
 export function redeterminize(s: State, r: Rng, knownEvents: boolean): void {
   const m = s.m;
+  const shown = m[PHASE] === P_EVENT ? m[WARDEN]! : -1;
+  const usurp = m[USURP]!;
+  const n = POOL.length + (usurp >= 0 ? 1 : 0);
   for (let c = 1; c < CELLS; c++) {
     if (m[LOCK + c] === 1 && m[PRE_TIER + c]! >= 0) {
       const fl = m[FLAGS + c]!;
@@ -95,7 +120,10 @@ export function redeterminize(s: State, r: Rng, knownEvents: boolean): void {
         m[PRE_BEAST + c] = r.int(4);
       }
     }
-    if (!knownEvents && m[EVT + c] !== 0) m[EVT + c] = POOL[r.int(POOL.length)]! + 1;
+    if (!knownEvents && c !== shown && m[EVT + c] !== 0) {
+      const k = r.int(n);
+      m[EVT + c] = (k < POOL.length ? POOL[k]! : usurp) + 1;
+    }
   }
 }
 
@@ -116,8 +144,17 @@ class MonteCarlo implements Search {
   private n = 0;
   private done = false;
   private leader = 0;
+  private readonly stop: Required<Omit<SolveOptions, 'seed' | 'params' | 'weights' | 'knownEvents'>>;
 
   constructor(s: State, private readonly opts: SolveOptions) {
+    this.stop = {
+      minRounds: opts.minRounds ?? STOP_DEFAULTS.minRounds,
+      maxRounds: opts.maxRounds ?? STOP_DEFAULTS.maxRounds,
+      zStop: opts.zStop ?? STOP_DEFAULTS.zStop,
+      zPrune: opts.zPrune ?? STOP_DEFAULTS.zPrune,
+      pruneFrom: opts.pruneFrom ?? STOP_DEFAULTS.pruneFrom,
+      eps: opts.eps ?? STOP_DEFAULTS.eps,
+    };
     if (s.m[PHASE] === P_END) throw new Error('тюрьма: забег окончен, проверять нечего');
     copy(s, this.root);
     this.p = opts.params ?? DEFAULT_PARAMS;
@@ -173,7 +210,7 @@ class MonteCarlo implements Search {
       rng.seed(mix(seed, (day << 12) | (m[PHASE]! << 8) | k++));
       applyCode(work, c, rng, p, false);
     }
-    return m[STORAGE]!;
+    return m[STORAGE]! + TIE * m[OBJ_DONE]! + TIE * TIE * m[OBJ_PROGRESS]!;
   }
 
   private mean(i: number): number {
@@ -195,21 +232,22 @@ class MonteCarlo implements Search {
     let L = -1;
     for (let i = 0; i < k; i++) if (active[i] && (L < 0 || this.mean(i) > this.mean(L))) L = i;
     this.leader = L;
-    if (this.n >= this.opts.maxRounds) {
+    const st = this.stop;
+    if (this.n >= st.maxRounds) {
       this.done = true;
       return;
     }
-    const enough = this.n >= this.opts.minRounds;
-    const canPrune = this.n >= Math.max(16, this.opts.minRounds >> 1);
+    const enough = this.n >= st.minRounds;
+    const canPrune = this.n >= st.pruneFrom;
     let settled = true;
     for (let i = 0; i < k; i++) {
       if (!active[i] || i === L) continue;
       const { d, se } = this.gap(L, i);
-      if (canPrune && d > 0 && d >= 4 * se) {
+      if (canPrune && d > 0 && d >= st.zPrune * se) {
         active[i] = 0;
         continue;
       }
-      if (!(d >= 3 * se && d > 0) && !(-d + 2 * se < EPS)) settled = false;
+      if (!(d >= st.zStop * se && d > 0) && !(-d + 2 * se < st.eps)) settled = false;
     }
     if (enough && settled) this.done = true;
   }
@@ -275,7 +313,7 @@ export function stateKey(s: State): string {
 /** Начать (или продолжить для того же кадра) проверку вариантами. */
 export function solve(s: State, opts: SolveOptions): Search {
   const key = [
-    stateKey(s), opts.seed, opts.minRounds, opts.maxRounds, opts.knownEvents ? 1 : 0,
+    stateKey(s), opts.seed, opts.minRounds, opts.maxRounds, opts.zStop, opts.zPrune, opts.pruneFrom, opts.eps, opts.knownEvents ? 1 : 0,
     idOf(opts.params ?? DEFAULT_PARAMS), idOf(opts.weights ?? DEFAULT_WEIGHTS),
   ].join(':');
   let search = cache.get(key);

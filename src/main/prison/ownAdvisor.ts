@@ -12,8 +12,10 @@
  *
  * Показывается сразу проверенный ход: мгновенный совет стратегии меняется
  * проверкой почти в половине ходов, и стрелка прыгала бы. Решатель
- * считает до 300 мс; не уложился — уходит лучший на этот момент, потом
- * окончательный.
+ * считает до 300 мс (обычно останавливается сам, медиана ~100 мс); не
+ * уложился — уходит лучший на этот момент, а решатель досчитывает, пока
+ * кадр на экране (до budgetMs), и меняет стрелку, только если новый
+ * лидер оторвался на REFINE_SE («уточнено»).
  */
 import { advise as policyAdvise } from '../../core/prison/policy/instant.js';
 import { PrisonAdapter, type Position } from '../../core/prison/adapter.js';
@@ -21,13 +23,18 @@ import { decode, encode } from '../../core/prison/engine/actions.js';
 import type { Action } from '../../core/prison/model.js';
 import { hint, type HintContext } from '../../core/prison/hint.js';
 import { defaultGeometry, read, rerollBox, treasureBoxes, type Frame, type Geometry } from '../../core/prison/recognize/index.js';
-import { clearSolveCache, solve, stateKey, type SolveStep } from '../../core/prison/solver/solve.js';
+import { clearSolveCache, solve, stateKey, type SolveOptions, type SolveStep } from '../../core/prison/solver/solve.js';
 import type { PrisonShotMessage, PrisonWorkerReply } from './protocol.js';
 
 /** Столько решатель ищет ответ до первого показа. */
 export const QUICK_MS = 300;
-const MIN_ROUNDS = 64;
-const MAX_ROUNDS = 1500;
+/**
+ * Сменить уже показанный ход, только если новый лидер впереди на столько
+ * SE. Замер на 580 позициях аудита (досчёт 300 → 1500 мс): при 1 SE
+ * regret 0,0016 (как потолок 1000 мс), стрелка меняется в 2,4 % позиций;
+ * при 2 SE — 0,0032 и 0,3 %; при 4 SE смена не случается ни разу.
+ */
+export const REFINE_SE = 1;
 
 const TREASURE_ASK = 'Подарок: нажми «Посмотреть состояние тюрьмы» и вернись — подскажу, какой взять';
 
@@ -62,6 +69,8 @@ export interface OwnAdvisorOptions {
   quickMs?: number;
   /** Распознавание (подменяется в тестах). */
   read?: typeof read;
+  /** Правило остановки решателя (по умолчанию — STOP_DEFAULTS). */
+  stop?: Omit<SolveOptions, 'seed'>;
 }
 
 export class OwnAdvisor {
@@ -75,11 +84,13 @@ export class OwnAdvisor {
   private readonly sleep: () => Promise<void>;
   private readonly quickMs: number;
   private readonly readFrame: typeof read;
+  private readonly stop: Omit<SolveOptions, 'seed'>;
 
   constructor(private readonly reply: (m: PrisonWorkerReply) => void, opts: OwnAdvisorOptions = {}) {
     this.sleep = opts.sleep ?? defaultSleep;
     this.quickMs = opts.quickMs ?? QUICK_MS;
     this.readFrame = opts.read ?? read;
+    this.stop = opts.stop ?? {};
   }
 
   init(state: unknown, near: unknown): void {
@@ -217,38 +228,37 @@ export class OwnAdvisor {
 
   private async advise(msg: PrisonShotMessage, pos: Extract<Position, { ok: true }>, ctx: HintContext, size: { w: number; h: number }): Promise<void> {
     const t0 = Date.now();
-    const key = stateKey(pos.state);
-    const search = solve(pos.state, { seed: seedOf(key), minRounds: MIN_ROUNDS, maxRounds: MAX_ROUNDS });
+    // Зерно — от самой позиции: тот же кадр снова продолжает накопленный поиск.
+    const search = solve(pos.state, { ...this.stop, seed: seedOf(stateKey(pos.state)) });
     const instant = policyAdvise(pos.state);
     const instantCode = encode(instant.action);
-    let sent = -1;
-    const send = (code: number | null, phase: 'instant' | 'final', live: boolean) => {
-      if (code === null) {
-        if (phase === 'final') this.reply({ type: 'clear', id: msg.id });
-        return;
-      }
-      if (phase === 'final' && code === sent) {
-        this.reply({ type: 'settled', id: msg.id, live });
-        return;
-      }
-      sent = code;
+    const show = (code: number, phase: 'instant' | 'final', live: boolean, note = '') => {
       const reason = code === instantCode ? shortReason(instant.text, code) : '';
-      const h = hint(decode(code), { ...ctx, reason: [ctx.reason, reason].filter(Boolean).join(' · ') });
+      const h = hint(decode(code), { ...ctx, reason: [ctx.reason, reason, note].filter(Boolean).join(' · ') });
       this.reply({ type: 'hint', id: msg.id, phase, frame: size, live, ...h });
     };
 
+    // Первый совет — не позже quickMs: решатель обычно успевает остановиться сам.
     let res = search.step(Math.min(50, this.quickMs));
     while (!res.done && Date.now() - t0 < this.quickMs) {
       await this.sleep();
       if (this.current !== msg.id) return;
       res = search.step(50);
     }
+    const shown = this.pickBest(res, pos.allowed);
+    if (shown === null) {
+      this.reply({ type: 'clear', id: msg.id });
+      return;
+    }
     if (res.done) {
-      send(this.pickBest(res, pos.allowed), 'final', res.rounds > 0);
+      show(shown, 'final', res.rounds > 0);
       console.log(`[тюрьма] кадр ${msg.id}: совет через ${Date.now() - t0} мс (${res.rounds} раундов)`);
       return;
     }
-    send(this.pickBest(res, pos.allowed), 'instant', false);
+    show(shown, 'instant', false);
+    // Досчёт, пока этот кадр на экране и ход не сделан. Стрелка меняется,
+    // только если новый лидер оторвался от показанного хода на REFINE_SE —
+    // иначе прыжки на почти равных ходах.
     const until = t0 + Math.max(this.quickMs, msg.budgetMs);
     while (!res.done && Date.now() < until) {
       await this.sleep();
@@ -256,7 +266,18 @@ export class OwnAdvisor {
       res = search.step(100);
     }
     if (this.current !== msg.id) return;
-    send(this.pickBest(res, pos.allowed), 'final', true);
-    console.log(`[тюрьма] кадр ${msg.id}: окончательный совет через ${Date.now() - t0} мс (${res.rounds} раундов)`);
+    const best = this.pickBest(res, pos.allowed);
+    if (best !== null && best !== shown && this.gapSe(res, shown) >= REFINE_SE) {
+      show(best, 'final', true, 'уточнено');
+      console.log(`[тюрьма] кадр ${msg.id}: совет уточнён через ${Date.now() - t0} мс (${res.rounds} раундов)`);
+    } else {
+      this.reply({ type: 'settled', id: msg.id, live: true });
+    }
+  }
+
+  /** Отставание хода от лидера в SE (отсечённый — бесконечно позади). */
+  private gapSe(res: SolveStep, code: number): number {
+    const o = res.options.find((x) => encode(x.action) === code);
+    return !o ? 0 : o.pruned ? Infinity : o.gapSe;
   }
 }
