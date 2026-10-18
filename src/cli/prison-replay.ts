@@ -100,6 +100,8 @@ const rows: Row[] = [];
 let geo: Geometry | null = null;
 let id = 0;
 let prevKind = '';
+/** Доска за окном подарков (просмотр или после подарка) сохранилась без PNG: совет по подаркам не воспроизвести. */
+let behindLost = false;
 
 for (const f of files) {
   const saved = JSON.parse(readFileSync(join(dir, f), 'utf8')) as Saved;
@@ -114,8 +116,12 @@ for (const f of files) {
     readMs = performance.now() - t;
     geo = r.geo ?? geo;
     screen = r.view.screen === 'board' ? (r.view.board.chain ? 'chain' : r.view.board.decision ? r.view.board.decision.kind : r.view.board.doors.length ? 'patrol' : 'board') : r.view.screen;
-  } else if (saved.kind === 'treasure') screen = 'treasure';
+  } else if (saved.kind === 'treasure') screen = behindLost ? 'без PNG' : 'treasure';
   else screen = 'без PNG';
+  if (saved.kind === 'board') {
+    if (frame) behindLost = false;
+    else if (saved.treasureView || prevKind === 'treasure') behindLost = true;
+  }
   const msg: PrisonShotMessage = {
     type: 'shot',
     id: ++id,
@@ -172,7 +178,7 @@ const all = rows;
 rows.splice(0, rows.length, ...all.filter((r) => r.screen !== 'без PNG'));
 const both = rows.filter((r) => r.oldKey && r.mineKey);
 const same = both.filter((r) => r.oldKey === r.mineKey);
-console.log(`кадров: ${rows.length + skipped} (${dir}); без PNG и не сокровищница — не переиграть: ${skipped}`);
+console.log(`кадров: ${rows.length + skipped} (${dir}); не переиграть: ${skipped} (нет PNG; окна подарков, у которых доска за окном без PNG)`);
 console.log(`оба дали ход: ${both.length}, совпало: ${same.length} (${((100 * same.length) / Math.max(1, both.length)).toFixed(1)} %)`);
 console.log(`ход только у прежнего: ${rows.filter((r) => r.oldKey && !r.mineKey).length}, только у своего: ${rows.filter((r) => !r.oldKey && r.mineKey).length}`);
 const byScreen = new Map<string, { n: number; same: number; oldOnly: number; mineOnly: number }>();

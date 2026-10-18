@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import type { Frame, Geometry } from '../../src/core/prison/recognize/types.js';
 import { clearSolveCache } from '../../src/core/prison/solver/solve.js';
 import type { ScreenView } from '../../src/core/prison/view.js';
+import { PrisonTriggers, type PrisonShot } from '../../src/core/prisonTriggers.js';
 import { OwnAdvisor } from '../../src/main/prison/ownAdvisor.js';
 import type { PrisonShotMessage, PrisonWorkerReply } from '../../src/main/prison/protocol.js';
 import { C, MANAGE_ALL, board, pick } from './view-helpers.js';
@@ -115,5 +116,47 @@ describe('свой путь подсказок', () => {
     const again = new OwnAdvisor(() => undefined);
     again.init(state!.type === 'state' ? JSON.parse(JSON.stringify(state!.model)) : null, GEO);
     expect(again.memory).toMatchObject({ tools: ['keys', 'coin'], storage: 2, day: 8, warden: C(2) });
+  });
+});
+
+describe('свой путь: флаги кадров от PrisonTriggers, как в живом потоке', () => {
+  it('«Изобилие»: просмотр доски из окна, затем подарки подряд — каждый раз сразу совет с рамкой', async () => {
+    const { shot } = setup();
+    const L = (t: string, body: string) => `[2026.10.17-21.48.${t}:000][ 1]TLLua: Display: [Game] ${body}`;
+    // Ручной таймер: отложенные кадры триггеров выполняются по run().
+    const jobs: (() => void)[] = [];
+    const shots: PrisonShot[] = [];
+    const triggers = new PrisonTriggers((s) => shots.push(s), { set: (fn) => jobs.push(fn), clear: () => undefined });
+    const feed = (...lines: string[]) => {
+      triggers.feed(lines);
+      const run = jobs.splice(0);
+      for (const j of run) j();
+    };
+    const boardBefore = board({ inmates: { 5: 'wolf4', 9: 'rat4', 11: 'lion2' }, warden: 5, decision: MANAGE_ALL, kinds: ['consume', 'replace', 'end'] });
+    const boardAfter = board({ inmates: { 11: 'lion2' }, warden: 5, chromatic: 1 });
+    const send = async (s: PrisonShot, view: ScreenView | null) => shot(s.kind === 'treasure' ? null : view, { kind: s.kind, after: s.after, treasureView: s.treasureView, treasureClosed: s.treasureClosed, fresh: s.fresh });
+
+    await shot({ screen: 'board', board: boardBefore });
+    // Пожирание → окно подарков: доски за ним ещё не видели — просьба показать.
+    feed(L('00', 'UIButton@ normal-click Btn_S16Board_ActionCell'), L('01', 'Eating_red_screen S16'), L('02', 'S16BoardColoredPop Run'));
+    expect(shots.at(-1)).toMatchObject({ kind: 'treasure', after: 'consume' });
+    expect(text(await send(shots.at(-1)!, null))[0]).toMatch(/Посмотреть состояние тюрьмы/);
+    // «Посмотреть состояние тюрьмы»: окно закрыто без подарка — просмотр доски.
+    feed(L('05', 'S16BoardColoredPop Destory'));
+    expect(shots.at(-1)).toMatchObject({ kind: 'board', treasureView: true, treasureClosed: true });
+    let rs = await send(shots.at(-1)!, { screen: 'board', board: boardAfter });
+    expect(text(rs)[0]).toMatch(/^Взять: /);
+    // Три окна подряд, между ними доска после взятого подарка.
+    for (let i = 0; i < 3; i++) {
+      const t = String(10 + i * 10);
+      feed(L(t, 'S16BoardColoredPop Run'));
+      expect(shots.at(-1)).toMatchObject({ kind: 'treasure' });
+      rs = await send(shots.at(-1)!, null);
+      expect(text(rs)[0], `окно ${i + 1}`).toMatch(/^Взять: /);
+      expect(rs[0]!.type === 'hint' && rs[0]!.marks.map((m) => m.kind)).toEqual(['box']);
+      feed(L(String(10 + i * 10 + 3), 'UIButton@ normal-click Btn_S16Board_ColoredPop_Confirm'), L(String(10 + i * 10 + 4), 'S16BoardColoredPop Destory'));
+      expect(shots.at(-1)).toMatchObject({ kind: 'board', treasureView: false, treasureClosed: true });
+      expect(await send(shots.at(-1)!, { screen: 'board', board: boardAfter })).toEqual([{ type: 'clear', id: expect.any(Number) }]);
+    }
   });
 });
