@@ -27,6 +27,11 @@ function arg(name: string): string | null {
 
 const dir = process.argv[2] && !process.argv[2].startsWith('--') ? process.argv[2] : join(homedir(), 'Pictures', 'Горн — тюрьма', '2026-10-17');
 const budget = Number(arg('--budget') ?? 1000);
+/** --trace: по каждому решению — ожидание забега и альтернативы (разбор «удача или ходы»). */
+const trace = process.argv.includes('--trace');
+/** --from HHMMSS --to HHMMSS: только кадры из этого промежутка (один забег). */
+const from = arg('--from') ?? '000000';
+const to = arg('--to') ?? '999999';
 const diffsOut = arg('--diffs');
 
 interface Saved {
@@ -74,7 +79,7 @@ function lastHint(replies: { type: string; phase?: string; text?: string }[]): s
   return text;
 }
 
-const files = readdirSync(dir).filter((f) => f.endsWith('.json')).sort();
+const files = readdirSync(dir).filter((f) => f.endsWith('.json') && f.slice(0, 6) >= from && f.slice(0, 6) <= to).sort();
 if (!files.length) {
   console.error(`нет кадров в ${dir}`);
   process.exit(1);
@@ -168,6 +173,12 @@ for (const f of files) {
     if (theirs) gap = best - theirs.mean;
   }
   const alt = [...replies].reverse().find((r): r is Extract<PrisonWorkerReply, { type: 'hint' }> => r.type === 'hint')?.alt ?? '';
+  if (trace && opts.length) {
+    // Ожидание забега на этом решении: лучший ход и его оценка к концу забега.
+    const ranked = [...opts].sort((a, b) => b.mean - a.mean);
+    const others = ranked.slice(1, 3).map((o) => `${moveKey(hint(o.action, { warden: null }).text)} ${o.mean.toFixed(2)}`).join(', ');
+    console.log(`ход ${f.slice(0, 6)} [${screen}] ждём ${ranked[0]!.mean.toFixed(2)} призм. | совет: ${mine || '—'}${others ? ` | дальше: ${others}` : ''}`);
+  }
   rows.push({ file: f, screen, old, mine, alt, oldKey, mineKey: moveKey(mine), firstMs: Math.max(0, firstMs), totalMs, readMs, gap });
 }
 
