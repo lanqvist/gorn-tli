@@ -131,6 +131,30 @@ describe('триггеры тюрьмы', () => {
     expect(b.shots.at(-1)).toMatchObject({ kind: 'treasure', after: '' });
   });
 
+  it('подарок после обхода с событием — не Замена, даже если карточка дня была недавно', () => {
+    // Забег 18.10 17:40: «Завершить день», новый день, дверь с событием, через 4,8 с — подарок.
+    const a = setup();
+    a.t.feed([
+      L('19.00.00', 'UIButton@ normal-click Btn_S16Board_ActionCell'),
+      L('19.00.01', 'S16BoardNewDayPop Run'),
+      L('19.00.01', '[S16LastDay] check cur=17 max=20 played=false'),
+    ]);
+    a.timer.run();
+    a.t.feed([L('19.00.02', 'UIButton@ normal-click Btn_S16Board_RouteCell'), L('19.00.03', 'UIButton@ normal-click Btn_S16Board_EventPop_Confirm')]);
+    a.timer.run();
+    a.t.feed([L('19.00.04', 'S16BoardColoredPop Run')]);
+    a.timer.run();
+    expect(a.shots.at(-1)).toMatchObject({ kind: 'treasure', after: '' });
+
+    // Замена после обхода того же дня — по-прежнему Замена.
+    const b = setup();
+    b.t.feed([L('19.00.00', 'UIButton@ normal-click Btn_S16Board_RouteCell')]);
+    b.timer.run();
+    b.t.feed([L('19.00.03', 'UIButton@ normal-click Btn_S16Board_ActionCell'), L('19.00.05', 'S16BoardColoredPop Run')]);
+    b.timer.run();
+    expect(b.shots.at(-1)).toMatchObject({ kind: 'treasure', after: 'swap' });
+  });
+
   it('выбор орудия в награду утром — тоже утро; стартовый выбор — нет', () => {
     const a = setup();
     a.t.feed([L('19.00.01', 'S16BoardNewDayPop Run'), L('19.00.02', '[S16LastDay] check cur=7 max=20 played=false')]);

@@ -110,6 +110,8 @@ export class PrisonTriggers {
   /** Начало дня (баннер нового дня) и последнее нажатие на доске. */
   private dayStart = 0;
   private lastBoardClick = 0;
+  /** Обход или событие (выбор двери, «Подтвердить» события) — они тоже делают Призматических. */
+  private lastRoute = 0;
   private lastSpecial: { n: number; at: number } | null = null;
   private day: { cur: number; max: number } | null = null;
 
@@ -152,6 +154,7 @@ export class PrisonTriggers {
     if (/ColoredPop_Confirm/.test(line)) this.lastGift = at;
     if (/S16BoardNewDayPop Run/i.test(line)) this.dayStart = at;
     if (/Btn_S16Board_(?:RouteCell|ActionCell|Cell)\b/.test(line)) this.lastBoardClick = at;
+    if (/Btn_S16Board_(?:RouteCell|EventPop_Confirm)\b|S16BoardNewDayPop Run/i.test(line)) this.lastRoute = at;
     const rule = PRISON_RULES.find((r) => r.re.test(line));
     if (!rule) return;
     if (rule.kind === 'skip') {
@@ -189,7 +192,10 @@ export class PrisonTriggers {
       // после подарка будет обход этого дня.
       const morning = !!pop && !!this.dayStart && pop >= this.dayStart && this.dayStart > this.lastBoardClick;
       if (morning) after = 'morning';
-      else if (b.kind === 'treasure' && pop && this.lastAction && pop >= this.lastAction && pop - this.lastAction <= 6000) {
+      // Замена или Пожирание — только если после карточки дня не было обхода,
+      // события или нового дня (забег 18.10 17:40: «Завершить день», утро,
+      // дверь с событием, подарок через 4,8 с — это не Замена).
+      else if (b.kind === 'treasure' && pop && this.lastAction && pop >= this.lastAction && pop - this.lastAction <= 6000 && this.lastRoute < this.lastAction) {
         after = this.lastEat >= this.lastAction - 500 ? 'consume' : 'swap';
       }
     }

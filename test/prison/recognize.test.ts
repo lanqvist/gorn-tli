@@ -271,10 +271,16 @@ const PANELS: Record<string, string[]> = {
   '131347-199-board.png': ['skewer', 'axe'],
   '132431-694-board.png': ['maiden'],
   '132502-727-board.png': ['maiden', 'revenge'],
+  // Кадры для проверки (в эталоны не входят): «Крюк отбора», «Шипастый ошейник».
+  '171022-899-board.png': ['coin', 'hook'],
+  '171102-232-board.png': ['coin', 'hook'],
+  '173758-268-board.png': ['collar'],
+  '174011-513-board.png': ['collar', 'skewer'],
+  '174028-246-board.png': ['collar', 'skewer'],
 };
 
 describe.skipIf(!Object.keys(PANELS).every((n) => gornShot('2026-10-18', n)))('панель орудий и карты выбора (забеги 2026-10-18)', () => {
-  it('иконки панели: Шампур, Секира, Саркофаг, Дева мстителя, Козёл отпущения; пустое место с отсветом — не орудие', () => {
+  it('иконки панели: Шампур, Секира, Саркофаг, Дева мстителя, Козёл отпущения, Крюк, Ошейник; пустое место с отсветом — не орудие', () => {
     for (const [name, tools] of Object.entries(PANELS)) {
       const b = board(read(frame(gornShot('2026-10-18', name)!), null).view);
       expect(b.toolSlots, name).toEqual(tools);
