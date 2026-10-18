@@ -42,6 +42,8 @@ export const PICK_BUDGET_MS = 4000;
 export const PICK_ROUNDS = 1500;
 
 const TREASURE_ASK = 'Подарок: нажми «Посмотреть состояние тюрьмы» и вернись — подскажу, какой взять';
+/** Выбор орудий, где узнано меньше двух карт: совет не дать, но и не молчать. */
+const PICK_UNKNOWN = 'Не узнал карты выбора — выбери сам';
 
 export function isGeometry(x: unknown): x is Geometry {
   const g = x as Geometry | null;
@@ -194,7 +196,8 @@ export class OwnAdvisor {
       // Неузнанная карта не глушит совет по двум остальным и по «Обновить».
       const known = p.cards.filter((c) => c !== null).length;
       if (known < 2) {
-        this.reply({ type: 'clear', id: msg.id });
+        // Не молчать: без подсказки выбор выглядит зависшим (18.10 20:48 — новые карты Молота и Клещей).
+        this.reply({ type: 'hint', id: msg.id, phase: 'final', frame: size, text: PICK_UNKNOWN, marks: [], live: false });
         return;
       }
       this.adapter.pick(p, msg.fresh, msg.rerolled, msg.after);

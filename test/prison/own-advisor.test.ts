@@ -123,12 +123,13 @@ describe('свой путь подсказок', () => {
     expect(text(rs)).toEqual(['Цепочка: съесть №9']);
   });
 
-  it('неузнанная карта не глушит совет; две неузнанные — не совет', async () => {
+  it('неузнанная карта не глушит совет; две неузнанные — не совет, но и не молчание', async () => {
     const { shot } = setup();
     let rs = await shot({ screen: 'pick', pick: pick(['crown', null, 'saw']) }, { kind: 'instruments', fresh: true });
     expect(text(rs)[0]).toMatch(/одну карту не узнал|^Взять|^Обновить/);
     rs = await shot({ screen: 'pick', pick: pick(['crown', null, null]) }, { kind: 'instruments', fresh: true });
-    expect(rs).toEqual([{ type: 'clear', id: 2 }]);
+    // Не молчать: без подсказки выбор выглядит зависшим (18.10 20:48).
+    expect(text(rs)).toEqual(['Не узнал карты выбора — выбери сам']);
   });
 
   it('память и геометрия переживают перезапуск', async () => {

@@ -303,6 +303,9 @@ describe.skipIf(!Object.keys(PANELS).every((n) => gornShot('2026-10-18', n)))('�
     // Курсор на «Столбе для сожжения»: карта подсвечена (17:57:46).
     const p3 = read(frame(gornShot('2026-10-18', '175746-589-instruments.png')!), null).view;
     expect(p3.screen === 'pick' && p3.pick.cards).toEqual(['collar', 'stake', 'saw']);
+    // «Молот Слоновья нога» и «Клещи порока» (20:48; кадр не из эталонов).
+    const p4 = read(frame(gornShot('2026-10-18', '204846-672-instruments.png')!), null).view;
+    expect(p4.screen === 'pick' && p4.pick.cards).toEqual(['revenge', 'maul', 'tongs']);
   });
 });
 
