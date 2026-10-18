@@ -40,6 +40,12 @@ export interface Settings {
    */
   prisonSaveShots: boolean;
   /**
+   * Чем считать подсказки в тюрьме (настройка разработчика, без интерфейса —
+   * правится в settings.json): 'vendor' — код «Tartarus Simulator», 'own' —
+   * свой симулятор. По умолчанию прежний, пока свой не проверен в игре.
+   */
+  prisonEngine: 'own' | 'vendor';
+  /**
    * Папка логов, указанная вручную. null — автопоиск по Steam-библиотекам.
    * Ручной путь нужен не-Steam установкам и нестандартным дискам.
    */
@@ -100,6 +106,7 @@ const DEFAULTS: Settings = {
   communityPrices: true,
   prisonHints: false,
   prisonSaveShots: false,
+  prisonEngine: 'vendor',
   logDir: null,
   playerFilter: null,
   allSeasons: false,
@@ -170,6 +177,7 @@ export class SettingsStore {
         communityPrices: raw.settings.communityPrices ?? DEFAULTS.communityPrices,
         prisonHints: raw.settings.prisonHints === true,
         prisonSaveShots: raw.settings.prisonSaveShots === true,
+        prisonEngine: raw.settings.prisonEngine === 'own' ? 'own' : 'vendor',
         logDir: raw.settings.logDir ?? DEFAULTS.logDir,
         playerFilter: raw.settings.playerFilter ?? DEFAULTS.playerFilter,
         allSeasons: raw.settings.allSeasons === true,
@@ -237,6 +245,10 @@ export class SettingsStore {
   setPrisonSaveShots(enabled: boolean): void {
     this.data.prisonSaveShots = enabled;
     this.save();
+  }
+
+  get prisonEngine(): 'own' | 'vendor' {
+    return this.data.prisonEngine;
   }
 
   get logDir(): string | null {

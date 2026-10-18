@@ -277,7 +277,9 @@ app.whenReady().then(async () => {
     worker: join(__dirname, 'prisonWorker.cjs'),
     vendor: vendorDir(),
     // Модель доски забега: переживает перезапуск Горна посреди тюрьмы.
-    state: join(app.getPath('userData'), 'prison-state.json'),
+    // У своего симулятора память в другом формате — свой файл.
+    state: join(app.getPath('userData'), settings.prisonEngine === 'own' ? 'prison-state-own.json' : 'prison-state.json'),
+    engine: settings.prisonEngine,
   });
   prison.setEnabled(settings.prisonHints);
   const prisonShotsDir = join(app.getPath('pictures'), 'Горн — тюрьма');

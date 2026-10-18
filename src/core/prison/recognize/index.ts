@@ -14,7 +14,8 @@ import { pickHeader, readPick, readTreasure } from './pick.js';
 import { boardTemplate, cellsTemplate, digitsTemplate, screensTemplate } from './templates.js';
 import type { Frame, Geometry } from './types.js';
 
-export { calibrate } from './geometry.js';
+export { calibrate, defaultGeometry } from './geometry.js';
+export { rerollBox, treasureBoxes } from './pick.js';
 export type { Frame, Geometry } from './types.js';
 
 /** Доля подписей номеров, при которой экран считается доской. */

@@ -188,10 +188,22 @@ function reachable(from: number, to: number): boolean {
   return d >= 1 && d <= 6;
 }
 
+function looksLikeDoors(frame: Frame, geo: Geometry, centers: number[], warden: number | null, t: BoardTemplates): boolean {
+  if (!centers.length || warden === null) return false;
+  let office = 0;
+  for (const cx of centers) {
+    if (classifyCard(frame, geo, cx, t.screens.cards).score >= CARD_MIN) return false;
+    const n = readDoorNumber(frame, geo, cx, t.digits);
+    if (n === null || !reachable(warden, n === 0 ? 0 : n - 1)) return false;
+    if (n === 0) office++;
+  }
+  return office <= 1;
+}
+
 /** Доска целиком при известной геометрии. */
 export function readBoard(frame: Frame, geo: Geometry, t: BoardTemplates): BoardView {
   const chain = isChain(frame, geo);
-  const header = chain ? null : readHeader(frame, geo, t.screens);
+  let header = chain ? null : readHeader(frame, geo, t.screens);
   const cells = readCells(frame, geo, t.cells, chain);
   const at: BoardView['at'] = {
     cells: cells.map((_, c) => {
@@ -200,6 +212,7 @@ export function readBoard(frame: Frame, geo: Geometry, t: BoardTemplates): Board
     }),
     doorCards: [],
     decisionCards: [],
+    decisionKinds: [],
     cancel: chain ? (boxToFrame(geo, CANCEL) as ViewBox) : null,
   };
   // На экране цепочки доска обычно затемнена и панели скрыты; в первые
@@ -226,8 +239,13 @@ export function readBoard(frame: Frame, geo: Geometry, t: BoardTemplates): Board
     board.decision = { kind: 'ratway' };
     return board;
   }
-  if (header === null) return board;
   const centers = cardCenters(frame, geo);
+  // Надпись над карточками иногда не узнаётся (кадры со «Пойти в допросную»
+  // и другие), хотя двери читаются: тогда выбор двери — если каждая карточка
+  // читается как дверь в пределах хода и ни одна не похожа на карточку решения
+  // («Завершить день» тоже длинная подпись без цифр).
+  if (header === null && looksLikeDoors(frame, geo, centers, board.warden, t)) header = 'patrol';
+  if (header === null) return board;
   if (header === 'patrol') {
     for (const cx of centers) {
       const n = readDoorNumber(frame, geo, cx, t.digits);
@@ -247,6 +265,7 @@ export function readBoard(frame: Frame, geo: Geometry, t: BoardTemplates): Board
     if (r.score < CARD_MIN) continue;
     kinds.push(r.label);
     at.decisionCards.push(boxToFrame(geo, cardBox(cx)) as ViewBox);
+    at.decisionKinds!.push(r.label);
   }
   if (kinds.includes('bestow') || kinds.includes('instigate')) board.decision = { kind: 'office' };
   else if (kinds.length > 0) {

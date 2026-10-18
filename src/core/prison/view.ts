@@ -99,6 +99,8 @@ export interface BoardView {
     cells: { x: number; y: number; r: number }[];
     doorCards: Box[];
     decisionCards: Box[];
+    /** Вид каждой карточки ряда решений (consume, replace, end, bestow, instigate), в порядке decisionCards. */
+    decisionKinds?: string[];
     cancel: Box | null;
   };
 }

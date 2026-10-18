@@ -1,3 +1,7 @@
+import { existsSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
 import { read } from '../../src/core/prison/recognize/index.js';
@@ -196,5 +200,28 @@ describe.skipIf(!HAVE_DATA)('кадры Горна 1920×1080 (своя разм
     }
     console.log('кадры Горна\n' + score.table());
     expect(score.errors).toEqual([]);
+  });
+});
+
+/** Свои кадры Горна, где надпись над карточками дверей не узнаётся (часто — со «Пойти в допросную»). */
+const GORN_DAY = join(homedir(), 'Pictures', 'Горн — тюрьма', '2026-10-17');
+const DOORS_NO_HEADER: Record<string, number[]> = {
+  // камеры как у игрока; 0 — допросная
+  '234506-094-board.png': [0, 2, 4],
+  '234349-040-board.png': [2, 3, 4],
+  '234228-172-board.png': [14, 16, 2],
+  '234203-271-board.png': [8, 10, 11],
+  '223556-618-board.png': [13, 0, 2],
+  '223830-694-board.png': [11, 12, 15],
+  '234119-032-board.png': [7, 8, 11],
+};
+
+describe.skipIf(!existsSync(GORN_DAY))('двери без узнанной надписи над карточками', () => {
+  it('номера дверей читаются по карточкам, допросная — 0, порядок как на экране', () => {
+    for (const [name, doors] of Object.entries(DOORS_NO_HEADER)) {
+      const b = board(read(frame(join(GORN_DAY, name)), null).view);
+      expect(b.doors, name).toEqual(doors.map((n) => (n === 0 ? 0 : n - 1)));
+      expect(b.decision, name).toBeNull();
+    }
   });
 });

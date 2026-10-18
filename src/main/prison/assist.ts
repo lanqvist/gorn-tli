@@ -7,7 +7,7 @@ import { planPrune, shotOutcome, type ShotEntry } from '../../core/prisonShots.j
 import { PrisonTriggers, stampMs, type PrisonShot } from '../../core/prisonTriggers.js';
 import { ArrowLayer } from './arrowLayer.js';
 import { ScreenStream, type Frame } from './screenStream.js';
-import type { BoardNear, PrisonShotMessage, PrisonWorkerReply } from './protocol.js';
+import type { PrisonShotMessage, PrisonWorkerReply, SavedNear } from './protocol.js';
 
 /** Экран должен столько не меняться, чтобы его снять (анимации осели). */
 const STABLE_MS = 300;
@@ -74,7 +74,7 @@ export class PrisonAssist {
    */
   private gameDisplayId: number | null = null;
   /** Где была доска на кадре: первый кадр после запуска ищет её рядом, а не по всему экрану (1,7 с). */
-  private near: BoardNear | null = null;
+  private near: SavedNear | null = null;
   private snapshotting = false;
   /** Сколько окон подарков отправлено: кадр, снятый до последнего, — про подарки. */
   private treasureSeq = 0;
@@ -85,11 +85,11 @@ export class PrisonAssist {
     return all.find((d) => d.id === this.gameDisplayId) ?? screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
   }
 
-  constructor(private readonly dirs: { worker: string; vendor: string; state: string }) {
+  constructor(private readonly dirs: { worker: string; vendor: string; state: string; engine: 'own' | 'vendor' }) {
     // Монитор игры с прошлого раза: иначе до первой подсказки Горн гадал
     // по курсору, а курсор у игрока на другом мониторе (чат, браузер).
     try {
-      const saved = JSON.parse(readFileSync(this.displayFile, 'utf8')) as { id?: number; near?: BoardNear };
+      const saved = JSON.parse(readFileSync(this.displayFile, 'utf8')) as { id?: number; near?: SavedNear };
       if (typeof saved.id === 'number') this.gameDisplayId = saved.id;
       if (saved.near && typeof saved.near.s === 'number') this.near = saved.near;
     } catch {
@@ -210,7 +210,8 @@ export class PrisonAssist {
 
   private ensureWorker(): UtilityProcess | null {
     if (this.worker) return this.worker;
-    if (!existsSync(this.dirs.worker) || !existsSync(join(this.dirs.vendor, 'advisor.js'))) {
+    const own = this.dirs.engine === 'own';
+    if (!existsSync(this.dirs.worker) || (!own && !existsSync(join(this.dirs.vendor, 'advisor.js')))) {
       console.warn('[тюрьма] нет потока или кода симулятора:', this.dirs.worker, this.dirs.vendor);
       return null;
     }
@@ -224,7 +225,7 @@ export class PrisonAssist {
     }
     // Отдельный процесс, а не поток: только процессу можно понизить
     // приоритет, чтобы расчёт не отнимал процессор у игры.
-    const w = utilityProcess.fork(this.dirs.worker, ['--gorn-vendor', this.dirs.vendor], { serviceName: 'Горн — подсказки в тюрьме', stdio: 'inherit' });
+    const w = utilityProcess.fork(this.dirs.worker, ['--gorn-vendor', this.dirs.vendor, '--gorn-engine', this.dirs.engine], { serviceName: 'Горн — подсказки в тюрьме', stdio: 'inherit' });
     w.postMessage({ type: 'init', state, near: this.near });
     w.on('message', (msg: PrisonWorkerReply) => this.onReply(msg));
     w.on('exit', (code) => {
