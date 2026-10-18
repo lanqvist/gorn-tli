@@ -13,6 +13,8 @@ describe('shotOutcome', () => {
     expect(shotOutcome({ kind: 'board', hints: [{ type: 'clear' }] })).toBe('miss');
     expect(shotOutcome({ kind: 'board', hints: [{ type: 'hint' }, { type: 'error' }] })).toBe('miss');
     expect(shotOutcome({ kind: 'manual', hints: [{ type: 'hint' }] })).toBe('manual');
+    // Подсказка есть, но карту выбора не узнал — кадр нужен для эталонов.
+    expect(shotOutcome({ kind: 'instruments', hints: [{ type: 'hint', text: 'Взять: Крюк отбора · одну карту не узнал' }, { type: 'settled' }] })).toBe('miss');
   });
 });
 

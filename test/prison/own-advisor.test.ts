@@ -61,6 +61,21 @@ describe('свой путь подсказок', () => {
     expect(h.type === 'hint' && h.marks.map((m) => m.kind)).toEqual(['box', 'arrow', 'ring']);
   });
 
+  it('ряд решений → выбор цели того же Пожирания: показанная цель не прыгает', async () => {
+    const { shot } = setup();
+    // Две равные цели: львы той же редкости в №8 и №11.
+    const inmates = { 5: 'mammoth2', 8: 'lion2', 11: 'lion2', 14: 'wolf0' };
+    const rs1 = await shot({ screen: 'board', board: board({ inmates, warden: 5, decision: MANAGE_ALL, kinds: ['consume', 'replace', 'end'] }) });
+    const first = text(rs1).at(-1)!;
+    expect(first).toMatch(/^Пожирание: съесть №(8|11)$/);
+    const target = first.match(/№(\d+)/)![1];
+    // Следующий кадр — экран выбора цели (до первого укуса): та же позиция, тот же ход.
+    for (let i = 0; i < 3; i++) {
+      const rs2 = await shot({ screen: 'board', board: board({ inmates, warden: 5, daysLeft: null, chain: [8, 11] }) });
+      expect(text(rs2).at(-1)).toBe(`Пожирание: съесть №${target}`);
+    }
+  });
+
   it('переходная доска без карточек — не совет', async () => {
     const { shot } = setup();
     const rs = await shot({ screen: 'board', board: board({ warden: 3 }) });

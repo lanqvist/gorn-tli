@@ -15,7 +15,10 @@
  * считает до 300 мс (обычно останавливается сам, медиана ~100 мс); не
  * уложился — уходит лучший на этот момент, а решатель досчитывает, пока
  * кадр на экране (до budgetMs), и меняет стрелку, только если новый
- * лидер оторвался на REFINE_SE («уточнено»).
+ * лидер заметно лучше показанного (clearlyBetter: ≥ max(2 SE, 0,02),
+ * «уточнено»). То же между кадрами одного решения (ряд решений → выбор
+ * цели того же Пожирания, тот же кадр снова): поиск продолжается, а
+ * показанный ход остаётся, пока другой не станет заметно лучше.
  */
 import { advise as policyAdvise } from '../../core/prison/policy/instant.js';
 import { PrisonAdapter, type Position } from '../../core/prison/adapter.js';
@@ -23,18 +26,13 @@ import { decode, encode } from '../../core/prison/engine/actions.js';
 import type { Action } from '../../core/prison/model.js';
 import { hint, type HintContext } from '../../core/prison/hint.js';
 import { defaultGeometry, read, rerollBox, treasureBoxes, type Frame, type Geometry } from '../../core/prison/recognize/index.js';
-import { clearSolveCache, solve, stateKey, type SolveOptions, type SolveStep } from '../../core/prison/solver/solve.js';
+import { clearSolveCache, clearlyBetter, solve, stateKey, type SolveOptions, type SolveStep } from '../../core/prison/solver/solve.js';
+import type { Step } from '../../core/prison/adapter.js';
+import { State } from '../../core/prison/engine/state.js';
 import type { PrisonShotMessage, PrisonWorkerReply } from './protocol.js';
 
 /** Столько решатель ищет ответ до первого показа. */
 export const QUICK_MS = 300;
-/**
- * Сменить уже показанный ход, только если новый лидер впереди на столько
- * SE. Замер на 580 позициях аудита (досчёт 300 → 1500 мс): при 1 SE
- * regret 0,0016 (как потолок 1000 мс), стрелка меняется в 2,4 % позиций;
- * при 2 SE — 0,0032 и 0,3 %; при 4 SE смена не случается ни разу.
- */
-export const REFINE_SE = 1;
 
 const TREASURE_ASK = 'Подарок: нажми «Посмотреть состояние тюрьмы» и вернись — подскажу, какой взять';
 
@@ -79,6 +77,8 @@ export class OwnAdvisor {
   private current = 0;
   /** Доска, увиденная сразу после окна сокровищницы: по ней советуется подарок. */
   private boardBehindTreasure = false;
+  /** Показанный ход текущего решения: держится, пока другой не станет заметно лучше. */
+  private held: { key: string; state: State; code: number; step: Step; warden: number; day: number } | null = null;
   /** Варианты последней проверки (для сравнения на кадрах). */
   lastOptions: { action: Action; mean: number }[] = [];
   private readonly sleep: () => Promise<void>;
@@ -99,6 +99,7 @@ export class OwnAdvisor {
   }
 
   reset(): void {
+    this.held = null;
     this.adapter.reset();
     this.boardBehindTreasure = false;
     clearSolveCache();
@@ -204,7 +205,12 @@ export class OwnAdvisor {
       }
       return;
     }
-    await this.advise(msg, pos, ctx, size);
+    // Выбор цели до первого укуса — то же решение, что ряд решений перед
+    // ним (тот же день и надзиратель): считаем ту же позицию дальше.
+    const mem = this.adapter.mem;
+    const held = this.held;
+    const state = mem.step === 'chain' && mem.firstBite && held && held.step === 'manage' && held.warden === mem.warden && held.day === mem.day ? held.state : pos.state;
+    await this.advise(msg, { ...pos, state }, ctx, size);
   }
 
   private read(frame: Frame): ReturnType<typeof read>['view'] {
@@ -229,7 +235,13 @@ export class OwnAdvisor {
   private async advise(msg: PrisonShotMessage, pos: Extract<Position, { ok: true }>, ctx: HintContext, size: { w: number; h: number }): Promise<void> {
     const t0 = Date.now();
     // Зерно — от самой позиции: тот же кадр снова продолжает накопленный поиск.
-    const search = solve(pos.state, { ...this.stop, seed: seedOf(stateKey(pos.state)) });
+    const key = stateKey(pos.state);
+    const search = solve(pos.state, { ...this.stop, seed: seedOf(key) });
+    const mem = this.adapter.mem;
+    const incumbent = this.held && this.held.key === key && pos.allowed(this.held.code) ? this.held.code : null;
+    const hold = (code: number) => {
+      this.held = { key, state: this.held?.key === key ? this.held.state : copyOf(pos.state), code, step: mem.step, warden: mem.warden, day: mem.day };
+    };
     const instant = policyAdvise(pos.state);
     const instantCode = encode(instant.action);
     const show = (code: number, phase: 'instant' | 'final', live: boolean, note = '') => {
@@ -245,11 +257,14 @@ export class OwnAdvisor {
       if (this.current !== msg.id) return;
       res = search.step(50);
     }
-    const shown = this.pickBest(res, pos.allowed);
-    if (shown === null) {
+    const leader = this.pickBest(res, pos.allowed);
+    if (leader === null) {
       this.reply({ type: 'clear', id: msg.id });
       return;
     }
+    // Тот же ход, что уже показан для этого решения, — пока лидер не стал заметно лучше.
+    const shown = incumbent !== null && incumbent !== leader && !clearlyBetter(search, leader, incumbent) ? incumbent : leader;
+    hold(shown);
     if (res.done) {
       show(shown, 'final', res.rounds > 0);
       console.log(`[тюрьма] кадр ${msg.id}: совет через ${Date.now() - t0} мс (${res.rounds} раундов)`);
@@ -257,8 +272,8 @@ export class OwnAdvisor {
     }
     show(shown, 'instant', false);
     // Досчёт, пока этот кадр на экране и ход не сделан. Стрелка меняется,
-    // только если новый лидер оторвался от показанного хода на REFINE_SE —
-    // иначе прыжки на почти равных ходах.
+    // только если новый лидер заметно лучше показанного хода — иначе
+    // прыжки на почти равных ходах.
     const until = t0 + Math.max(this.quickMs, msg.budgetMs);
     while (!res.done && Date.now() < until) {
       await this.sleep();
@@ -267,7 +282,8 @@ export class OwnAdvisor {
     }
     if (this.current !== msg.id) return;
     const best = this.pickBest(res, pos.allowed);
-    if (best !== null && best !== shown && this.gapSe(res, shown) >= REFINE_SE) {
+    if (best !== null && best !== shown && clearlyBetter(search, best, shown)) {
+      hold(best);
       show(best, 'final', true, 'уточнено');
       console.log(`[тюрьма] кадр ${msg.id}: совет уточнён через ${Date.now() - t0} мс (${res.rounds} раундов)`);
     } else {
@@ -275,9 +291,11 @@ export class OwnAdvisor {
     }
   }
 
-  /** Отставание хода от лидера в SE (отсечённый — бесконечно позади). */
-  private gapSe(res: SolveStep, code: number): number {
-    const o = res.options.find((x) => encode(x.action) === code);
-    return !o ? 0 : o.pruned ? Infinity : o.gapSe;
-  }
 }
+
+function copyOf(s: State): State {
+  const t = new State();
+  t.m.set(s.m);
+  return t;
+}
+
