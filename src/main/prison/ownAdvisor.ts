@@ -28,11 +28,18 @@ import { hint, type HintContext } from '../../core/prison/hint.js';
 import { defaultGeometry, read, rerollBox, treasureBoxes, type Frame, type Geometry } from '../../core/prison/recognize/index.js';
 import { clearSolveCache, clearlyBetter, solve, stateKey, type SolveOptions, type SolveStep } from '../../core/prison/solver/solve.js';
 import type { Step } from '../../core/prison/adapter.js';
-import { State } from '../../core/prison/engine/state.js';
+import { OFFER_KIND, OFFER_TOOL, PHASE, P_PICK, State } from '../../core/prison/engine/state.js';
 import type { PrisonShotMessage, PrisonWorkerReply } from './protocol.js';
 
 /** Столько решатель ищет ответ до первого показа. */
 export const QUICK_MS = 300;
+/**
+ * Выбор орудий (старт и награда за цель) решает забег больше любого хода,
+ * бывает 2–3 раза за забег, а окно выбора открыто долго: досчёт до этого
+ * срока и не меньше PICK_ROUNDS раундов до остановки.
+ */
+export const PICK_BUDGET_MS = 4000;
+export const PICK_ROUNDS = 1500;
 
 const TREASURE_ASK = 'Подарок: нажми «Посмотреть состояние тюрьмы» и вернись — подскажу, какой взять';
 
@@ -247,7 +254,8 @@ export class OwnAdvisor {
     const t0 = Date.now();
     // Зерно — от самой позиции: тот же кадр снова продолжает накопленный поиск.
     const key = stateKey(pos.state);
-    const search = solve(pos.state, { ...this.stop, seed: seedOf(key) });
+    const toolPick = pos.state.m[PHASE] === P_PICK && pos.state.m[OFFER_KIND] === OFFER_TOOL;
+    const search = solve(pos.state, { ...(toolPick ? { minRounds: PICK_ROUNDS } : {}), ...this.stop, seed: seedOf(key) });
     const mem = this.adapter.mem;
     const incumbent = this.held && this.held.key === key && pos.allowed(this.held.code) ? this.held.code : null;
     const hold = (code: number) => {
@@ -290,7 +298,7 @@ export class OwnAdvisor {
     // Досчёт, пока этот кадр на экране и ход не сделан. Стрелка меняется,
     // только если новый лидер заметно лучше показанного хода — иначе
     // прыжки на почти равных ходах.
-    const until = t0 + Math.max(this.quickMs, msg.budgetMs);
+    const until = t0 + Math.max(this.quickMs, toolPick ? Math.max(PICK_BUDGET_MS, msg.budgetMs) : msg.budgetMs);
     while (!res.done && Date.now() < until) {
       await this.sleep();
       if (this.current !== msg.id) return;

@@ -4,7 +4,7 @@
  *   npx tsx src/cli/prison-tune.ts             — покоординатный поиск, пишет policy/weights.json
  *   npx tsx src/cli/prison-tune.ts --report    — сила стратегий по сценариям (таблица markdown)
  *
- * Ключи: --runs N (забегов на оценку, 6000), --passes N (проходов, 4),
+ * Ключи: --runs N (забегов на оценку, 6000), --passes N (проходов, 4), --workers N (8),
  * --from hand (начать с ручных весов, а не с weights.json).
  *
  * Все кандидаты играют одни и те же забеги (общие кости): разница двух
@@ -138,14 +138,14 @@ function arg(name: string, def: string): string {
 function step(i: number, w: Float64Array, scale: number): number {
   if (i < W_GIFT) return Math.max(0.01, Math.abs(w[i]!) * 0.3) * scale;
   if (i >= W_TOOL) return 0.2 * scale;
-  const base = [0.1, 0.02, 0.03, 0.02, 0.03, 0.02, 0.1, 0.03, 0.1, 0.005][i - W_GIFT]!;
+  const base = [0.1, 0.02, 0.03, 0.02, 0.03, 0.02, 0.1, 0.03, 0.1, 0.005, 0.03, 0.05, 0.05, 0.05][i - W_GIFT]!;
   return base * scale;
 }
 
 async function tune(): Promise<void> {
   const runs = Number(arg('--runs', '6000'));
   const passes = Number(arg('--passes', '4'));
-  const P = pool(Math.max(1, cpus().length - 1));
+  const P = pool(Number(arg('--workers', String(Math.max(1, Math.min(8, cpus().length - 1))))));
   const sc: Scenario = { start: 'mix' };
   const seed = 0x51ed;
   let w = arg('--from', '') === 'hand' ? fromJson(HAND) : Float64Array.from(DEFAULT_WEIGHTS);
@@ -158,6 +158,8 @@ async function tune(): Promise<void> {
       for (const dir of [1, -1]) {
         const cand = Float64Array.from(w);
         cand[i] = w[i]! + dir * step(i, w, scale);
+        // Призматический с подарком не может стоить меньше призматического: это сам счёт.
+        if (i === W_GIFT && cand[i]! < 0) continue;
         const sc2 = await P.scores('policy', cand, sc, seed, runs);
         const { diff, se } = paired(sc2, base);
         if (diff > 2 * se && diff > 0) {
@@ -181,7 +183,7 @@ async function tune(): Promise<void> {
 
 async function report(): Promise<void> {
   const runs = Number(arg('--runs', '20000'));
-  const P = pool(Math.max(1, cpus().length - 1));
+  const P = pool(Number(arg('--workers', String(Math.max(1, Math.min(8, cpus().length - 1))))));
   const seed = 0xbeef; // не те забеги, на которых настраивали
   const hand = fromJson(HAND);
   const cases: [string, Scenario][] = [

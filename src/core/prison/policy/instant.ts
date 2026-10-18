@@ -13,25 +13,25 @@
  */
 
 import {
-  CELLS, DEFAULT_PARAMS, EVENT, LEGENDARY, LION, MAMMOTH, OFFICE, RAT, START_EVENT, TOOL, TOOL_IDS,
+  CELLS, DEFAULT_PARAMS, LEGENDARY, LION, MAMMOTH, OFFICE, RAT, START_EVENT, TOOL, TOOL_IDS,
   TOOL_NAMES, WOLF, type Action, type Params,
 } from '../model.js';
 import {
-  A_ACCEPT, A_BESTOW, A_CHAIN, A_DEVOUR, A_END, A_GIFT, A_HUNT, A_INSTIGATE, A_PATROL, A_REROLL, A_SKIP,
+  A_ACCEPT, A_BESTOW, A_CHAIN, A_DEVOUR, A_END, A_GIFT, A_HUNT, A_INSTIGATE, A_PATROL, A_REROLL,
   A_STOPCHAIN, A_SWAP, A_TOOL, applyCode, decode,
 } from '../engine/actions.js';
 import { Rng } from '../engine/rng.js';
 import {
-  FIRST_FOOD, SECOND_FOOD, eventDecision, huntTargets, officeRounds, takeGift, targets,
+  FIRST_FOOD, SECOND_FOOD, huntTargets, officeRounds, targets,
 } from '../engine/rules.js';
 import {
   BEAST, CHAIN_EATER, DAY, DAY_LIMIT, DOORS, DOORS_N, EVT, FLAGS, F_TUSK, F_VIS_BEAST, F_VIS_RARE, F_VIS_TIER, LOCK,
   OFFER, OFFER_GIFT, OFFER_KIND, OFFER_N, PHASE, PICK_GIFTS, PICK_TOOLS, PRE_BEAST, PRE_TIER, P_CHAIN, P_END,
   P_EVENT, P_MANAGE, P_OFFICE, P_PATROL, P_PICK, P_RATWAY, REROLLS, START, STORAGE, State, TIER, TOOLS,
-  WARDEN, copy, dist,
+  WARDEN, dist,
 } from '../engine/state.js';
 import {
-  DEFAULT_WEIGHTS, W_CHAIN, W_DOOR, W_EVENT, W_FAR, W_FED, W_GIFT, W_INSTIGATE, W_REROLL, W_SWAP, W_TOOL,
+  DEFAULT_WEIGHTS, W_AHEAD, W_BRAND, W_CHAIN, W_RING, W_SKIP, W_DOOR, W_EVENT, W_FAR, W_FED, W_GIFT, W_INSTIGATE, W_REROLL, W_SWAP, W_TOOL,
   W_TOOLPICK, W_VAL0, W_VAL1,
 } from './weights.js';
 
@@ -51,6 +51,8 @@ const pDoor = new Float64Array(6);
 const pRep = new Float64Array(6);
 /** Выгода Замены гипотетического узника по редкости. */
 const swapNew = new Float64Array(5);
+/** swapNew посчитана для текущих таблиц (нужна только обходу — считаем по требованию). */
+let swapReady = false;
 
 let S: State = new State();
 let m: Int32Array = S.m;
@@ -147,7 +149,7 @@ function ensureChain(): void {
   openV = doorNew - W[W_DOOR]! * frac;
   cageBonus = has(TOOL.cage) ? P.cageChance * doorNew : 0;
   fillChain();
-  for (let t = 0; t < 5; t++) swapNew[t] = swapGain(t, -1);
+  swapReady = false;
 }
 
 /** Ценность после укуса: едок поднялся до base (+ случайные добавки). */
@@ -286,6 +288,10 @@ function manageValue(c: number): number {
 /** Ценность нового узника (t, b) в камере и его лучшего действия сегодня. */
 function newInmateValue(t: number, b: number): number {
   const dev = F[(t * 4 + b) * 2]! - val[t]!;
+  if (!swapReady) {
+    for (let u = 0; u < 5; u++) swapNew[u] = swapGain(u, -1);
+    swapReady = true;
+  }
   return val[t]! + Math.max(0, dev, swapNew[t]!);
 }
 
@@ -348,18 +354,34 @@ function cellValue(c: number): number {
   return v;
 }
 
+/** Притягательность камер для обхода: ценность прихода (без орудий хода), не меньше 0. */
+const attr = new Float64Array(CELLS);
+
+function fillAttr(): void {
+  for (let c = 0; c < CELLS; c++) attr[c] = Math.max(0, cellValue(c));
+}
+
+/**
+ * Ценность хода к двери c. Кроме самой камеры — что окажется впереди
+ * (завтрашние двери — на 1–6 шагов за ней) и что ход проскочит: камеры по
+ * пути станут доступны только через круг.
+ */
 function doorValue(from: number, c: number): number {
   const steps = dist(from, c);
   let v = cellValue(c) + W[W_FAR]! * steps;
+  if (W[W_AHEAD]! !== 0 || W[W_SKIP]! !== 0) {
+    let ahead = 0;
+    for (let k = 1; k <= P.doorReach; k++) ahead += attr[(c + k) & (CELLS - 1)]!;
+    let skipped = 0;
+    for (let k = 1; k < steps; k++) skipped += attr[(from + k) & (CELLS - 1)]!;
+    v += (W[W_AHEAD]! * ahead) / P.doorReach - W[W_SKIP]! * skipped;
+  }
   if (has(TOOL.shortchain) && steps <= P.shortchainSteps) v += P.shortchainChance * openV;
   if (has(TOOL.shackles) && steps >= P.shacklesSteps) v += P.shacklesChance * avgRise;
   return v;
 }
 
-// ── оценка доски для редких решений через пробное применение ───────────────
-
-const scratch = new State();
-const probe = new Rng(1);
+// ── оценка доски ────────────────────────────────────────────────────────────
 
 const cnt2 = new Int32Array(24);
 
@@ -407,30 +429,6 @@ export function boardValue(s: State): number {
   return v + fedCount(x) * W[W_FED]! * frac;
 }
 
-function stateHash(x: Int32Array): number {
-  let h = 0x811c9dc5;
-  for (let i = 0; i < x.length; i++) h = Math.imul(h ^ x[i]!, 0x01000193);
-  return h >>> 0;
-}
-
-const PROBE_GIFT = 0;
-const PROBE_ACCEPT = 1;
-const PROBE_SKIP = 2;
-
-/** Среднее boardValue после пробного действия на копиях (k разных костей). */
-function probeValue(s: State, k: number, kind: number, arg: number): number {
-  const seed = stateHash(s.m);
-  let sum = 0;
-  for (let i = 0; i < k; i++) {
-    copy(s, scratch);
-    probe.seed(seed + i * 0x9e3779b9);
-    if (kind === PROBE_GIFT) takeGift(scratch, probe, P, arg);
-    else eventDecision(scratch, probe, P, kind === PROBE_ACCEPT);
-    sum += boardValue(scratch);
-  }
-  return sum / k;
-}
-
 // ── решения ─────────────────────────────────────────────────────────────────
 
 /** Почему выбран ход: для подписи. */
@@ -460,13 +458,65 @@ function pickTool(): number {
   return code(A_TOOL, best);
 }
 
+/** Укус «Медного рога»: без цепочки, цель — та, что дана. */
+function hornBite(e: number, j: number): number {
+  const te = m[TIER + e]!;
+  const be = m[BEAST + e]!;
+  if (m[LOCK + j] === 1) return riseV(te, P.clawsGain) - val[te]!;
+  const tt = m[TIER + j]!;
+  const bt = m[BEAST + j]!;
+  const food = bt === FIRST_FOOD[be] || (te >= LEGENDARY && bt === SECOND_FOOD[be]);
+  return -val[tt]! + riseV(te, baseGain(be, te, food, tt)) - val[te]!;
+}
+
+/**
+ * Ценность подарка по доске — без пробного применения (подарков за забег
+ * много, «Изобилие» втрое, а проба «Клейма» дорогая): Кольцо — открытые
+ * двери, Рог — по укусу каждого, у кого есть еда (цель случайная), Вино —
+ * +1 всем ниже Легендарной, Клеймо — еда для голодных.
+ */
+function giftValue(s: State, g: number): number {
+  ensureChain();
+  let v = 0;
+  switch (g) {
+    case 0:
+      return Math.min(P.ringOpens, lockedCount) * (openV + W[W_RING]!);
+    case 1:
+      for (let c = 1; c < CELLS; c++) {
+        if (m[TIER + c]! < 0) continue;
+        const mask = targets(s, c);
+        if (!mask) continue;
+        let sum = 0;
+        let k = 0;
+        for (let j = 1; j < CELLS; j++) {
+          if (!((mask >>> j) & 1)) continue;
+          sum += hornBite(c, j);
+          k++;
+        }
+        v += sum / k;
+      }
+      return v;
+    case 2:
+      for (let c = 1; c < CELLS; c++) {
+        const t = m[TIER + c]!;
+        if (t >= 0 && t < LEGENDARY) v += riseV(t, 1) - val[t]!;
+      }
+      return v;
+    case 3: {
+      let hungry = 0;
+      for (let c = 1; c < CELLS; c++) if (m[TIER + c]! >= 0 && targets(s, c) === 0) hungry++;
+      return Math.min(P.brandCount, hungry) * W[W_BRAND]! * frac;
+    }
+  }
+  return v;
+}
+
 function pickGift(s: State): number {
   let best = 0;
   let bestV = -Infinity;
   for (let i = 0; i < m[OFFER_N]!; i++) {
     const g = m[OFFER + i]!;
-    // Вино и Клеймо почти без случая — хватит одной пробы
-    const v = probeValue(s, g === 0 || g === 1 ? 2 : 1, PROBE_GIFT, g);
+    const v = giftValue(s, g);
     if (v > bestV) {
       bestV = v;
       best = g;
@@ -499,6 +549,7 @@ function bestHunt(s: State): void {
 
 function pickDoor(): number {
   ensureChain();
+  if (W[W_AHEAD]! !== 0 || W[W_SKIP]! !== 0) fillAttr();
   const from = m[WARDEN]!;
   let best = m[DOORS]!;
   let bestV = -Infinity;

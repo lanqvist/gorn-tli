@@ -33,8 +33,16 @@ export const W_CHAIN = 17;
 export const W_TOOLPICK = 18;
 /** Предпочтение дальнего хода, за шаг. */
 export const W_FAR = 19;
+/** «Клеймо первородного греха»: за узника, которому оно даст еду. */
+export const W_BRAND = 20;
+/** Обход: ценность камер впереди двери (1–6 шагов за ней, среднее). */
+export const W_AHEAD = 21;
+/** Обход: потеря от камер, которые ход проскакивает (сумма). */
+export const W_SKIP = 22;
+/** «Трёхглавое кольцо»: добавка за каждую открытую дверь (сверх нового узника). */
+export const W_RING = 23;
 /** Ценность орудия при выборе, по TOOL. */
-export const W_TOOL = 20;
+export const W_TOOL = 24;
 export const W_SIZE = W_TOOL + TOOL_IDS.length;
 
 export interface WeightsJson {
@@ -50,12 +58,16 @@ export interface WeightsJson {
   chain: number;
   toolPick: number;
   far: number;
+  brand?: number;
+  ahead?: number;
+  skip?: number;
+  ring?: number;
   tools: Partial<Record<ToolId, number>>;
 }
 
 const SCALARS = [
   ['gift', W_GIFT], ['door', W_DOOR], ['event', W_EVENT], ['fed', W_FED], ['swap', W_SWAP],
-  ['instigate', W_INSTIGATE], ['reroll', W_REROLL], ['chain', W_CHAIN], ['toolPick', W_TOOLPICK], ['far', W_FAR],
+  ['instigate', W_INSTIGATE], ['reroll', W_REROLL], ['chain', W_CHAIN], ['toolPick', W_TOOLPICK], ['far', W_FAR], ['brand', W_BRAND], ['ahead', W_AHEAD], ['skip', W_SKIP], ['ring', W_RING],
 ] as const;
 
 /** Имя веса по индексу (для отчётов настройки). */
@@ -72,7 +84,7 @@ export function fromJson(j: WeightsJson): Float64Array {
     w[W_VAL0 + t] = j.val0[t] ?? 0;
     w[W_VAL1 + t] = j.val1[t] ?? 0;
   }
-  for (const [name, k] of SCALARS) w[k] = j[name];
+  for (const [name, k] of SCALARS) w[k] = j[name] ?? (name === 'brand' ? 0.05 : 0);
   TOOL_IDS.forEach((id, i) => (w[W_TOOL + i] = j.tools[id] ?? 0));
   return w;
 }
@@ -102,6 +114,10 @@ export const HAND: WeightsJson = {
   chain: 0,
   toolPick: 0.3,
   far: 0,
+  brand: 0.05,
+  ahead: 0,
+  skip: 0,
+  ring: 0,
   tools: Object.fromEntries(TOOL_IDS.map((id) => [id, 0.5])),
 };
 

@@ -11,10 +11,11 @@
 import { DEFAULT_PARAMS, START_EVENT_IDS } from '../core/prison/model.js';
 import { applyCode, codeBuffer, encode, legalCodes, startRun } from '../core/prison/engine/actions.js';
 import { Rng } from '../core/prison/engine/rng.js';
-import { PHASE, PHASE_NAMES, P_END, STORAGE, State, clone } from '../core/prison/engine/state.js';
+import { OFFER_KIND, OFFER_TOOL, PHASE, PHASE_NAMES, P_END, P_PICK, STORAGE, State, clone } from '../core/prison/engine/state.js';
 import { constants, setPriority } from 'node:os';
 import { instantCode } from '../core/prison/policy/instant.js';
 import { clearlyBetter, solve } from '../core/prison/solver/solve.js';
+import { PICK_BUDGET_MS, PICK_ROUNDS } from '../main/prison/ownAdvisor.js';
 
 function arg(name: string, def: number): number {
   const i = process.argv.indexOf(name);
@@ -26,7 +27,9 @@ function arg(name: string, def: number): number {
  * мгновенной стратегией и с проверкой вариантами на каждом ходу, вывести
  * счёт каждого: «номер мгновенная проверка». Режимы проверки:
  *   new — как в потоке подсказок: правило остановки по умолчанию, показ
- *         через ≤ 300 мс, досчёт до 1,5 с, смена хода, если новый заметно лучше;
+ *         через ≤ 300 мс, досчёт до 1,5 с (выбор орудий — до PICK_BUDGET_MS и
+ *         не меньше PICK_ROUNDS раундов), смена хода, если новый заметно лучше;
+ *   flat — то же, но выбор орудий как любой ход;
  *   old — прежнее правило (64 раунда, 3 SE, ε 0,1, отсечение 4 SE),
  *         ход — окончательный (до остановки или 1,5 с).
  */
@@ -46,11 +49,13 @@ if (process.argv.includes('--play')) {
   const OLD = { minRounds: 64, maxRounds: 1500, zStop: 3, zPrune: 4, pruneFrom: 32, eps: 0.1 };
   const choose = (s: State, seed: number): number => {
     if (mode === 'old') return encode(solve(s, { ...OLD, seed }).step(1500).best);
-    const search = solve(s, { seed });
+    // Выбор орудий — свой бюджет и больше раундов (как в потоке подсказок).
+    const toolPick = s.m[PHASE] === P_PICK && s.m[OFFER_KIND] === OFFER_TOOL && mode !== 'flat';
+    const search = solve(s, { seed, ...(toolPick ? { minRounds: PICK_ROUNDS } : {}) });
     let res = search.step(300);
     const shown = encode(res.best);
     if (res.done) return shown;
-    res = search.step(1200);
+    res = search.step((toolPick ? PICK_BUDGET_MS : 1500) - 300);
     const best = encode(res.best);
     return best !== shown && clearlyBetter(search, best, shown) ? best : shown;
   };
