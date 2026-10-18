@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { mkdir, readdir, readFile, rm, rmdir, stat, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
+import { frameHash, screenChanged } from '../../core/prison/frameHash.js';
 import { planPrune, shotOutcome, type ShotEntry } from '../../core/prisonShots.js';
 import { PrisonTriggers, stampMs, type PrisonShot } from '../../core/prisonTriggers.js';
 import { ArrowLayer } from './arrowLayer.js';
@@ -54,13 +55,19 @@ export class PrisonAssist {
   private nextId = 0;
   private display: Display | null = null;
   private staleTimer: NodeJS.Timeout | null = null;
+  /** Отпечаток последнего отданного кадра: тот же кадр на новое окно — поток застыл. */
+  private lastPosted: string | null = null;
   /** Куда сохранять кадры (null — не сохранять) и что о каждом уже известно. */
   private saveRoot: string | null = null;
   private readonly saving = new Map<number, { base: string; info: Record<string, unknown>; written: Promise<void> }>();
   private pruneTimer: NodeJS.Timeout | null = null;
-  /** Снимок идёт; следующий кадр ждёт (только последний). */
+  /** Снимок идёт; следующие кадры ждут в очереди (queue). */
   private capturing = false;
-  private nextShot: { shot: PrisonShot; manual: boolean } | null = null;
+  /**
+   * Кадры, ждущие снимка: самый свежий и, если был, кадр нового окна раньше
+   * него — хоткей или проходной кадр не вытесняют выбор орудий (18.10 22:51).
+   */
+  private queue: { shot: PrisonShot; manual: boolean }[] = [];
   /** Кадры в работе: для повтора, если автокадр не распознался. */
   private readonly shots = new Map<number, { shot: PrisonShot; manual: boolean; retry: number }>();
   private readonly retries = new WeakMap<PrisonShot, number>();
@@ -242,12 +249,14 @@ export class PrisonAssist {
       // карточки — без снимка и без очереди. Ждущий автокадр снял бы уже
       // само окно подарков.
       this.treasureSeq++;
-      if (this.nextShot && !this.nextShot.manual) this.nextShot = null;
+      this.queue = this.queue.filter((q) => q.manual);
       this.post(shot, false, null, this.gameDisplay(), 'без снимка', Date.now(), false);
       return;
     }
     if (this.capturing) {
-      this.nextShot = { shot, manual };
+      const fresh = !manual && screenChanged(shot.lines);
+      const popup = fresh ? [] : this.queue.filter((q) => !q.manual && screenChanged(q.shot.lines)).slice(-1);
+      this.queue = [...popup, { shot, manual }];
       return;
     }
     this.capturing = true;
@@ -255,8 +264,7 @@ export class PrisonAssist {
       await this.captureOnce(shot, manual);
     } finally {
       this.capturing = false;
-      const next = this.nextShot;
-      this.nextShot = null;
+      const next = this.queue.shift();
       if (next) void this.capture(next.shot, next.manual);
     }
   }
@@ -288,12 +296,28 @@ export class PrisonAssist {
       frame = await this.stream.grab(display, 0, 900, okAge);
       via = `поток после толчка ${i + 1}`;
     }
+    // Поток застыл: отдал тот же кадр, что и прошлый, хотя по логу открылось
+    // новое окно (или игрок сам нажал хоткей — значит, на экране не то). Тогда
+    // снимок экрана и поток заново (18.10 22:51: полминуты старая доска вместо
+    // выбора орудий).
+    if (frame && this.lastPosted && frameHash(frame) === this.lastPosted && (manual || screenChanged(shot.lines))) {
+      console.warn('[тюрьма] поток застыл: тот же кадр, что и прошлый — снимок экрана');
+      const snap = await this.snapshot(display);
+      if (snap) {
+        frame = snap;
+        via = 'снимок (поток застыл)';
+      }
+      void this.stream.restart(display);
+    }
     // Разовый снимок (getSources в 4K) блокирует главный процесс на секунды,
     // а при полноэкранной игре часто пустой: только по хоткею, когда игрок
     // сам попросил.
-    if (!frame && manual) {
+    // Новое окно по логу, а поток так и не отдал кадр — тоже снимок: иначе
+    // кадр выбора орудий теряется совсем (18.10 22:51:48, «Обновить»).
+    if (!frame && (manual || screenChanged(shot.lines))) {
       frame = await this.snapshot(display);
       via = 'снимок';
+      if (!manual) void this.stream.restart(display);
     }
     if (!frame) console.warn(`[тюрьма] кадр не получен за ${Date.now() - t0} мс — экран не обновляется`);
     if (!frame) {
@@ -304,6 +328,7 @@ export class PrisonAssist {
     // Пока снимали, открылось окно подарков: доску учесть, совет — по подаркам.
     const late = seq !== this.treasureSeq;
     if (late && shot.kind !== 'board') return;
+    this.lastPosted = frameHash(frame);
     this.post(shot, manual, frame, display, via, t0, late);
   }
 

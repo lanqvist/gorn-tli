@@ -82,6 +82,20 @@ describe('свой путь подсказок', () => {
     }
   });
 
+  it('выбор орудий виден на кадре «окна цели» или по хоткею в начале забега — совет и новый забег', async () => {
+    // 18.10 22:51: тема, цель и выбор пришли пачкой — кадр ушёл как «окно цели».
+    const { own, shot } = setup();
+    await shot({ screen: 'board', board: board({ warden: 4, daysLeft: 3, doors: [6], tools: ['coin'], chromatic: 7 }) });
+    await shot({ screen: 'board', board: board({ warden: 4, daysLeft: 3, doors: [6], tools: ['coin'], chromatic: 7 }) });
+    expect((own.memory as { tools: string[] }).tools).toEqual(['coin']);
+    let rs = await shot({ screen: 'pick', pick: pick(['crown', 'saw', 'hook']) }, { kind: 'objective', day: { cur: 0, max: 30 } });
+    expect(text(rs)[0]).toMatch(/^(Взять: |Обновить выбор)/);
+    expect((own.memory as { tools: string[]; storage: number }).tools).toEqual([]);
+    rs = await shot({ screen: 'pick', pick: pick(['crown', 'saw', 'hook']) }, { kind: 'manual', day: { cur: 0, max: 30 } });
+    expect(text(rs)[0]).toMatch(/^(Взять: |Обновить выбор)/);
+    expect((own.memory as { storage: number }).storage).toBe(0);
+  });
+
   it('переходная доска без карточек — не совет', async () => {
     const { shot } = setup();
     const rs = await shot({ screen: 'board', board: board({ warden: 3 }) });

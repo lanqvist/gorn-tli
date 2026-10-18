@@ -168,7 +168,7 @@ export class OwnAdvisor {
       this.saveState();
       this.reply({ type: 'clear', id: msg.id });
       return;
-    } else if (kind === 'objective' || !seen) {
+    } else if ((kind === 'objective' && seen?.screen !== 'pick') || !seen) {
       // Окно цели и темы забега своё распознавание пока не читает.
       this.reply({ type: 'clear', id: msg.id });
       return;
@@ -200,7 +200,10 @@ export class OwnAdvisor {
         this.reply({ type: 'hint', id: msg.id, phase: 'final', frame: size, text: PICK_UNKNOWN, marks: [], live: false });
         return;
       }
-      this.adapter.pick(p, msg.fresh, msg.rerolled, msg.after);
+      // Хоткей на стартовом выборе (день 0 по логу) — тоже начало забега: иначе
+      // совет считался бы с памятью прошлого забега.
+      const fresh = msg.fresh || ((msg.kind === 'manual' || msg.kind === 'objective') && msg.day?.cur === 0 && !p.reward);
+      this.adapter.pick(p, fresh, msg.rerolled, msg.after);
       ctx.pick = p;
       ctx.reroll = rerollBox(plainGeo());
       if (known < p.cards.length) ctx.reason = 'одну карту не узнал';
