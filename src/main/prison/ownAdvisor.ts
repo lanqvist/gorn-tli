@@ -150,6 +150,13 @@ export class OwnAdvisor {
         this.reply({ type: 'hint', id: msg.id, phase: 'final', frame: size, text: TREASURE_ASK, marks: [], live: false });
         return;
       }
+    } else if (kind === 'theme') {
+      // Окно темы забега: тема — по номеру озвучки из лога (картинку окна
+      // пока не читаем: эталонов заголовков нет).
+      this.adapter.theme(msg.theme);
+      this.saveState();
+      this.reply({ type: 'clear', id: msg.id });
+      return;
     } else if (kind === 'objective' || !seen) {
       // Окно цели и темы забега своё распознавание пока не читает.
       this.reply({ type: 'clear', id: msg.id });

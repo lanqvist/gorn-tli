@@ -16,6 +16,8 @@ export interface PrisonShotMessage {
   treasureView: boolean;
   rerolled: boolean;
   treasureClosed: boolean;
+  /** Окно темы забега: номер озвучки Special_0N из лога (null — нет). */
+  theme: number | null;
   /**
    * Доска, снятая, пока уже открылось окно подарков: обновить по ней
    * доску, а совет дать по подаркам.

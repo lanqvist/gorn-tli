@@ -124,3 +124,25 @@ describe('триггеры тюрьмы', () => {
     expect(shots[0]).toMatchObject({ kind: 'board', treasureView: false });
   });
 });
+
+describe('окно темы забега', () => {
+  it('S16BoardThemePop Run → кадр theme с номером озвучки Special_0N', () => {
+    const { shots, timer, t } = setup();
+    t.feed([
+      L('09.22.18', 'PageBase@ OpenFlow0! Switch = true S16BoardThemePop'),
+      L('09.22.18', 'S16BoardThemePop Run'),
+      L('09.22.18', 'AudioMgr@PlayAudio  AudioEnum  == UI_S16_Special_Event'),
+      `[2026.10.17-09.22.18:010][ 1]LogDataTable: Warning: UDataTable::FindRow : 'Play_VO_Story_S16_Special_01_Lilim' requested row 'Play_VO_Story_S16_Special_01_Lilim' not in DataTable`,
+    ]);
+    timer.run();
+    expect(shots).toHaveLength(1);
+    expect(shots[0]).toMatchObject({ kind: 'theme', theme: 1 });
+  });
+
+  it('без озвучки — номер неизвестен', () => {
+    const { shots, timer, t } = setup();
+    t.feed([L('09.22.18', 'S16BoardThemePop Run')]);
+    timer.run();
+    expect(shots[0]).toMatchObject({ kind: 'theme', theme: null });
+  });
+});

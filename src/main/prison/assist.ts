@@ -192,7 +192,7 @@ export class PrisonAssist {
   captureNow(): void {
     if (!this.enabled) return;
     this.layer.thinking(this.gameDisplay());
-    void this.capture({ kind: 'board', fresh: false, after: '', treasureView: false, rerolled: false, treasureClosed: false, lines: [] }, true);
+    void this.capture({ kind: 'board', fresh: false, after: '', treasureView: false, rerolled: false, treasureClosed: false, theme: null, lines: [] }, true);
   }
 
   /** Начать забег с чистой доски (сохранённое состояние не подходит). */
@@ -327,6 +327,7 @@ export class PrisonAssist {
       treasureView: shot.treasureView,
       rerolled: shot.rerolled,
       treasureClosed: shot.treasureClosed,
+      theme: shot.theme,
       asTreasure,
       width: frame ? frame.width : Math.round(display.size.width * display.scaleFactor),
       height: frame ? frame.height : Math.round(display.size.height * display.scaleFactor),
@@ -448,7 +449,7 @@ export class PrisonAssist {
     const day = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
     const time = `${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}-${pad(now.getMilliseconds(), 3)}`;
     const base = join(this.saveRoot, day, `${time}-${kind}`);
-    this.saving.set(id, { base, info: { kind, fresh: shot.fresh, after: shot.after, treasureView: shot.treasureView, lines: shot.lines, hints: [] } });
+    this.saving.set(id, { base, info: { kind, fresh: shot.fresh, after: shot.after, treasureView: shot.treasureView, treasureClosed: shot.treasureClosed, rerolled: shot.rerolled, theme: shot.theme, lines: shot.lines, hints: [] } });
     return `${base}.png`;
   }
 

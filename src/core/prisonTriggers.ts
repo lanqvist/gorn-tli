@@ -11,7 +11,7 @@
  * Модуль чистый: время — из меток в строках, таймер подставляет вызывающий.
  */
 
-export type PrisonFrameKind = 'board' | 'instruments' | 'objective' | 'treasure';
+export type PrisonFrameKind = 'board' | 'instruments' | 'objective' | 'treasure' | 'theme';
 type RuleKind = PrisonFrameKind | 'skip' | 'speed';
 
 interface Rule {
@@ -27,6 +27,8 @@ interface Rule {
  */
 export const PRISON_RULES: readonly Rule[] = [
   { kind: 'objective', re: /S16BoardTaskPop Run/i, settleMs: 600 },
+  // Окно особой темы забега в начале (за ним — озвучка Special_0N с номером темы).
+  { kind: 'theme', re: /S16BoardThemePop Run/i, settleMs: 600 },
   // Карты орудий влетают дольше прочего.
   { kind: 'instruments', re: /S16BoardRelicPop Run/i, settleMs: 900 },
   { kind: 'instruments', re: /Btn_S16Board_RelicPop_Reroll/i, settleMs: 900 },
@@ -49,7 +51,7 @@ export const PRISON_RULES: readonly Rule[] = [
   { kind: 'board', re: /Btn_S16Board_EventPop_Confirm/i, settleMs: 500 },
 ];
 
-const RANK: Record<PrisonFrameKind, number> = { board: 1, instruments: 2, objective: 3, treasure: 3 };
+const RANK: Record<PrisonFrameKind, number> = { board: 1, instruments: 2, objective: 3, treasure: 3, theme: 3 };
 
 /** Кадр, который пора снять, и то, что о нём известно из лога. */
 export interface PrisonShot {
@@ -64,6 +66,11 @@ export interface PrisonShot {
   rerolled: boolean;
   /** Доска сразу после окна сокровищницы (подарок взят или просмотр доски). */
   treasureClosed: boolean;
+  /**
+   * Окно темы: номер озвучки «Play_VO_Story_S16_Special_0N» рядом с ним
+   * (null — не было). Какая это тема — решает память забега.
+   */
+  theme: number | null;
   lines: string[];
 }
 
@@ -88,6 +95,7 @@ export class PrisonTriggers {
   private lastAction = 0;
   private lastEat = 0;
   private lastGift = 0;
+  private lastSpecial: { n: number; at: number } | null = null;
 
   constructor(
     private readonly onShot: (shot: PrisonShot) => void,
@@ -114,6 +122,8 @@ export class PrisonTriggers {
     if (/Eating_red_screen/.test(line)) this.lastEat = stampMs(line) ?? 0;
     if (!line.includes('S16')) return;
     const at = stampMs(line) ?? 0;
+    const special = /S16_Special_(\d+)/.exec(line);
+    if (special) this.lastSpecial = { n: Number(special[1]), at };
     if (/Btn_S16Board_ActionCell/.test(line)) this.lastAction = at;
     if (/ColoredPop_Confirm/.test(line)) this.lastGift = at;
     const rule = PRISON_RULES.find((r) => r.re.test(line));
@@ -156,6 +166,12 @@ export class PrisonTriggers {
     const shut = stampMs(b.lines.find((l) => /ColoredPop Destory/i.test(l)) ?? '');
     if (shut) treasureView = !(this.lastGift && shut >= this.lastGift && shut - this.lastGift < 3000);
     const rerolled = b.kind === 'instruments' && b.lines.some((l) => /Btn_S16Board_RelicPop_Reroll/i.test(l));
-    this.onShot({ kind: b.kind, fresh, after, treasureView, rerolled, treasureClosed: !!shut, lines: b.lines });
+    // Озвучка темы идёт сразу за окном (через десятки мс).
+    let theme: number | null = null;
+    if (b.kind === 'theme' && this.lastSpecial) {
+      const pop = stampMs(b.lines.find((l) => /S16BoardThemePop Run/i.test(l)) ?? '') ?? 0;
+      if (Math.abs(this.lastSpecial.at - pop) <= 3000) theme = this.lastSpecial.n;
+    }
+    this.onShot({ kind: b.kind, fresh, after, treasureView, rerolled, treasureClosed: !!shut, theme, lines: b.lines });
   }
 }
