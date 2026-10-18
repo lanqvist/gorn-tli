@@ -42,6 +42,11 @@ describe('метки подсказки', () => {
     expect(h.marks).toEqual([{ kind: 'box', box: b.at.decisionCards[1] }, { kind: 'ring', at: [w.x, w.y], r: w.r }]);
   });
 
+  it('ряд из одной карточки «Завершить» — рамка на ней', () => {
+    const b = board({ warden: 16, decision: { kind: 'manage', consume: false, replace: false, end: true }, kinds: ['end'] });
+    expect(hint({ type: 'end' }, { board: b, warden: C(16) })).toEqual({ text: 'Завершить день', marks: [{ kind: 'box', box: b.at.decisionCards[0] }] });
+  });
+
   it('допросная: Наградить и Подстрекнуть', () => {
     const b = board({ warden: 1, decision: { kind: 'office' }, kinds: ['instigate', 'bestow'] });
     expect(hint({ type: 'office', choice: 'bestow' }, { board: b, warden: 0 })).toEqual({ text: 'Наградить', marks: [{ kind: 'box', box: b.at.decisionCards[1] }] });

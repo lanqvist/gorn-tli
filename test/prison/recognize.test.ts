@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { read } from '../../src/core/prison/recognize/index.js';
 import type { Frame, Geometry } from '../../src/core/prison/recognize/types.js';
 import type { ScreenView } from '../../src/core/prison/view.js';
-import { compareBoard, frame, HAVE_DATA, labels, Score, type BoardLabel } from './data.js';
+import { compareBoard, DATA, frame, HAVE_DATA, labels, Score, type BoardLabel } from './data.js';
 
 function board(view: ScreenView) {
   if (view.screen !== 'board') throw new Error(`экран ${view.screen}, ждали доску`);
@@ -203,8 +203,18 @@ describe.skipIf(!HAVE_DATA)('кадры Горна 1920×1080 (своя разм
   });
 });
 
+/**
+ * Кадр Горна за день: копия в папке данных (images/gorn-new, images/gorn)
+ * или ещё не перенесённый из «Изображения/Горн — тюрьма». null — нигде нет.
+ */
+function gornShot(day: string, name: string): string | null {
+  for (const dir of [join(DATA, 'images', 'gorn-new', day), join(DATA, 'images', 'gorn', day), join(homedir(), 'Pictures', 'Горн — тюрьма', day)]) {
+    if (existsSync(join(dir, name))) return join(dir, name);
+  }
+  return null;
+}
+
 /** Свои кадры Горна, где надпись над карточками дверей не узнаётся (часто — со «Пойти в допросную»). */
-const GORN_DAY = join(homedir(), 'Pictures', 'Горн — тюрьма', '2026-10-17');
 const DOORS_NO_HEADER: Record<string, number[]> = {
   // камеры как у игрока; 0 — допросная
   '234506-094-board.png': [0, 2, 4],
@@ -216,12 +226,41 @@ const DOORS_NO_HEADER: Record<string, number[]> = {
   '234119-032-board.png': [7, 8, 11],
 };
 
-describe.skipIf(!existsSync(GORN_DAY))('двери без узнанной надписи над карточками', () => {
+describe.skipIf(!Object.keys(DOORS_NO_HEADER).every((n) => gornShot('2026-10-17', n)))('двери без узнанной надписи над карточками', () => {
   it('номера дверей читаются по карточкам, допросная — 0, порядок как на экране', () => {
     for (const [name, doors] of Object.entries(DOORS_NO_HEADER)) {
-      const b = board(read(frame(join(GORN_DAY, name)), null).view);
+      const b = board(read(frame(gornShot('2026-10-17', name)!), null).view);
       expect(b.doors, name).toEqual(doors.map((n) => (n === 0 ? 0 : n - 1)));
       expect(b.decision, name).toBeNull();
     }
+  });
+});
+
+const DAY2 = ['113706-965-board.png', '113707-820-board.png', '113709-369-board.png', '113713-948-manual.png', '113719-070-manual.png', '113721-896-board.png', '113434-621-board.png', '113441-963-board.png', '113506-316-board.png'];
+
+describe.skipIf(!DAY2.every((n) => gornShot('2026-10-18', n)))('ряд решений без надписи и панель орудий (кадры 2026-10-18)', () => {
+  const at = (name: string) => board(read(frame(gornShot('2026-10-18', name)!), null).view);
+
+  it('одна карточка «Завершить» по центру — ряд решений из одного конца дня', () => {
+    for (const name of ['113707-820-board.png', '113709-369-board.png', '113713-948-manual.png', '113719-070-manual.png']) {
+      const b = at(name);
+      expect(b.decision, name).toEqual({ kind: 'manage', consume: false, replace: false, end: true });
+      expect(b.at.decisionKinds, name).toEqual(['end']);
+      expect(b.at.decisionCards, name).toHaveLength(1);
+    }
+  });
+
+  it('надпись есть, а карточка ещё не выехала — не ряд решений', () => {
+    expect(at('113706-965-board.png').decision).toBeNull();
+  });
+
+  it('ряды из двух карточек: Замена + Завершить, Пожирание + Завершить', () => {
+    expect(at('113434-621-board.png').at.decisionKinds).toEqual(['replace', 'end']);
+    expect(at('113506-316-board.png').at.decisionKinds).toEqual(['consume', 'end']);
+  });
+
+  it('панель орудий: «Монета судьбы» и «Раскалённое клеймо»; стена с отсветом — не орудие', () => {
+    for (const name of ['113707-820-board.png', '113713-948-manual.png', '113721-896-board.png']) expect(at(name).tools, name).toEqual(['coin', 'fire']);
+    expect(at('113441-963-board.png').tools).toEqual(['coin']);
   });
 });
