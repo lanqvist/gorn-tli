@@ -22,7 +22,7 @@ import { normalize, sample } from '../src/core/prison/recognize/sample.ts';
 import { encodeU8, pack, unpack } from '../src/core/prison/recognize/templates.ts';
 import { glyphs, glyphVec } from '../src/core/prison/recognize/text.ts';
 import { NUMBER_RX, NUMBER_RY, calibrate } from '../src/core/prison/recognize/geometry.ts';
-import { FACE, JAW, LOCK_RX, LOCK_RY, colorShare, faceVec, glow, isJawRed, jawVec } from '../src/core/prison/recognize/cells.ts';
+import { FACE, JAW, LOCK_RX, LOCK_RY, colorShare, faceVec, glow, isJawRed, jawVec, preyVec } from '../src/core/prison/recognize/cells.ts';
 import {
   CHAIN_BANNER,
   CHROMATIC_HEADER,
@@ -330,6 +330,8 @@ function buildScreens() {
   const chroma = {};
   const objectives = {};
   const chromaHeader = [];
+  const preySum = new Float32Array(16 * 18 * 3);
+  let preyN = 0;
   const gorn = { ...labels('gorn-screens.json'), ...labels('gorn-new-screens.json') };
   const ru = labels('screens-ru.json');
   const boardsRu = labels('boards-ru.json');
@@ -375,7 +377,23 @@ function buildScreens() {
       if (chromaHeader.length < 200) chromaHeader.push(vecOf(frame, geo, CHROMATIC_HEADER, 92, 20, 1));
     }
     if (v.objective) push(objectives, v.objective, vecOf(frame, geo, OBJECTIVE, 80, 15, 1));
+    // Метка «Добыча»: номера камер (с 1), где на портрете прицел.
+    // Прицел мелкий и резкий: сдвиг на полпикселя заметно меняет картинку. Эталон —
+    // по калиброванной геометрии (как в работе) и со сдвигами ±1 px.
+    if (v.prey?.length) {
+      const cal = calibrate(frame) ?? geo;
+      for (const n of v.prey) {
+        for (const dx of [-1, 0, 1]) {
+          for (const dy of [-1, 0, 1]) {
+            const pv = preyVec(frame, { ...cal, tx: cal.tx + dx * cal.s, ty: cal.ty + dy * cal.s }, n - 1);
+            for (let i = 0; i < pv.length; i++) preySum[i] += pv[i];
+          }
+        }
+        preyN++;
+      }
+    }
   }
+  normalize(preySum);
   // «Путь обхода тюрьмы» на кадрах ru/ — та же цель.
   for (const [name] of Object.entries(boardsRu)) {
     const { frame, geo } = frameAt(`ru/${name}`);
@@ -428,7 +446,9 @@ function buildScreens() {
     pickHeaders: protoList(pickHeaders, 2),
     reroll: prototypes(reroll.yes, 2).map(pack),
     gifts: protoList(gifts, 2),
+    ...(preyN ? { prey: pack(preySum) } : {}),
   });
+  console.log(`screens: метка «Добыча» — ${preyN} образцов`);
 }
 
 const STEPS = { board: buildBoard, cells: buildCells, digits: buildDigits, screens: buildScreens };

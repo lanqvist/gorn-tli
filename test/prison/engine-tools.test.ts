@@ -5,7 +5,7 @@ import { applyCode, codeBuffer, decode, encode, legalCodes } from '../../src/cor
 import type { Rng } from '../../src/core/prison/engine/rng.js';
 import { bite, canEat, morning, openCell } from '../../src/core/prison/engine/rules.js';
 import {
-  DOORS, DOORS_N, FLAGS, F_SCRATCH, F_TUSK, F_VIS_BEAST, F_VIS_TIER, HUNT_LEFT, LOCK, NEST, PHASE, PRE_TIER,
+  DOORS, DOORS_N, FLAGS, F_SCRATCH, F_TUSK, F_VIS_BEAST, F_VIS_TIER, LOCK, PREY_LEFT, NEST, PHASE, PRE_TIER,
   P_PATROL, State, WARDEN,
 } from '../../src/core/prison/engine/state.js';
 import { NO, P, Seq, YES, beast, blank, hide, inmates, locked, manageAt, put, tier } from './engine-helpers.js';
@@ -478,9 +478,27 @@ describe('утренние орудия', () => {
     act(s, { type: 'hunt', to: 3 }, YES);
     // это действие дня: день кончился, первое утро уже прошло
     expect(s.m[PHASE]).toBe(P_PATROL);
-    expect(s.m[HUNT_LEFT]).toBe(2);
+    expect(s.m[PREY_LEFT + 3]).toBe(2);
     for (let i = 0; i < 3; i++) morning(s, YES, P);
     expect([tier(s, 2), tier(s, 3), tier(s, 9)]).toEqual([3, 3, 2]);
+  });
+
+  it('«Добыча»: меток может быть несколько; помеченного второй раз не метят', () => {
+    // Кадры 18.10 19:33: метки на №10 и №11 сразу, в цели — только непомеченный.
+    const s = withTools('trap');
+    put(s, 2, LION, 0);
+    put(s, 3, WOLF, 0);
+    put(s, 4, WOLF, 0);
+    manageAt(s, 2);
+    expect(legal(s).filter((a) => a.type === 'hunt').map((a) => (a.type === 'hunt' ? a.to : -1)).sort()).toEqual([3, 4]);
+    act(s, { type: 'hunt', to: 3 }, YES);
+    // Утро подняло льва и №3; цель — той же редкости, что лев.
+    put(s, 4, WOLF, tier(s, 2));
+    manageAt(s, 2);
+    // Метка на №3 ещё действует, а «Выслеживание» снова есть — но только на №4.
+    expect(legal(s).filter((a) => a.type === 'hunt')).toEqual([{ type: 'hunt', to: 4 }]);
+    act(s, { type: 'hunt', to: 4 }, YES);
+    expect([s.m[PREY_LEFT + 3], s.m[PREY_LEFT + 4]]).toEqual([1, 2]);
   });
 
   it('«Добыча» сходит, когда лев или добыча сменили кодовое имя', () => {
@@ -490,11 +508,11 @@ describe('утренние орудия', () => {
     put(s, 4, RAT, 0);
     manageAt(s, 2);
     act(s, { type: 'hunt', to: 3 }, YES);
-    expect(s.m[HUNT_LEFT]).toBe(2);
+    expect(s.m[PREY_LEFT + 3]).toBe(2);
     // волк съедает крысу и меняет зверя (Seq: прирост без шансов, новый зверь — мамонт)
     bite(s, new Seq([0]), P, 3, 4, false);
     expect(beast(s, 3)).toBe(MAMMOTH);
-    expect(s.m[HUNT_LEFT]).toBe(0);
+    expect(s.m[PREY_LEFT + 3]).toBe(0);
   });
 });
 

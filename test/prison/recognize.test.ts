@@ -356,3 +356,13 @@ describe.skipIf(!['191617-510-board.png', '191646-199-board.png', '191647-757-bo
     }
   });
 });
+
+describe.skipIf(!['193251-271-board.png', '193131-795-board.png', '191645-322-board.png', '184201-534-board.png'].every((n) => gornShot('2026-10-18', n)))('метка «Добыча» на портрете (забеги 2026-10-18 19:16, 19:30)', () => {
+  const prey = (name: string) => board(read(frame(gornShot('2026-10-18', name)!), null).view).cells.flatMap((c, i) => (c.prey ? [i] : []));
+  it('прицел виден и на затемнённом экране выбора цели; без меток — пусто', () => {
+    expect(prey('193251-271-board.png')).toEqual([9]);
+    expect(prey('193131-795-board.png')).toEqual([9, 10]);
+    expect(prey('191645-322-board.png')).toEqual([13]);
+    expect(prey('184201-534-board.png')).toEqual([]);
+  });
+});

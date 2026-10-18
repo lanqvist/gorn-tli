@@ -15,7 +15,7 @@ import {
 import type { Rng } from './rng.js';
 import {
   BEAST, CHAIN_EATER, CHAIN_REACTION, DAY, DAY_LIMIT, DOORS, DOORS_N, EVT, FLAGS, F_SCRATCH, F_TUSK, F_VIS_BEAST,
-  F_VIS_RARE, F_VIS_TIER, HUNT_LEFT, HUNT_LION, HUNT_PREY, LOCK, NEST, NEXT, OBJECTIVE_ID, OBJ_DONE, OBJ_PROGRESS,
+  F_VIS_RARE, F_VIS_TIER, LOCK, NEST, PREY_LEFT, PREY_LION, NEXT, OBJECTIVE_ID, OBJ_DONE, OBJ_PROGRESS,
   OFFER, OFFER_GIFT, OFFER_KIND, OFFER_N, OFFER_TOOL, OFFICE_LEFT, PICK_TOOLS, PICK_GIFTS, PRE_BEAST, PRE_TIER,
   P_CHAIN, P_DAYEND, P_END, P_EVENT, P_MANAGE, P_MORNING, P_OFFICE, P_PATROL, P_RATWAY, REROLLS, START, STAT_BITES,
   START_PENDING, STAT_DEVOURS, STAT_EVENTS, STAT_OPENED, STAT_STEPS, STORAGE, TIER, TOOLS, USED, USED_DEVOUR, USED_HUNT,
@@ -218,7 +218,7 @@ export function setObjective(s: State, r: Rng, p: Params, obj: number): void {
 /** Забыть метки, привязанные к узнику камеры c (охота). */
 function forget(s: State, c: number): void {
   const m = s.m;
-  if (m[HUNT_LEFT]! > 0 && (m[HUNT_LION] === c || m[HUNT_PREY] === c)) m[HUNT_LEFT] = 0;
+  for (let t = 1; t < CELLS; t++) if (m[PREY_LEFT + t]! > 0 && (t === c || m[PREY_LION + t] === c)) m[PREY_LEFT + t] = 0;
 }
 
 /** Камера снова заперта: узник ушёл. Может выпасть новое событие за дверью. */
@@ -561,12 +561,12 @@ export function morning(s: State, r: Rng, p: Params): void {
   }
 
   // Метка «Добыча» (tlidb): 3 хода, в начале каждого дня лев и добыча +1.
-  if (m[HUNT_LEFT]! > 0) {
-    const lion = m[HUNT_LION]!;
-    const prey = m[HUNT_PREY]!;
-    m[HUNT_LEFT] = m[HUNT_LEFT]! - 1;
+  for (let prey = 1; prey < CELLS; prey++) {
+    if (m[PREY_LEFT + prey]! <= 0) continue;
+    const lion = m[PREY_LION + prey]!;
+    m[PREY_LEFT + prey] = m[PREY_LEFT + prey]! - 1;
     raise(s, r, p, prey, 1);
-    raise(s, r, p, lion, 1);
+    if (lion > 0) raise(s, r, p, lion, 1);
   }
 
   topUpEvents(s, r, p);
@@ -632,16 +632,17 @@ function coin(s: State, r: Rng, p: Params): void {
 export function huntTargets(s: State): number {
   const m = s.m;
   const w = m[WARDEN]!;
-  if (!hasTool(s, TOOL.trap) || m[HUNT_LEFT]! > 0 || m[BEAST + w] !== LION || m[TIER + w]! < 0) return 0;
-  return targets(s, w) & ~lockedMask(s);
+  if (!hasTool(s, TOOL.trap) || m[BEAST + w] !== LION || m[TIER + w]! < 0) return 0;
+  let marked = 0;
+  for (let c = 1; c < CELLS; c++) if (m[PREY_LEFT + c]! > 0) marked |= 1 << c;
+  return targets(s, w) & ~lockedMask(s) & ~marked;
 }
 
 /** «Выслеживание»: лев надзирателя метит добычу; это действие дня. */
 export function hunt(s: State, prey: number, p: Params): void {
   const m = s.m;
-  m[HUNT_LION] = m[WARDEN]!;
-  m[HUNT_PREY] = prey;
-  m[HUNT_LEFT] = p.trapMornings;
+  m[PREY_LION + prey] = m[WARDEN]!;
+  m[PREY_LEFT + prey] = p.trapMornings;
   m[USED] = USED_HUNT;
   m[NEXT] = P_DAYEND;
 }
@@ -1150,8 +1151,10 @@ export function newRun(s: State, r: Rng, p: Params, setup: RunSetup): void {
   m[DAY_LIMIT] = setup.start === START_EVENT.ironlaw ? p.ironLawDays : p.days;
   m[REROLLS] = p.rerolls;
   m[CHAIN_EATER] = -1;
-  m[HUNT_LION] = -1;
-  m[HUNT_PREY] = -1;
+  for (let c = 0; c < CELLS; c++) {
+    m[PREY_LEFT + c] = 0;
+    m[PREY_LION + c] = -1;
+  }
   m[PICK_TOOLS] = setup.startPick ? 1 : 0;
   m[NEXT] = P_MORNING;
   // С выбором орудия доска за ним ещё не видна: её разыграет первое утро. Иначе

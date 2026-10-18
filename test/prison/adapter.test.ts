@@ -5,7 +5,7 @@ import { PrisonAdapter, blankMemory, loadMemory } from '../../src/core/prison/ad
 import { A_HUNT, Rng, applyCode, codeBuffer, decode, encode, legalCodes } from '../../src/core/prison/engine/actions.js';
 import {
   BEAST, CHAIN_EATER, DAY, DAY_LIMIT, DOORS, DOORS_N, EVT, FLAGS, F_VIS_TIER, LOCK, NEST, NEXT, OBJECTIVE_ID, OFFER, OFFER_GIFT,
-  OFFER_KIND, OFFER_N, PHASE, PICK_GIFTS, PRE_TIER, P_CHAIN, P_DAYEND, P_MANAGE, P_PATROL, P_PICK, REROLLS, START, STORAGE,
+  OFFER_KIND, OFFER_N, PHASE, PICK_GIFTS, PREY_LEFT, PREY_LION, PRE_TIER, P_CHAIN, P_DAYEND, P_MANAGE, P_PATROL, P_PICK, REROLLS, START, STORAGE,
   TIER, TOOLS, WARDEN, type State,
 } from '../../src/core/prison/engine/state.js';
 import { C, MANAGE_ALL, board, pick } from './view-helpers.js';
@@ -96,6 +96,39 @@ describe('адаптер: память забега', () => {
     const shown = legal(pos.state).filter(pos.allowed);
     expect(shown.length).toBeGreaterThan(0);
     expect(shown.every((c) => c >> 6 === A_HUNT)).toBe(true);
+  });
+
+  it('метки «Добыча» с доски: лев и день — с выбора добычи; помеченного не советуем', () => {
+    const a = new PrisonAdapter({ ...blankMemory(), tools: ['trap'] });
+    const row = { kind: 'manage' as const, consume: true, replace: true, end: true, hunt: true };
+    const inmates = { 4: 'lion2', 10: 'wolf2', 11: 'wolf2' };
+    a.logDay({ cur: 13, max: 20 });
+    a.board(board({ inmates, warden: 4, decision: row, kinds: ['consume', 'replace', 'hunt', 'end'] }));
+    a.board(board({ inmates, warden: 4, decision: { kind: 'ratway' } }));
+    // День 14: на №10 прицел.
+    a.logDay({ cur: 14, max: 20 });
+    const marked = board({ inmates, warden: 4, decision: row, kinds: ['consume', 'replace', 'hunt', 'end'] });
+    marked.cells[C(10)]!.prey = true;
+    a.board(marked);
+    expect(a.mem.marks).toEqual([{ cell: C(10), lion: C(4), day: 12 }]);
+    const pos = ok(a);
+    expect([pos.state.m[PREY_LEFT + C(10)], pos.state.m[PREY_LION + C(10)]]).toEqual([2, C(4)]);
+    const hunts = legal(pos.state).filter(pos.allowed).filter((c) => c >> 6 === A_HUNT).map((c) => c & 63);
+    expect(hunts).toEqual([C(11)]);
+  });
+
+  it('новый день: вчерашняя надпись «Выберите цель» до дверей — не совет и не выбор добычи', () => {
+    const a = new PrisonAdapter({ ...blankMemory(), tools: ['trap'] });
+    const row = { kind: 'manage' as const, consume: true, replace: true, end: true, hunt: true };
+    const inmates = { 4: 'lion2', 10: 'wolf2' };
+    a.logDay({ cur: 13, max: 20 });
+    a.board(board({ inmates, warden: 4, decision: row, kinds: ['consume', 'replace', 'hunt', 'end'] }));
+    a.board(board({ inmates, warden: 4, decision: { kind: 'ratway' } }));
+    expect(a.mem.step).toBe('hunt');
+    a.logDay({ cur: 14, max: 20 });
+    a.board(board({ inmates, warden: 4, decision: { kind: 'ratway' } }));
+    expect(a.mem.step).toBe('patrol');
+    expect(a.position().ok).toBe(false);
   });
 
   it('«Выберите цель» после обхода — крысиная тропа, как раньше', () => {

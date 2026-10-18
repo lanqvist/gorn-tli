@@ -84,10 +84,7 @@ export const DOORS = S0 + 24;
 export const CHAIN_REACTION = S0 + 27;
 /** Сколько ещё выборов в допросной за этот визит. */
 export const OFFICE_LEFT = S0 + 28;
-/** Метка «Добыча»: лев, добыча, сколько утр осталось (0 — метки нет). */
-export const HUNT_LION = S0 + 29;
-export const HUNT_PREY = S0 + 30;
-export const HUNT_LEFT = S0 + 31;
+// S0 + 29…31 свободны (была одна метка «Добыча» на доску).
 /** Счётчики забега. */
 export const STAT_OPENED = S0 + 32;
 export const STAT_BITES = S0 + 33;
@@ -101,8 +98,15 @@ export const USURP = S0 + 37;
  * забег начат с выбора орудия, доску покажет первое утро.
  */
 export const START_PENDING = S0 + 38;
+/**
+ * Метки «Добыча» по камере добычи: сколько утр ещё действует (0 — метки нет)
+ * и камера льва. Меток может быть несколько; помеченного второй раз не метят
+ * (кадры 18.10 19:33: метки на №10 и №11 сразу, цель — только непомеченный).
+ */
+export const PREY_LEFT = S0 + 39;
+export const PREY_LION = S0 + 39 + CELLS;
 
-export const SIZE = S0 + 39;
+export const SIZE = S0 + 39 + 2 * CELLS;
 
 // ── фазы ────────────────────────────────────────────────────────────────────
 

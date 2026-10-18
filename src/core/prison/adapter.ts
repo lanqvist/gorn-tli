@@ -24,7 +24,7 @@ import {
 import { Rng } from './engine/rng.js';
 import { newRun, officeRounds, targets } from './engine/rules.js';
 import {
-  BEAST, CHAIN_EATER, DAY, DAY_LIMIT, DOORS, DOORS_N, EVT, FLAGS, F_SCRATCH, F_VIS_TIER, HUNT_LION, HUNT_PREY, LOCK,
+  BEAST, CHAIN_EATER, DAY, DAY_LIMIT, DOORS, DOORS_N, EVT, FLAGS, F_SCRATCH, F_VIS_TIER, LOCK, PREY_LEFT, PREY_LION,
   NEST, NEXT, OBJECTIVE_ID, OFFER, OFFER_GIFT, OFFER_KIND, OFFER_N, OFFER_TOOL, OFFICE_LEFT, PHASE, PICK_GIFTS,
   PICK_TOOLS, PRE_BEAST, PRE_TIER, P_CHAIN, P_DAYEND, P_MANAGE, P_OFFICE, P_PATROL, P_PICK, P_RATWAY, REROLLS, START,
   STORAGE, State, TIER, TOOLS, USED, USED_DEVOUR, USURP, WARDEN,
@@ -109,6 +109,14 @@ export interface RunMemory {
    * однажды читалась как «Плеть» и висела в памяти до конца забега).
    */
   toolSightings: ToolId[];
+  /**
+   * Метки «Добыча»: камера добычи, камера льва (−1 — неизвестно) и день, когда
+   * метку поставили. Берутся с доски (прицел на портрете); лев и день — с
+   * последнего экрана выбора добычи.
+   */
+  marks: { cell: number; lion: number; day: number }[];
+  /** Экран выбора добычи: лев надзирателя и день (для следующей новой метки). */
+  huntAt: { lion: number; day: number } | null;
 }
 
 const lockedCell = (): CellMemory => ({ k: 'locked' });
@@ -142,6 +150,8 @@ export function blankMemory(): RunMemory {
     dayStorage: 0,
     storageFloor: 0,
     toolSightings: [],
+    marks: [],
+    huntAt: null,
   };
 }
 
@@ -202,6 +212,10 @@ export function loadMemory(x: unknown): RunMemory {
     dayStorage: isInt(m.dayStorage, 0, 99) ? m.dayStorage : 0,
     storageFloor: isInt(m.storageFloor, 0, 99) ? m.storageFloor : 0,
     toolSightings: Array.isArray(m.toolSightings) ? (m.toolSightings.filter((t) => tools.includes(t)) as ToolId[]) : [],
+    marks: Array.isArray(m.marks)
+      ? m.marks.filter((k) => k && isInt(k.cell, 1, CELLS - 1) && isInt(k.lion, -1, CELLS - 1) && isInt(k.day, -1, 29)).map((k) => ({ cell: k.cell, lion: k.lion, day: k.day }))
+      : [],
+    huntAt: m.huntAt && isInt(m.huntAt.lion, 0, CELLS - 1) && isInt(m.huntAt.day, 0, 29) ? { lion: m.huntAt.lion, day: m.huntAt.day } : null,
   };
 }
 
@@ -240,6 +254,11 @@ export class PrisonAdapter {
   mem: RunMemory;
   /** День этого кадра взят из лога — экранный не нужен. */
   private dayFromLog = false;
+  /**
+   * День только начался (по логу), дверей ещё не было: «Выберите цель» на
+   * таком кадре — вчерашняя надпись после «Выслеживания», не тропа и не выбор.
+   */
+  private freshDay = false;
 
   constructor(saved?: unknown, private readonly p: Readonly<Params> = DEFAULT_PARAMS) {
     this.mem = loadMemory(saved);
@@ -270,6 +289,7 @@ export class PrisonAdapter {
     m.themeFresh = false;
     m.offer = [];
 
+    if (v.doors.length || v.chain || (v.decision && v.decision.kind !== 'ratway')) this.freshDay = false;
     if (v.chain) {
       this.chainBoard(v);
       return;
@@ -277,7 +297,8 @@ export class PrisonAdapter {
     m.firstBite = false;
     // Выбор добычи «Выслеживания»: доска та же, что в ряде решений, но
     // затемнена кроме целей — редкости с неё не перечитываем.
-    const huntScreen = v.decision?.kind === 'ratway' && (m.step === 'hunt' || (m.step === 'manage' && !!m.decision?.hunt));
+    const stale = this.freshDay && v.decision?.kind === 'ratway';
+    const huntScreen = !stale && v.decision?.kind === 'ratway' && (m.step === 'hunt' || (m.step === 'manage' && !!m.decision?.hunt));
     v.cells.forEach((c, n) => {
       if (n === OFFICE || huntScreen) return;
       const was = m.cells[n]!;
@@ -305,12 +326,14 @@ export class PrisonAdapter {
     });
     if (v.warden !== null) m.warden = v.warden;
     m.chainTargets = [];
+    if (!huntScreen) this.readMarks(v);
     if (huntScreen) {
+      if (v.warden !== null) m.huntAt = { lion: v.warden, day: m.day };
       // «Выберите цель» сразу после ряда с «Выслеживанием» — добыча, не крысиная тропа
       // (надпись та же). Ряд решений помним: «Отменить» вернёт к нему.
       m.step = 'hunt';
       m.doors = [];
-    } else if (v.decision?.kind === 'ratway') {
+    } else if (v.decision?.kind === 'ratway' && !stale) {
       m.step = 'ratway';
       m.doors = [];
       m.decision = null;
@@ -326,6 +349,22 @@ export class PrisonAdapter {
       m.step = 'patrol';
       m.doors = v.doors.filter((n) => n !== m.warden);
       m.decision = null;
+    }
+  }
+
+  /**
+   * Метки «Добыча» по прицелам на доске: новая — со льва и дня последнего
+   * выбора добычи; метка без прицела (узник ушёл, срок вышел) — снята.
+   */
+  private readMarks(v: BoardView): void {
+    const m = this.mem;
+    const seen = v.cells.flatMap((c, n) => (n !== OFFICE && c.kind === 'inmate' && c.prey ? [n] : []));
+    m.marks = m.marks.filter((k) => seen.includes(k.cell));
+    for (const n of seen) {
+      if (m.marks.some((k) => k.cell === n)) continue;
+      const h = m.huntAt && m.huntAt.day < m.day ? m.huntAt : null;
+      m.marks.push({ cell: n, lion: h ? h.lion : -1, day: h ? h.day : m.day - 1 });
+      if (h) m.huntAt = null;
     }
   }
 
@@ -410,7 +449,16 @@ export class PrisonAdapter {
     if (d.max === this.p.ironLawDays && m.start === 'none') m.start = 'ironlaw';
     // cur — номер дня с единицы; 0 — выбор орудий перед первым днём.
     const day = Math.max(0, Math.min(d.max - 1, d.cur - 1));
-    if (day > m.day) m.dayStorage = m.storage;
+    if (day > m.day) {
+      m.dayStorage = m.storage;
+      this.freshDay = true;
+      // Выбор добычи и ряд решений вчерашние: новый день начинается с обхода.
+      if (m.step === 'hunt' || m.step === 'manage' || m.step === 'ratway') {
+        m.step = 'patrol';
+        m.doors = [];
+        m.decision = null;
+      }
+    }
     m.day = day;
   }
 
@@ -637,8 +685,11 @@ export class PrisonAdapter {
     x[OBJECTIVE_ID] = objective;
     x[USURP] = EVENT.usurp1;
     x[CHAIN_EATER] = -1;
-    x[HUNT_LION] = -1;
-    x[HUNT_PREY] = -1;
+    // Метки «Добыча»: поставлена в день d — к утру дня d+k осталось trapMornings − k (прицел виден — хотя бы 1).
+    for (const k of m.marks) {
+      x[PREY_LEFT + k.cell] = Math.max(1, p.trapMornings - (m.day - k.day));
+      x[PREY_LION + k.cell] = k.lion;
+    }
     x[REROLLS] = m.rerolls;
 
     let phase = P_PATROL;

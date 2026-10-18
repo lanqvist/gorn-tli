@@ -113,6 +113,8 @@ export interface ScreensTemplate {
   reroll: Float32Array[];
   chromaticHeader: Float32Array[];
   gifts: Proto[];
+  /** Метка «Добыча» на портрете (null — эталона нет). */
+  prey: Float32Array | null;
 }
 
 let screens: ScreensTemplate | null = null;
@@ -120,7 +122,7 @@ let screens: ScreensTemplate | null = null;
 export function screensTemplate(): ScreensTemplate {
   if (!screens) {
     type P = { label: string; v: string }[];
-    const j = screensJson as unknown as Record<string, P> & { reroll: string[]; chromaticHeader: string[] };
+    const j = screensJson as unknown as Record<string, P> & { reroll: string[]; chromaticHeader: string[]; prey?: string };
     const list = (k: string): Proto[] => (j[k] ?? []).map((p) => ({ label: p.label, v: unpack(p.v) }));
     screens = {
       headers: list('headers'),
@@ -133,6 +135,7 @@ export function screensTemplate(): ScreensTemplate {
       pickHeaders: list('pickHeaders'),
       reroll: (j.reroll ?? []).map((v) => unpack(v)),
       chromaticHeader: (j.chromaticHeader ?? []).map((v) => unpack(v)),
+      prey: j.prey ? unpack(j.prey) : null,
       gifts: list('gifts'),
     };
   }

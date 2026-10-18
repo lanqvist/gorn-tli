@@ -6,6 +6,7 @@ import type { Beast, BoardView, Box as ViewBox, CellView, Tier, ToolId } from '.
 import { cardBox, cardCenters, classifyCard, readDoorNumber } from './cards.js';
 import {
   borderColor,
+  preyVec,
   chainJawShare,
   eventShare,
   faceVec,
@@ -56,6 +57,9 @@ export function classifyFace(frame: Frame, geo: Geometry, cell: number, t: Cells
   }
   return { label, score };
 }
+
+const PREY_MIN = 0.7;
+const preyBuf = new Float32Array(16 * 18 * 3);
 
 /** Яркость рамки портрета, ниже которой редкость считается не нарисованной. */
 const DARK_BORDER = 0.3;
@@ -212,6 +216,12 @@ export function readBoard(frame: Frame, geo: Geometry, t: BoardTemplates): Board
   const chain = isChain(frame, geo);
   let header = chain ? null : readHeader(frame, geo, t.screens);
   const cells = readCells(frame, geo, t.cells, chain);
+  // Метка «Добыча»: прицел внизу портрета (сходство 0,86–0,99, у прочих узников ≤0,55).
+  if (t.screens.prey) {
+    cells.forEach((c, n) => {
+      if (c.kind === 'inmate' && dot(preyVec(frame, geo, n, preyBuf), t.screens.prey!) >= PREY_MIN) c.prey = true;
+    });
+  }
   const at: BoardView['at'] = {
     cells: cells.map((_, c) => {
       const [x, y] = toFrame(geo, ...cellCenter(c));

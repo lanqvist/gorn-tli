@@ -161,6 +161,16 @@ export function jawVec(frame: Frame, geo: Geometry, cell: number, out: Float32Ar
   return out;
 }
 
+/** Метка «Добыча» (золотой прицел внизу портрета): цветная картинка 16×18 области (−16…+16, +24…+60). */
+export const PREY = { x0: -16, y0: 24, x1: 16, y1: 60, w: 16, h: 18 };
+
+export function preyVec(frame: Frame, geo: Geometry, cell: number, out: Float32Array = new Float32Array(PREY.w * PREY.h * 3)): Float32Array {
+  const [x, y] = portrait(cell);
+  sample(frame, geo, [x + PREY.x0, y + PREY.y0, x + PREY.x1, y + PREY.y1], PREY.w, PREY.h, 3, out);
+  normalize(out);
+  return out;
+}
+
 /** Пламенные клыки цепочки вокруг портрета-цели: красное по бокам и снизу. */
 export function chainJawShare(frame: Frame, geo: Geometry, cell: number): number {
   const [x, y] = portrait(cell);

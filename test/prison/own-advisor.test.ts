@@ -54,11 +54,13 @@ describe('свой путь подсказок', () => {
     expect(text(rs)[0]).toMatch(/^(Взять: |Обновить выбор)/);
     expect(replies.some((r) => r.type === 'near')).toBe(true);
 
-    rs = await shot({ screen: 'board', board: board({ warden: 1, daysLeft: 20, doors: [3, 5, 6], tools: ['crown'] }) });
+    rs = await shot({ screen: 'board', board: board({ warden: 1, daysLeft: 20, doors: [3, 5, 6], tools: ['crown'], objective: 'jungle' }) });
     expect(rs).toHaveLength(1);
     expect(text(rs)[0]).toMatch(/^Иди в №[356]/);
 
-    rs = await shot({ screen: 'board', board: board({ inmates: { 5: 'mammoth4', 9: 'lion4' }, warden: 5, decision: MANAGE_ALL, kinds: ['consume', 'replace', 'end'], tools: ['crown'] }) });
+    // Цель «Закон джунглей» — Пожирание заметно лучше (на 3000 раундах 7,10 против 6,91 у «Завершить»):
+    // без неё ходы почти равны, и на 120 раундах теста совет решали кости.
+    rs = await shot({ screen: 'board', board: board({ inmates: { 5: 'mammoth4', 9: 'lion4' }, warden: 5, decision: MANAGE_ALL, kinds: ['consume', 'replace', 'end'], tools: ['crown'], objective: 'jungle' }) });
     expect(text(rs)).toEqual(['Пожирание: съесть №9']);
     const h = rs[0]!;
     expect(h.type === 'hint' && h.marks.map((m) => m.kind)).toEqual(['box', 'arrow', 'ring']);
@@ -66,15 +68,16 @@ describe('свой путь подсказок', () => {
 
   it('ряд решений → выбор цели того же Пожирания: показанная цель не прыгает', async () => {
     const { shot } = setup();
-    // Две равные цели: львы той же редкости в №8 и №11.
-    const inmates = { 5: 'mammoth2', 8: 'lion2', 11: 'lion2', 14: 'wolf0' };
-    const rs1 = await shot({ screen: 'board', board: board({ inmates, warden: 5, decision: MANAGE_ALL, kinds: ['consume', 'replace', 'end'] }) });
+    // Две равные цели: львы той же редкости в №8 и №11; с «Законом джунглей» Пожирание
+    // заметно лучше конца дня (3,49 против 3,29 на 3000 раундах).
+    const inmates = { 5: 'mammoth3', 8: 'lion3', 11: 'lion3' };
+    const rs1 = await shot({ screen: 'board', board: board({ inmates, warden: 5, decision: MANAGE_ALL, kinds: ['consume', 'replace', 'end'], objective: 'jungle' }) });
     const first = text(rs1).at(-1)!;
     expect(first).toMatch(/^Пожирание: съесть №(8|11)$/);
     const target = first.match(/№(\d+)/)![1];
     // Следующий кадр — экран выбора цели (до первого укуса): та же позиция, тот же ход.
     for (let i = 0; i < 3; i++) {
-      const rs2 = await shot({ screen: 'board', board: board({ inmates, warden: 5, daysLeft: null, chain: [8, 11] }) });
+      const rs2 = await shot({ screen: 'board', board: board({ inmates, warden: 5, daysLeft: null, chain: [8, 11], objective: 'jungle' }) });
       expect(text(rs2).at(-1)).toBe(`Пожирание: съесть №${target}`);
     }
   });
