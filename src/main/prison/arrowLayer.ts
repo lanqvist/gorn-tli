@@ -14,6 +14,8 @@ export interface PrisonLayerHint {
   phase: 'instant' | 'final';
   /** Где поставить текст: над верхней меткой. */
   anchor: number[];
+  /** Равноценный второй ход — второй строкой подписи. */
+  alt?: string;
   /** Ход сделан, новая подсказка считается: показать «смотрю…». */
   thinking?: boolean;
 }
@@ -62,7 +64,7 @@ export class ArrowLayer {
     const ys = marks.map((m) => (m.kind === 'arrow' ? Math.min(m.from[1]!, m.to[1]!) : m.kind === 'ring' ? m.at[1]! - m.r : m.box[1]!));
     const xs = marks.map((m) => (m.kind === 'arrow' ? m.to[0]! : m.kind === 'ring' ? m.at[0]! : (m.box[0]! + m.box[2]!) / 2));
     const anchor = marks.length ? [xs[0]!, Math.max(40, Math.min(...ys) - 18)] : [b.width / 2, b.height * 0.12];
-    const payload: PrisonLayerHint = { text: hint.text, marks, live: hint.live, phase: hint.phase, anchor };
+    const payload: PrisonLayerHint = { text: hint.text, marks, live: hint.live, phase: hint.phase, anchor, ...(hint.alt ? { alt: hint.alt } : {}) };
 
     this.present(display, payload);
   }

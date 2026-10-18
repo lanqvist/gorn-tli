@@ -15,20 +15,22 @@
  * считает до 300 мс (обычно останавливается сам, медиана ~100 мс); не
  * уложился — уходит лучший на этот момент, а решатель досчитывает, пока
  * кадр на экране (до budgetMs), и меняет стрелку, только если новый
- * лидер заметно лучше показанного (clearlyBetter: ≥ max(2 SE, 0,02),
+ * лидер заметно лучше показанного и больше чем на TIE (worthSwitch,
  * «уточнено»). То же между кадрами одного решения (ряд решений → выбор
  * цели того же Пожирания, тот же кадр снова): поиск продолжается, а
  * показанный ход остаётся, пока другой не станет заметно лучше.
+ * Равноценный ход (разница не больше TIE) называется второй строкой
+ * подписи: «или „Обновить выбор“ — равноценно».
  */
 import { advise as policyAdvise } from '../../core/prison/policy/instant.js';
 import { PrisonAdapter, type Position } from '../../core/prison/adapter.js';
 import { decode, encode } from '../../core/prison/engine/actions.js';
-import type { Action } from '../../core/prison/model.js';
+import { DEFAULT_PARAMS, type Action } from '../../core/prison/model.js';
 import { hint, type HintContext } from '../../core/prison/hint.js';
 import { defaultGeometry, read, rerollBox, treasureBoxes, type Frame, type Geometry } from '../../core/prison/recognize/index.js';
-import { clearSolveCache, clearlyBetter, solve, stateKey, type SolveOptions, type SolveStep } from '../../core/prison/solver/solve.js';
+import { clearSolveCache, clearlyBetter, solve, stateKey, type Search, type SolveOptions, type SolveStep } from '../../core/prison/solver/solve.js';
 import type { Step } from '../../core/prison/adapter.js';
-import { State } from '../../core/prison/engine/state.js';
+import { STORAGE, State } from '../../core/prison/engine/state.js';
 import type { PrisonShotMessage, PrisonWorkerReply } from './protocol.js';
 
 /** Столько решатель ищет ответ до первого показа. */
@@ -60,6 +62,55 @@ function shortReason(text: string, code: number): string {
 }
 
 const defaultSleep = () => new Promise<void>((r) => setImmediate(r));
+
+/** Второй ход называем в подписи, если он хуже показанного не больше чем на столько призм. за забег… */
+const TIE = 0.1;
+/** …и погрешность разницы уже не больше этой (иначе это ещё шум первых раундов). */
+const TIE_SE = 0.03;
+/** Ход, отстающий не больше чем на столько, — кандидат в ничью: его досчитываем до конца бюджета. */
+const TIE_LOOK = 0.15;
+
+/**
+ * Равноценный показанному ход среди видимых на экране: разница не больше
+ * TIE при погрешности не больше TIE_SE, ход не отсечён. Обычно это
+ * становится ясно к концу досчёта. Игроку — «или …»: на ничьей выбор за ним
+ * (например, взять орудие или обновить выбор).
+ */
+function equalAlternative(state: State, search: Search, res: SolveStep, shown: number, allowed: (code: number) => boolean): number | null {
+  // Хранилище полное — радуг уже не прибавить, равноценно почти всё: подпись была бы шумом.
+  if (res.rounds <= 0 || state.m[STORAGE]! >= DEFAULT_PARAMS.storage) return null;
+  let best: { code: number; mean: number } | null = null;
+  for (const o of res.options) {
+    const code = encode(o.action);
+    if (o.pruned || code === shown || !allowed(code)) continue;
+    const { d, se } = search.compare(shown, code);
+    if (Math.abs(d) > TIE || se > TIE_SE) continue;
+    // «Обновить» среди равноценных — его и называть: это отдельное решение
+    // (меняются все три карты), а не ещё одна карта на выбор.
+    const rank = o.action.type === 'reroll' ? Infinity : o.mean;
+    if (!best || rank > best.mean) best = { code, mean: rank };
+  }
+  return best ? best.code : null;
+}
+
+/**
+ * Сменить показанный ход: новый не только заметно лучше (clearlyBetter), но и
+ * лучше больше чем на TIE. Иначе ходы равноценны — стрелка остаётся, второй
+ * ход уходит в подпись «или … — равноценно».
+ */
+function worthSwitch(search: Search, next: number, shown: number): boolean {
+  return clearlyBetter(search, next, shown) && search.compare(next, shown).d > TIE;
+}
+
+/** Есть ход, который может оказаться равноценным, но погрешность ещё велика. */
+function tieUnresolved(search: Search, res: SolveStep, shown: number, allowed: (code: number) => boolean): boolean {
+  return res.options.some((o) => {
+    const code = encode(o.action);
+    if (o.pruned || code === shown || !allowed(code)) return false;
+    const { d, se } = search.compare(shown, code);
+    return Math.abs(d) <= TIE_LOOK && se > TIE_SE;
+  });
+}
 
 export interface OwnAdvisorOptions {
   /** Пауза между кусками расчёта: дать дойти новому кадру. */
@@ -251,10 +302,13 @@ export class OwnAdvisor {
     };
     const instant = policyAdvise(pos.state);
     const instantCode = encode(instant.action);
-    const show = (code: number, phase: 'instant' | 'final', live: boolean, note = '') => {
+    const show = (code: number, phase: 'instant' | 'final', live: boolean, note = '', res?: SolveStep) => {
       const reason = code === instantCode ? shortReason(instant.text, code) : '';
+      const alt = res ? equalAlternative(pos.state, search, res, code, pos.allowed) : null;
       const h = hint(decode(code), { ...ctx, reason: [ctx.reason, reason, note].filter(Boolean).join(' · ') });
-      this.reply({ type: 'hint', id: msg.id, phase, frame: size, live, ...h });
+      // Вторая строка подписи: в основную длинное «или …» не влезает.
+      const or = alt === null ? undefined : `или «${hint(decode(alt), { ...ctx, reason: '' }).text}» — равноценно`;
+      this.reply({ type: 'hint', id: msg.id, phase, frame: size, live, ...h, ...(or ? { alt: or } : {}) });
     };
 
     // Первый совет — не позже quickMs: решатель обычно успевает остановиться сам.
@@ -270,14 +324,14 @@ export class OwnAdvisor {
       return;
     }
     // Тот же ход, что уже показан для этого решения, — пока лидер не стал заметно лучше.
-    const shown = incumbent !== null && incumbent !== leader && !clearlyBetter(search, leader, incumbent) ? incumbent : leader;
+    const shown = incumbent !== null && incumbent !== leader && !worthSwitch(search, leader, incumbent) ? incumbent : leader;
     hold(shown);
     if (res.done) {
-      show(shown, 'final', res.rounds > 0);
+      show(shown, 'final', res.rounds > 0, '', res);
       console.log(`[тюрьма] кадр ${msg.id}: совет через ${Date.now() - t0} мс (${res.rounds} раундов)`);
       return;
     }
-    show(shown, 'instant', false);
+    show(shown, 'instant', false, '', res);
     // Досчёт, пока этот кадр на экране и ход не сделан. Стрелка меняется,
     // только если новый лидер заметно лучше показанного хода — иначе
     // прыжки на почти равных ходах.
@@ -288,11 +342,22 @@ export class OwnAdvisor {
       res = search.step(100);
     }
     if (this.current !== msg.id) return;
+    // Почти равные ходы: решатель остановился (выбор надёжен), но равноценность
+    // ещё не ясна — досчитать до конца бюджета, чтобы честно сказать «или …».
+    while (Date.now() < until && tieUnresolved(search, res, shown, pos.allowed)) {
+      await this.sleep();
+      if (this.current !== msg.id) return;
+      res = search.step(100, true);
+    }
+    if (this.current !== msg.id) return;
     const best = this.pickBest(res, pos.allowed);
-    if (best !== null && best !== shown && clearlyBetter(search, best, shown)) {
+    if (best !== null && best !== shown && worthSwitch(search, best, shown)) {
       hold(best);
-      show(best, 'final', true, 'уточнено');
+      show(best, 'final', true, 'уточнено', res);
       console.log(`[тюрьма] кадр ${msg.id}: совет уточнён через ${Date.now() - t0} мс (${res.rounds} раундов)`);
+    } else if (equalAlternative(pos.state, search, res, shown, pos.allowed) !== null) {
+      // Ход тот же, но досчёт показал равноценный — дописать его второй строкой.
+      show(shown, 'final', true, '', res);
     } else {
       this.reply({ type: 'settled', id: msg.id, live: true });
     }

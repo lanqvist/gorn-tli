@@ -44,6 +44,8 @@ export interface PrisonHint {
   frame: { w: number; h: number };
   /** true — совет проверен проигрыванием вариантов, а не только стратегией. */
   live: boolean;
+  /** Равноценный второй ход («или „Обновить выбор“ — равноценно»). */
+  alt?: string;
 }
 
 export type PrisonWorkerReply =

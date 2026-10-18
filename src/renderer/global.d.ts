@@ -122,6 +122,8 @@ declare global {
   /** Подсказка в тюрьме в координатах окна стрелок (см. main/prison/arrowLayer.ts). */
   interface GornPrisonHint {
     text: string;
+    /** Равноценный второй ход — второй строкой подписи. */
+    alt?: string;
     marks: Array<{ kind: 'arrow'; from: number[]; to: number[] } | { kind: 'ring'; at: number[]; r: number } | { kind: 'box'; box: number[] }>;
     live: boolean;
     phase: 'instant' | 'final';

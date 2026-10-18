@@ -90,6 +90,7 @@ function PrisonApp() {
       </svg>
       <div className="prison-label" style={{ left: ax, top: ay }}>
         <span>{hint.text}</span>
+        {hint.alt && <span className="prison-alt">{hint.alt}</span>}
         <small>
           {checked === null
             ? tr('предварительно — проверяю', 'first pick — checking')
