@@ -38,8 +38,8 @@ const configs = [
     outfile: 'dist/preload/index.cjs',
     format: 'cjs',
   },
-  // Поток подсказок в тюрьме: распознавание кадра и расчёт хода. CommonJS —
-  // ему грузить через require код симулятора из vendor/tartarus.
+  // Процесс подсказок в тюрьме (utilityProcess): распознавание кадра и
+  // расчёт хода.
   {
     ...common,
     entryPoints: ['src/main/prison/worker.ts'],

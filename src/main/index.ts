@@ -100,15 +100,6 @@ function loadMaps(): MapCatalogue | null {
   return null;
 }
 
-/**
- * Код «Tartarus Simulator» для подсказок в тюрьме: в разработке — из
- * vendor/tartarus в корне проекта, в сборке — из ресурсов.
- */
-function vendorDir(): string {
-  const dev = join(__dirname, '../../vendor/tartarus');
-  return existsSync(join(dev, 'advisor.js')) ? dev : join(process.resourcesPath ?? '', 'vendor/tartarus');
-}
-
 function createWindow(): void {
   window = new BrowserWindow({
     width: 1280,
@@ -278,11 +269,8 @@ app.whenReady().then(async () => {
   });
   prison = new PrisonAssist({
     worker: join(__dirname, 'prisonWorker.cjs'),
-    vendor: vendorDir(),
-    // Модель доски забега: переживает перезапуск Горна посреди тюрьмы.
-    // У своего симулятора память в другом формате — свой файл.
-    state: join(app.getPath('userData'), settings.prisonEngine === 'own' ? 'prison-state-own.json' : 'prison-state.json'),
-    engine: settings.prisonEngine,
+    // Память забега: переживает перезапуск Горна посреди тюрьмы.
+    state: join(app.getPath('userData'), 'prison-state-own.json'),
   });
   prison.setEnabled(settings.prisonHints);
   const prisonShotsDir = join(app.getPath('pictures'), 'Горн — тюрьма');

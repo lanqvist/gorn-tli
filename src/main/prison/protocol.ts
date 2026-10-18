@@ -34,16 +34,8 @@ export interface PrisonShotMessage {
   savePath: string | null;
 }
 
-/** Положение доски на кадре такого размера (масштаб и сдвиг) — прежний путь (vendor). */
-export interface BoardNear {
-  s: number;
-  tx: number;
-  ty: number;
-  size: string;
-}
-
-/** Где доска: у прежнего пути — BoardNear, у своего — Geometry распознавания. */
-export type SavedNear = BoardNear | Geometry;
+/** Где доска на кадре (геометрия распознавания): сохраняется между запусками. */
+export type SavedNear = Geometry;
 
 /** Подсказка в пикселях кадра: окно стрелок само переводит их в экран. */
 export interface PrisonHint {

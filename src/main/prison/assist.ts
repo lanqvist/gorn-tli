@@ -85,7 +85,7 @@ export class PrisonAssist {
     return all.find((d) => d.id === this.gameDisplayId) ?? screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
   }
 
-  constructor(private readonly dirs: { worker: string; vendor: string; state: string; engine: 'own' | 'vendor' }) {
+  constructor(private readonly dirs: { worker: string; state: string }) {
     // Монитор игры с прошлого раза: иначе до первой подсказки Горн гадал
     // по курсору, а курсор у игрока на другом мониторе (чат, браузер).
     try {
@@ -210,9 +210,8 @@ export class PrisonAssist {
 
   private ensureWorker(): UtilityProcess | null {
     if (this.worker) return this.worker;
-    const own = this.dirs.engine === 'own';
-    if (!existsSync(this.dirs.worker) || (!own && !existsSync(join(this.dirs.vendor, 'advisor.js')))) {
-      console.warn('[тюрьма] нет потока или кода симулятора:', this.dirs.worker, this.dirs.vendor);
+    if (!existsSync(this.dirs.worker)) {
+      console.warn('[тюрьма] нет процесса подсказок:', this.dirs.worker);
       return null;
     }
     let state: unknown = this.state;
@@ -225,7 +224,7 @@ export class PrisonAssist {
     }
     // Отдельный процесс, а не поток: только процессу можно понизить
     // приоритет, чтобы расчёт не отнимал процессор у игры.
-    const w = utilityProcess.fork(this.dirs.worker, ['--gorn-vendor', this.dirs.vendor, '--gorn-engine', this.dirs.engine], { serviceName: 'Горн — подсказки в тюрьме', stdio: 'inherit' });
+    const w = utilityProcess.fork(this.dirs.worker, [], { serviceName: 'Горн — подсказки в тюрьме', stdio: 'inherit' });
     w.postMessage({ type: 'init', state, near: this.near });
     w.on('message', (msg: PrisonWorkerReply) => this.onReply(msg));
     w.on('exit', (code) => {
