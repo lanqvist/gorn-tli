@@ -14,8 +14,7 @@ import { Rng } from '../core/prison/engine/rng.js';
 import { PHASE, PHASE_NAMES, P_END, STORAGE, State, clone } from '../core/prison/engine/state.js';
 import { constants, setPriority } from 'node:os';
 import { instantCode } from '../core/prison/policy/instant.js';
-import { solve } from '../core/prison/solver/solve.js';
-import { REFINE_SE } from '../main/prison/ownAdvisor.js';
+import { clearlyBetter, solve } from '../core/prison/solver/solve.js';
 
 function arg(name: string, def: number): number {
   const i = process.argv.indexOf(name);
@@ -27,7 +26,7 @@ function arg(name: string, def: number): number {
  * мгновенной стратегией и с проверкой вариантами на каждом ходу, вывести
  * счёт каждого: «номер мгновенная проверка». Режимы проверки:
  *   new — как в потоке подсказок: правило остановки по умолчанию, показ
- *         через ≤ 300 мс, досчёт до 1,5 с, смена хода при отрыве REFINE_SE;
+ *         через ≤ 300 мс, досчёт до 1,5 с, смена хода, если новый заметно лучше;
  *   old — прежнее правило (64 раунда, 3 SE, ε 0,1, отсечение 4 SE),
  *         ход — окончательный (до остановки или 1,5 с).
  */
@@ -53,9 +52,7 @@ if (process.argv.includes('--play')) {
     if (res.done) return shown;
     res = search.step(1200);
     const best = encode(res.best);
-    const o = res.options.find((x) => encode(x.action) === shown);
-    const gap = !o ? 0 : o.pruned ? Infinity : o.gapSe;
-    return best !== shown && gap >= REFINE_SE ? best : shown;
+    return best !== shown && clearlyBetter(search, best, shown) ? best : shown;
   };
   let sumI = 0;
   let sumS = 0;

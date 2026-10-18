@@ -42,10 +42,16 @@ export const PRUNE_POLICY: PrunePolicy = {
   maxBytes: 1024 ** 3,
 };
 
-/** Исход кадра по его JSON: ручной, с подсказкой или сбой. */
-export function shotOutcome(info: { kind?: string; hints?: { type?: string }[] }): ShotOutcome {
+/**
+ * Исход кадра по его JSON: ручной, с подсказкой или сбой. Подсказка с
+ * пометкой «не узнал» (неузнанная карта выбора) — тоже сбой: такие кадры
+ * нужны для эталонов и хранятся дольше.
+ */
+export function shotOutcome(info: { kind?: string; hints?: { type?: string; text?: string }[] }): ShotOutcome {
   if (info.kind === 'manual') return 'manual';
-  const types = (info.hints ?? []).map((h) => h.type);
+  const hints = info.hints ?? [];
+  const types = hints.map((h) => h.type);
+  if (hints.some((h) => h.type === 'hint' && h.text?.includes('не узнал'))) return 'miss';
   return types.includes('hint') && !types.includes('error') ? 'hint' : 'miss';
 }
 

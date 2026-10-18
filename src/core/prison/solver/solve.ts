@@ -74,6 +74,21 @@ export interface SolveStep {
 
 export interface Search {
   step(ms: number): SolveStep;
+  /** Ход a (код) против хода b: разница средних и её парная SE (отсечённый — SE 0). */
+  compare(a: number, b: number): { d: number; se: number };
+}
+
+/**
+ * Сменить показанный ход на другой — только если тот заметно лучше: отрыв
+ * ≥ max(2 SE, 0,02 призм.). На почти равных ходах прыжок стрелки хуже
+ * любого из них.
+ */
+export const SWITCH = { se: 2, gap: 0.02 } as const;
+
+/** Ход a заметно лучше хода b (см. SWITCH). */
+export function clearlyBetter(search: Search, a: number, b: number): boolean {
+  const { d, se } = search.compare(a, b);
+  return d >= SWITCH.gap && d >= SWITCH.se * se;
 }
 
 const POOL = EVENT_POOL.map((id) => EVENT[id]);
@@ -215,6 +230,14 @@ class MonteCarlo implements Search {
 
   private mean(i: number): number {
     return this.count[i]! > 0 ? this.sum[i]! / this.count[i]! : 0;
+  }
+
+  compare(a: number, b: number): { d: number; se: number } {
+    const i = this.codes.indexOf(a);
+    const j = this.codes.indexOf(b);
+    if (i < 0 || j < 0 || this.n === 0) return { d: 0, se: Infinity };
+    if (!this.active[i] || !this.active[j]) return { d: this.mean(i) - this.mean(j), se: 0 };
+    return this.gap(i, j);
   }
 
   /** Отставание кандидата i от лидера L и SE парной разницы (оба живы с начала). */
