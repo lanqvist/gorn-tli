@@ -57,6 +57,9 @@ export function classifyFace(frame: Frame, geo: Geometry, cell: number, t: Cells
   return { label, score };
 }
 
+/** Яркость рамки портрета, ниже которой редкость считается не нарисованной. */
+const DARK_BORDER = 0.3;
+
 const G_RED = 1;
 const G_ORANGE = 2;
 const G_YELLOW = 3;
@@ -107,6 +110,10 @@ export function readCell(frame: Frame, geo: Geometry, cell: number, t: CellsTemp
     view.beast = face.label as Beast;
     const target = chain && chainJawShare(frame, geo, cell) >= CHAIN_JAW_MIN;
     view.tier = readTier(frame, geo, cell, target);
+    // Обычный — серебряная рамка (яркость 0,3–0,5). Тёмная бронзовая рамка без
+    // свечения (≤0,29) — редкость не нарисована: после переподключения
+    // (забег 18.10 18:58) и на затемнённых переходах.
+    if (view.tier === 0 && !chain && hsv(...borderColor(frame, geo, cell))[2] < DARK_BORDER) view.tierUnknown = true;
     if (chain) view.jaws = target;
     else view.jaws = dot(jawVec(frame, geo, cell, jawBuf), t.jaw) >= JAW_MIN;
   }

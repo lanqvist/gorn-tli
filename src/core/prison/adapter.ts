@@ -276,7 +276,11 @@ export class PrisonAdapter {
       if (n === OFFICE) return;
       const was = m.cells[n]!;
       if (c.kind === 'inmate') {
-        const cell: CellMemory = { k: 'inmate', b: beastNo(c.beast), t: Math.min(c.tier ?? 0, SUPREME) };
+        // Редкость не нарисована (после переподключения) — тот же узник в
+        // этой камере сохраняет редкость из памяти.
+        const b = beastNo(c.beast);
+        const keep = c.tierUnknown && was.k === 'inmate' && was.b === b;
+        const cell: CellMemory = { k: 'inmate', b, t: keep ? was.t! : Math.min(c.tier ?? 0, SUPREME) };
         if (c.event) cell.ev = true;
         m.cells[n] = cell;
       } else if (c.kind === 'locked') {

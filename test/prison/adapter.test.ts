@@ -69,6 +69,18 @@ describe('адаптер: память забега', () => {
     expect(a.mem.tools).toEqual(['blacklist', 'scapegoat']);
   });
 
+  it('редкость не нарисована (после переподключения) — тот же узник сохраняет редкость из памяти', () => {
+    const a = new PrisonAdapter();
+    a.board(board({ inmates: { 2: 'lion3', 4: 'wolf4', 9: 'rat2' }, doors: [3] }));
+    const b = board({ inmates: { 2: 'lion0', 4: 'wolf0', 9: 'lion0' }, doors: [3] });
+    for (const n of [2, 4, 9]) b.cells[C(n)]!.tierUnknown = true;
+    a.board(b);
+    expect(a.mem.cells[C(2)]).toMatchObject({ k: 'inmate', t: 3 });
+    expect(a.mem.cells[C(4)]).toMatchObject({ k: 'inmate', t: 4 });
+    // В №9 теперь другой зверь — прежняя редкость не его.
+    expect(a.mem.cells[C(9)]).toMatchObject({ k: 'inmate', t: 0 });
+  });
+
   it('больше 20 дней осталось — «Железный закон», 30 дней', () => {
     const a = new PrisonAdapter();
     a.board(board({ daysLeft: 27, doors: [3] }));

@@ -324,3 +324,20 @@ describe.skipIf(!Object.keys(VAULT).every((n) => gornShot('2026-10-18', n)))('х
     }
   });
 });
+
+describe.skipIf(!['185837-234-board.png', '185907-643-board.png', '184201-534-board.png'].every((n) => gornShot('2026-10-18', n)))('редкость не нарисована после переподключения (забег 2026-10-18 18:58)', () => {
+  const cells = (name: string) => board(read(frame(gornShot('2026-10-18', name)!), null).view).cells;
+  const unknown = (name: string) => cells(name).flatMap((c, i) => (c.tierUnknown ? [i] : []));
+
+  it('прежние узники без свечения — редкость неизвестна', () => {
+    expect(unknown('185837-234-board.png')).toEqual([1, 3, 4, 7, 8, 11, 12, 15]);
+  });
+
+  it('новые узники после переподключения со свечением; обычная доска — без флага', () => {
+    const c = cells('185907-643-board.png');
+    // №10 и №11 — обычные с белым свечением, №9 и №16 — прежние, без свечения.
+    expect([c[9]!.tier, c[9]!.tierUnknown, c[10]!.tier, c[10]!.tierUnknown]).toEqual([0, undefined, 0, undefined]);
+    expect(unknown('185907-643-board.png')).toEqual([8, 15]);
+    expect(unknown('184201-534-board.png')).toEqual([]);
+  });
+});
