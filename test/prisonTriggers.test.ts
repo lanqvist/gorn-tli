@@ -109,6 +109,42 @@ describe('триггеры тюрьмы', () => {
     expect(b.shots[0]).toMatchObject({ kind: 'treasure', after: 'consume' });
   });
 
+  it('сокровищница утром («Монета»): после баннера дня, до нажатий на доске — не Замена', () => {
+    // Как в забеге 18.10 17:11: Замена в конце дня, баннер, номер дня, через секунду — подарок.
+    const a = setup();
+    a.t.feed([
+      L('19.00.00', 'UIButton@ normal-click Btn_S16Board_ActionCell'),
+      L('19.00.01', 'S16BoardNewDayPop Run'),
+      L('19.00.02', '[S16LastDay] check cur=20 max=20 played=false'),
+    ]);
+    a.timer.run();
+    a.t.feed([L('19.00.03', 'S16BoardColoredPop Run')]);
+    a.timer.run();
+    expect(a.shots.at(-1)).toMatchObject({ kind: 'treasure', after: 'morning' });
+
+    // Тот же день после выбора двери: подарок от обхода, не утренний.
+    const b = setup();
+    b.t.feed([L('19.00.01', 'S16BoardNewDayPop Run'), L('19.00.02', '[S16LastDay] check cur=5 max=20 played=false')]);
+    b.timer.run();
+    b.t.feed([L('19.00.04', 'UIButton@ normal-click Btn_S16Board_RouteCell'), L('19.00.06', 'S16BoardColoredPop Run')]);
+    b.timer.run();
+    expect(b.shots.at(-1)).toMatchObject({ kind: 'treasure', after: '' });
+  });
+
+  it('выбор орудия в награду утром — тоже утро; стартовый выбор — нет', () => {
+    const a = setup();
+    a.t.feed([L('19.00.01', 'S16BoardNewDayPop Run'), L('19.00.02', '[S16LastDay] check cur=7 max=20 played=false')]);
+    a.timer.run();
+    a.t.feed([L('19.00.03', 'S16BoardRelicPop Run')]);
+    a.timer.run();
+    expect(a.shots.at(-1)).toMatchObject({ kind: 'instruments', fresh: false, after: 'morning' });
+
+    const b = setup();
+    b.t.feed([L('19.00.01', 'S16BoardNewDayPop Run'), L('19.00.02', '[S16LastDay] check cur=0 max=20 played=false'), L('19.00.03', 'S16BoardRelicPop Run')]);
+    b.timer.run();
+    expect(b.shots.at(-1)).toMatchObject({ kind: 'instruments', fresh: true, after: '' });
+  });
+
   it('доска сразу за сокровищницей снимается отдельно; просмотр без выбора подарка', () => {
     const { t, timer, shots } = setup();
     t.feed([L('19.00.00', 'S16BoardColoredPop Run'), L('19.00.01', 'S16BoardColoredPop Destory')]);

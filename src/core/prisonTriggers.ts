@@ -14,6 +14,13 @@
 export type PrisonFrameKind = 'board' | 'instruments' | 'objective' | 'treasure' | 'theme';
 type RuleKind = PrisonFrameKind | 'skip' | 'speed';
 
+/**
+ * Что привело к сокровищнице или выбору орудия в награду: Замена, Пожирание,
+ * утро (день начался, на доске ещё ничего не нажато — например, «Монета»
+ * сделала узника Призматическим) или иное ('' — обход, событие).
+ */
+export type ShotCause = '' | 'swap' | 'consume' | 'morning';
+
 interface Rule {
   kind: RuleKind;
   re: RegExp;
@@ -58,8 +65,8 @@ export interface PrisonShot {
   kind: PrisonFrameKind;
   /** Выбор орудий открывает новый забег (рядом строка дня 0). */
   fresh: boolean;
-  /** Для сокровищницы: что к ней привело — замена или пожирание. */
-  after: '' | 'swap' | 'consume';
+  /** Для сокровищницы и выбора орудия в награду: что к ним привело. */
+  after: ShotCause;
   /** Доска, открытая из сокровищницы кнопкой «Посмотреть состояние тюрьмы». */
   treasureView: boolean;
   /** Выбор орудий после «Обновить»: обновление потрачено. */
@@ -100,6 +107,9 @@ export class PrisonTriggers {
   private lastAction = 0;
   private lastEat = 0;
   private lastGift = 0;
+  /** Начало дня (баннер нового дня) и последнее нажатие на доске. */
+  private dayStart = 0;
+  private lastBoardClick = 0;
   private lastSpecial: { n: number; at: number } | null = null;
   private day: { cur: number; max: number } | null = null;
 
@@ -140,6 +150,8 @@ export class PrisonTriggers {
     if (special) this.lastSpecial = { n: Number(special[1]), at };
     if (/Btn_S16Board_ActionCell/.test(line)) this.lastAction = at;
     if (/ColoredPop_Confirm/.test(line)) this.lastGift = at;
+    if (/S16BoardNewDayPop Run/i.test(line)) this.dayStart = at;
+    if (/Btn_S16Board_(?:RouteCell|ActionCell|Cell)\b/.test(line)) this.lastBoardClick = at;
     const rule = PRISON_RULES.find((r) => r.re.test(line));
     if (!rule) return;
     if (rule.kind === 'skip') {
@@ -169,10 +181,15 @@ export class PrisonTriggers {
     this.burst = null;
     if (!b) return;
     const fresh = b.lines.some((l) => /check cur=0\b/.test(l));
-    let after: PrisonShot['after'] = '';
-    if (b.kind === 'treasure') {
-      const pop = stampMs(b.lines.find((l) => /S16BoardColoredPop Run/i.test(l)) ?? '') ?? 0;
-      if (pop && this.lastAction && pop >= this.lastAction && pop - this.lastAction <= 6000) {
+    let after: ShotCause = '';
+    if (b.kind === 'treasure' || (b.kind === 'instruments' && !fresh)) {
+      const pop = stampMs(b.lines.find((l) => /S16Board(?:Colored|Relic)Pop Run/i.test(l)) ?? '') ?? 0;
+      // Утро: окно открылось после баннера нового дня, а на доске с тех пор
+      // ничего не нажимали. Последнее действие дня (Замена) тут ни при чём:
+      // после подарка будет обход этого дня.
+      const morning = !!pop && !!this.dayStart && pop >= this.dayStart && this.dayStart > this.lastBoardClick;
+      if (morning) after = 'morning';
+      else if (b.kind === 'treasure' && pop && this.lastAction && pop >= this.lastAction && pop - this.lastAction <= 6000) {
         after = this.lastEat >= this.lastAction - 500 ? 'consume' : 'swap';
       }
     }

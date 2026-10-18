@@ -12,7 +12,7 @@ import {
 } from '../model.js';
 import { Rng } from './rng.js';
 import {
-  chainBite, devour, endDay, eventDecision, finishDevour, huntTargets, hunt, makeOffer, morning, newRun, office,
+  chainBite, dealDoors, devour, endDay, eventDecision, finishDevour, huntTargets, hunt, makeOffer, morning, newRun, office,
   patrol, ratway, swap, takeGift, takeTool, targets,
 } from './rules.js';
 import {
@@ -104,6 +104,14 @@ export function settle(s: State, r: Rng, p: Params): void {
       case P_DAYEND:
         endDay(s);
         continue;
+      case P_PATROL:
+        // Обход, двери которого ещё не видны (подарок утром пришёл раньше
+        // дверей): раздать их, как в конце утра. Кости — от утра этого дня.
+        if (m[DOORS_N] === 0) {
+          r.morning(m[DAY]!);
+          dealDoors(s, r, p);
+        }
+        break;
       case P_MANAGE:
         if (m[USED] !== 0 || m[TIER + m[WARDEN]!]! < 0) {
           m[NEXT] = P_DAYEND;

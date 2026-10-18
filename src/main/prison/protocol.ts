@@ -1,6 +1,6 @@
 /** Сообщения между main-процессом и потоком подсказок в тюрьме. */
 import type { Geometry } from '../../core/prison/recognize/types.js';
-import type { PrisonFrameKind } from '../../core/prisonTriggers.js';
+import type { PrisonFrameKind, ShotCause } from '../../core/prisonTriggers.js';
 
 export type PrisonMark =
   | { kind: 'arrow'; from: number[]; to: number[] }
@@ -12,7 +12,7 @@ export interface PrisonShotMessage {
   id: number;
   kind: PrisonFrameKind | 'manual';
   fresh: boolean;
-  after: '' | 'swap' | 'consume';
+  after: ShotCause;
   treasureView: boolean;
   rerolled: boolean;
   treasureClosed: boolean;

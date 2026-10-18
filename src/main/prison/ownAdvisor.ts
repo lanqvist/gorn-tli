@@ -197,7 +197,7 @@ export class OwnAdvisor {
         this.reply({ type: 'clear', id: msg.id });
         return;
       }
-      this.adapter.pick(p, msg.fresh, msg.rerolled);
+      this.adapter.pick(p, msg.fresh, msg.rerolled, msg.after);
       ctx.pick = p;
       ctx.reroll = rerollBox(plainGeo());
       if (known < p.cards.length) ctx.reason = 'одну карту не узнал';

@@ -16,6 +16,7 @@ import {
   BEASTS, CELLS, DEFAULT_PARAMS, EVENT, GIFT_IDS, OBJECTIVE, OFFICE, START_EVENT, SUPREME, TOOL, TOOL_IDS, type Action,
   type ObjectiveId, type Params, type StartEventId, type ToolId,
 } from './model.js';
+import type { ShotCause } from '../prisonTriggers.js';
 import type { BoardView, PickView } from './view.js';
 import {
   A_DEVOUR, A_END, A_SWAP, legalCodes,
@@ -92,8 +93,15 @@ export interface RunMemory {
    * вернётся после выбора (иначе решатель прибавит или отнимет действие дня).
    */
   resume: Step;
-  /** Что привело к сокровищнице: Замена, Пожирание или иное. */
-  resumeAfter: '' | 'swap' | 'consume';
+  /**
+   * Что привело к сокровищнице или выбору: Замена, Пожирание, утро (после
+   * выбора — обход этого дня) или иное.
+   */
+  resumeAfter: ShotCause;
+  /** Хранилище к началу дня: утренний Призматический в нём уже есть, даже если экран отстал. */
+  dayStorage: number;
+  /** Нижняя граница хранилища: в забеге оно только растёт. */
+  storageFloor: number;
 }
 
 const lockedCell = (): CellMemory => ({ k: 'locked' });
@@ -124,6 +132,8 @@ export function blankMemory(): RunMemory {
     assumed: [],
     resume: 'patrol',
     resumeAfter: '',
+    dayStorage: 0,
+    storageFloor: 0,
   };
 }
 
@@ -178,7 +188,9 @@ export function loadMemory(x: unknown): RunMemory {
           .map((a) => ({ tool: a.tool, offer: a.offer.filter((t) => tools.includes(t)) as ToolId[] }))
       : [],
     resume: m.resume && steps.includes(m.resume) ? m.resume : 'patrol',
-    resumeAfter: m.resumeAfter === 'swap' || m.resumeAfter === 'consume' ? m.resumeAfter : '',
+    resumeAfter: m.resumeAfter === 'swap' || m.resumeAfter === 'consume' || m.resumeAfter === 'morning' ? m.resumeAfter : '',
+    dayStorage: isInt(m.dayStorage, 0, 99) ? m.dayStorage : 0,
+    storageFloor: isInt(m.storageFloor, 0, 99) ? m.storageFloor : 0,
   };
 }
 
@@ -241,7 +253,7 @@ export class PrisonAdapter {
       m.day = Math.max(0, Math.min(m.dayLimit - 1, m.dayLimit - v.daysLeft - 1));
     }
     this.panelTools(v);
-    if (v.chromatic >= 0) m.storage = v.chromatic;
+    if (v.chromatic >= 0) m.storage = Math.max(v.chromatic, m.storageFloor);
     if (v.objective && OBJECTIVE_FROM_VIEW[v.objective]) m.objective = OBJECTIVE_FROM_VIEW[v.objective]!;
     m.runStart = false;
     m.themeFresh = false;
@@ -374,7 +386,9 @@ export class PrisonAdapter {
     m.dayLimit = d.max;
     if (d.max === this.p.ironLawDays && m.start === 'none') m.start = 'ironlaw';
     // cur — номер дня с единицы; 0 — выбор орудий перед первым днём.
-    m.day = Math.max(0, Math.min(d.max - 1, d.cur - 1));
+    const day = Math.max(0, Math.min(d.max - 1, d.cur - 1));
+    if (day > m.day) m.dayStorage = m.storage;
+    m.day = day;
   }
 
   /** Совет на выборе орудий: какое орудие посоветовано (для памяти, если панель его не узнает). */
@@ -422,10 +436,24 @@ export class PrisonAdapter {
     if (id === 'ironlaw') this.mem.dayLimit = this.p.ironLawDays;
   }
 
-  pick(v: PickView, fresh: boolean, rerolled: boolean): void {
+  /**
+   * Выбор пришёл утром, до обхода: после него — обход этого дня. Двери —
+   * только если доска нового дня их уже показала (иначе их раздаст движок).
+   */
+  private resumeMorning(): void {
+    const m = this.mem;
+    if (m.step !== 'patrol') m.doors = [];
+    m.resume = 'patrol';
+    m.resumeAfter = 'morning';
+  }
+
+  pick(v: PickView, fresh: boolean, rerolled: boolean, after: ShotCause = ''): void {
     if (!['pick', 'gift', 'wait'].includes(this.mem.step)) {
-      this.mem.resume = this.mem.step;
-      this.mem.resumeAfter = '';
+      if (after === 'morning' && !fresh) this.resumeMorning();
+      else {
+        this.mem.resume = this.mem.step;
+        this.mem.resumeAfter = '';
+      }
     }
     if (fresh && !v.reward) {
       // Новый забег: доска за выбором — чистая. Цель и тему с окон перед
@@ -449,19 +477,29 @@ export class PrisonAdapter {
 
   /**
    * Сокровищница. after — что к ней привело ('swap' — заменённый стал
-   * Призматическим и ушёл в хранилище); 'view' — доска за окном уже
-   * видна, по ней можно советовать подарок.
+   * Призматическим и ушёл в хранилище; 'morning' — узник стал
+   * Призматическим утром, после подарка будет обход дня); 'view' — доска за
+   * окном уже видна, по ней можно советовать подарок.
    */
-  treasure(after: '' | 'swap' | 'consume' | 'view'): void {
+  treasure(after: ShotCause | 'view'): void {
     const m = this.mem;
     if (after === 'view') {
       m.step = 'gift';
       m.gifts = Math.max(1, m.gifts);
       return;
     }
+    if (after === 'morning') {
+      // Утренний Призматический уже в хранилище, даже если экран за окном
+      // показывает прежнее число.
+      m.storageFloor = Math.max(m.storageFloor, m.dayStorage + 1);
+      m.storage = Math.max(m.storage, m.storageFloor);
+    }
     if (!['pick', 'gift', 'wait'].includes(m.step)) {
-      m.resume = m.step;
-      m.resumeAfter = after;
+      if (after === 'morning') this.resumeMorning();
+      else {
+        m.resume = m.step;
+        m.resumeAfter = after;
+      }
     }
     const w = m.cells[m.warden];
     if (after === 'swap' && w?.k === 'inmate') {
@@ -618,11 +656,20 @@ export class PrisonAdapter {
   /**
    * Куда забег вернётся после выбора: после обхода (цель «прогулка»,
    * «двери») — к ряду решений; после Пожирания — к цепочке (движок сам
-   * завершит её, если есть некого); после Замены — к концу дня.
+   * завершит её, если есть некого); после Замены — к концу дня; утром — к
+   * обходу этого дня.
    */
   private resumeAfterPick(s: State): void {
     const m = this.mem;
     const x = s.m;
+    if (m.resumeAfter === 'morning') {
+      // Утренний выбор: впереди обход этого дня. Двери не видны — движок их раздаст.
+      const n = Math.min(3, m.doors.length);
+      for (let i = 0; i < n; i++) x[DOORS + i] = m.doors[i]!;
+      x[DOORS_N] = n;
+      x[NEXT] = P_PATROL;
+      return;
+    }
     let next = P_DAYEND;
     if (m.resume === 'patrol' || m.resume === 'office' || m.resume === 'ratway') next = P_MANAGE;
     else if (m.resume === 'chain' || (m.resume === 'manage' && m.resumeAfter === 'consume')) next = P_CHAIN;

@@ -313,7 +313,9 @@ export class PrisonAssist {
     const lag = lineAt ? `строка ${((t0 - lineAt) / 1000).toFixed(1)} с назад` : 'вручную';
     const id = ++this.nextId;
     this.shots.set(id, { shot, manual, retry: this.retries.get(shot) ?? 0 });
-    const savePath = this.saveRoot && frame ? this.noteShot(id, manual ? 'manual' : shot.kind, shot) : null;
+    // Окно подарков без снимка — только JSON (что к нему привело, строки лога): повтор забега без него не знает, утро это или Замена.
+    const noted = this.saveRoot ? this.noteShot(id, manual ? 'manual' : shot.kind, shot) : null;
+    const savePath = frame ? noted : null;
     console.log(`[тюрьма] кадр ${id} (${manual ? 'manual' : shot.kind}${asTreasure ? ', к подаркам' : ''}): ${lag}, ${via} ${Date.now() - t0} мс`);
     this.display = display;
     this.shotDisplay.set(id, display.id);

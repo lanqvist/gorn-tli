@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
-import { EVENT, LION, MAMMOTH, OBJECTIVE, START_EVENT, TOOL, WOLF } from '../../src/core/prison/model.js';
+import { DEFAULT_PARAMS, EVENT, LION, MAMMOTH, OBJECTIVE, START_EVENT, TOOL, WOLF } from '../../src/core/prison/model.js';
 import { PrisonAdapter, blankMemory, loadMemory } from '../../src/core/prison/adapter.js';
-import { codeBuffer, decode, encode, legalCodes } from '../../src/core/prison/engine/actions.js';
+import { Rng, applyCode, codeBuffer, decode, encode, legalCodes } from '../../src/core/prison/engine/actions.js';
 import {
   BEAST, CHAIN_EATER, DAY, DAY_LIMIT, DOORS, DOORS_N, EVT, FLAGS, F_VIS_TIER, LOCK, NEST, NEXT, OBJECTIVE_ID, OFFER, OFFER_GIFT,
   OFFER_KIND, OFFER_N, PHASE, PICK_GIFTS, PRE_TIER, P_CHAIN, P_DAYEND, P_MANAGE, P_PATROL, P_PICK, REROLLS, START, STORAGE,
@@ -215,6 +215,42 @@ describe('адаптер: куда вернуться после выбора, �
     const s = ok(c).state;
     expect(s.m[NEXT]).toBe(P_CHAIN);
     expect(s.m[CHAIN_EATER]).toBe(C(4));
+  });
+
+  it('подарок утром — к обходу этого дня: двери раздаёт движок, день не пропадает', () => {
+    // Забег 18.10 17:11, день 20 из 20: Замена в конце дня 19, утром «Монета»
+    // сделала узника Призматическим, хранилище за окном ещё показывает 5.
+    const a = new PrisonAdapter();
+    a.logDay({ cur: 19, max: 20 });
+    a.board(board({ inmates: { 4: 'mammoth3', 6: 'lion3', 9: 'wolf2' }, warden: 4, chromatic: 5, decision: MANAGE_ALL, kinds: ['consume', 'replace', 'end'] }));
+    a.logDay({ cur: 20, max: 20 });
+    a.treasure('morning');
+    expect(a.mem.cells[C(4)]!.k).toBe('inmate');
+    expect(a.mem.storage).toBe(6);
+    a.board(board({ inmates: { 4: 'mammoth3', 6: 'lion3', 9: 'wolf2' }, warden: 4, chromatic: 5 }));
+    expect(a.mem.storage).toBe(6);
+    a.treasure('view');
+    const s = ok(a).state;
+    expect(s.m[NEXT]).toBe(P_PATROL);
+    expect(s.m[DOORS_N]).toBe(0);
+    expect(s.m[STORAGE]).toBe(6);
+    expect(s.m[DAY]).toBe(19);
+
+    // Подарок взят — обход дня 20 с розданными дверями, а не конец забега.
+    applyCode(s, legal(s)[0]!, new Rng(5), DEFAULT_PARAMS);
+    expect(s.m[PHASE]).toBe(P_PATROL);
+    expect(s.m[DOORS_N]).toBeGreaterThan(0);
+    expect(s.m[DAY]).toBe(19);
+  });
+
+  it('выбор орудия утром — к обходу; известные двери нового дня сохраняются', () => {
+    const a = new PrisonAdapter();
+    a.logDay({ cur: 6, max: 20 });
+    a.board(board({ inmates: { 4: 'mammoth1', 6: 'lion1' }, warden: 2, doors: [4, 6] }));
+    a.pick(pick(['crown', 'saw', 'hook'], false, true), false, false, 'morning');
+    const s = ok(a).state;
+    expect(s.m[NEXT]).toBe(P_PATROL);
+    expect(Array.from(s.m.subarray(DOORS, DOORS + s.m[DOORS_N]!))).toEqual([C(4), C(6)]);
   });
 
   it('гнездо: срок считается от дня, когда его увидели', () => {

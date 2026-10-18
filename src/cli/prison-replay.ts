@@ -19,6 +19,7 @@ import type { Frame, Geometry } from '../core/prison/recognize/types.js';
 import { hint } from '../core/prison/hint.js';
 import { OwnAdvisor } from '../main/prison/ownAdvisor.js';
 import type { PrisonShotMessage, PrisonWorkerReply } from '../main/prison/protocol.js';
+import type { ShotCause } from '../core/prisonTriggers.js';
 
 function arg(name: string): string | null {
   const i = process.argv.indexOf(name);
@@ -37,7 +38,7 @@ const diffsOut = arg('--diffs');
 interface Saved {
   kind: PrisonShotMessage['kind'];
   fresh?: boolean;
-  after?: '' | 'swap' | 'consume';
+  after?: ShotCause;
   treasureView?: boolean;
   rerolled?: boolean;
   treasureClosed?: boolean;
@@ -113,9 +114,29 @@ let prevKind = '';
 let logDay: { cur: number; max: number } | null = null;
 /** Доска за окном подарков (просмотр или после подарка) сохранилась без PNG: совет по подаркам не воспроизвести. */
 let behindLost = false;
+/** День начался (строка check cur), а на доске ещё ничего не нажали — как держат триггеры. */
+let dayFresh = false;
+/** День, для которого утренняя сокровищница уже восстановлена. */
+let morningDone = -1;
 
 for (const f of files) {
   const saved = JSON.parse(readFileSync(join(dir, f), 'utf8')) as Saved;
+  // Раньше окно подарков без снимка не сохранялось. Доска за ним после
+  // начала дня, до нажатий на доске, — утренний подарок: восстановить окно,
+  // чтобы память знала, что после подарка будет обход дня.
+  if (saved.kind === 'board' && saved.treasureClosed && prevKind !== 'treasure' && dayFresh && logDay && morningDone !== logDay.cur) {
+    morningDone = logDay.cur;
+    await advisor.handle({
+      type: 'shot', id: ++id, kind: 'treasure', fresh: false, after: 'morning', treasureView: false, rerolled: false,
+      treasureClosed: false, asTreasure: false, theme: null, day: logDay, width: 1920, height: 1080,
+      buffer: new ArrayBuffer(0), format: 'rgba', budgetMs: budget, savePath: null,
+    }, null);
+  }
+  for (const l of saved.lines ?? []) {
+    const d = /check cur=(\d+) max=([1-9]\d*)/.exec(l);
+    if (d && Number(d[1]) > 0) dayFresh = true;
+    if (/Btn_S16Board_(?:RouteCell|ActionCell|Cell)\b/.test(l)) dayFresh = false;
+  }
   const png = join(dir, f.replace(/\.json$/, '.png'));
   const frame: Frame | null = existsSync(png) ? decodePng(readFileSync(png)) : null;
   // Вид экрана — для отчёта (отдельный проход распознавания, время отдельно).
