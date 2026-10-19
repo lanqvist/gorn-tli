@@ -64,7 +64,7 @@ export interface FrameRec {
 }
 
 export interface Finding {
-  kind: 'зависание' | 'карта' | 'иконка' | 'скачок' | 'расхождение' | 'хранилище' | 'день' | 'кадры' | 'связь';
+  kind: 'зависание' | 'петля' | 'карта' | 'иконка' | 'скачок' | 'расхождение' | 'хранилище' | 'день' | 'кадры' | 'связь';
   time: string;
   text: string;
   /** Та же находка на соседних кадрах подряд. */
@@ -79,6 +79,8 @@ export const AUDIT = {
   jumpAny: 1.5,
   /** Живой совет хуже нынешнего — призм. */
   gap: 0.15,
+  /** Сколько раз подряд живой совет вернулся к прежнему ходу через другой (A→B→A…). */
+  loop: 3,
 } as const;
 
 const NO_JUMP = new Set(['pick', 'treasure', 'board']);
@@ -130,9 +132,54 @@ export function findings(recs: readonly FrameRec[]): Finding[] {
       event = false;
     }
   });
+  out.push(...loops(recs));
   const last = [...recs].reverse().find((r) => r.mem.tools.length || r.mem.assumed.length);
   if (last && last.mem.assumed.length) {
     out.push({ kind: 'иконка', time: hhmmss(last.time), text: `иконка на панели не узнаётся, орудие только «предположительно»: ${last.mem.assumed.join(', ')}` });
+  }
+  return out;
+}
+
+/** Вид хода в подсказке без цели: «Пожирание: съесть №12» → «Пожирание». */
+const moveKind = (live: string) => live.split(' · ')[0]!.split(':')[0]!.trim();
+
+/**
+ * Петля советов: в пределах одного дня живой совет скачет между двумя
+ * ходами по кругу — A → B → A → B … Так было 19.10 23:30: на ряде решений
+ * «Пожирание: съесть №12», на выборе цели «Отменить, затем «Завершить
+ * день»» — игра такую цель не предлагала (в памяти остался Молот прошлой
+ * партии), и игрок четыре раза ходил по кругу. Цель хода не сравнивается:
+ * петля «съесть №2 → отменить → съесть №15 → отменить» — та же.
+ */
+function loops(recs: readonly FrameRec[]): Finding[] {
+  const out: Finding[] = [];
+  let seq: { r: FrameRec; key: string }[] = [];
+  let day: number | null = null;
+  let alt = 0;
+  let reported = false;
+  for (const r of recs) {
+    if (!r.live) continue;
+    const d = r.logDay?.cur ?? r.mem.day + 1;
+    if (d !== day) {
+      day = d;
+      seq = [];
+      alt = 0;
+      reported = false;
+    }
+    const key = moveKind(r.live);
+    if (seq.length && seq[seq.length - 1]!.key === key) continue; // тот же совет на соседних кадрах
+    seq.push({ r, key });
+    const n = seq.length;
+    alt = n >= 3 && seq[n - 1]!.key === seq[n - 3]!.key ? alt + 1 : 0;
+    if (alt >= AUDIT.loop && !reported) {
+      reported = true;
+      const a = seq[n - 1]!, b = seq[n - 2]!;
+      out.push({
+        kind: 'петля',
+        time: hhmmss(seq[n - 1 - alt - 1]!.r.time),
+        text: `совет ходит по кругу в день ${d}: «${a.r.live}» ↔ «${b.r.live}» (${alt + 1} раз подряд, до ${hhmmss(a.r.time)}) — модель предлагает ход, которого игра не даёт`,
+      });
+    }
   }
   return out;
 }

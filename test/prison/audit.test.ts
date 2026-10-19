@@ -107,3 +107,34 @@ describe('аудит забегов: находки', () => {
     expect(s).toMatchObject({ start: 4.5, prisms: 10, days: '30/30', theme: 'ironlaw' });
   });
 });
+
+describe('аудит забегов: петля советов', () => {
+  // 19.10 23:30: ряд решений → «Пожирание», выбор цели → «Отменить», по кругу.
+  const cycle = (t0: number, target: string) => {
+    const t = (k: number) => String(233000 + t0 + k * 2).padStart(6, '0');
+    return [
+      rec(t(0), { live: `Пожирание: съесть №${target}`, screen: 'manage' }),
+      rec(t(1), { live: 'Отменить, затем «Завершить день»', screen: 'chain' }),
+    ];
+  };
+
+  it('«Пожирание» ↔ «Отменить» в один день — петля (цель хода не важна)', () => {
+    const f = findings([...cycle(40, '12'), ...cycle(44, '12'), ...cycle(48, '15')]);
+    const loop = f.filter((x) => x.kind === 'петля');
+    expect(loop).toHaveLength(1);
+    expect(loop[0]!.text).toContain('Пожирание');
+    expect(loop[0]!.text).toContain('Отменить');
+  });
+
+  it('обычная игра — обход, решение, обход на следующий день — не петля', () => {
+    const f = findings([
+      rec('120000', { live: 'Иди в №5' }, { day: 3 }),
+      rec('120005', { live: 'Пожирание: съесть №3', screen: 'manage' }, { day: 3 }),
+      rec('120010', { live: 'Иди в №7' }, { day: 4 }),
+      rec('120015', { live: 'Пожирание: съесть №9', screen: 'manage' }, { day: 4 }),
+      rec('120020', { live: 'Иди в №2' }, { day: 5 }),
+      rec('120025', { live: 'Заменить', screen: 'manage' }, { day: 5 }),
+    ]);
+    expect(f.filter((x) => x.kind === 'петля')).toEqual([]);
+  });
+});
