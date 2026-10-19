@@ -6,13 +6,21 @@ import {
   SR,
   master,
   measure,
-  measureStereo,
   osc,
   rng,
   toWav,
   toWavStereo,
 } from '../src/sfx/dsp.js';
-import { LOUDNESS, TIERS, VARIANTS, assetName, limitsFor, renderSound } from '../src/sfx/kit.js';
+import {
+  ASSET_RATE,
+  CEILING_DB,
+  HEARD,
+  SOUNDS,
+  VARIANTS,
+  assetName,
+  measureSound,
+  renderSound,
+} from '../src/sfx/sounds.js';
 
 describe('офлайн-движок звуков', () => {
   it('генератор случайности детерминирован по сиду', () => {
@@ -56,49 +64,45 @@ describe('офлайн-движок звуков', () => {
   });
 });
 
-describe('звуки Горна', () => {
-  const all = TIERS.flatMap((tier) =>
-    Array.from({ length: VARIANTS[tier] }, (_, v) => [tier, v] as const),
+describe('звуки Горна — «Кузня»', () => {
+  const all = SOUNDS.flatMap((sound) =>
+    Array.from({ length: VARIANTS[sound] }, (_, v) => [sound, v] as const),
   );
+  const rendered = new Map(all.map(([sound, v]) => [`${sound}:${v}`, renderSound(sound, v)]));
+  const get = (sound: (typeof SOUNDS)[number], v = 0) => rendered.get(`${sound}:${v}`)!;
 
   it('рендер детерминирован: тот же рецепт — тот же файл', () => {
-    expect(renderSound('pickup', 0)).toEqual(renderSound('pickup', 0));
+    expect(renderSound('exalted', 0)).toEqual(get('exalted'));
   });
 
-  it.each(all)('%s #%i: не громче прежнего звука по пику, громкости и энергии', (tier, v) => {
-    const st = renderSound(tier, v);
-    const m = measureStereo(st);
-    const old = limitsFor(tier);
+  it.each(all)('%s #%i: конечные отсчёты, пики под потолком, громкость по слуху у цели', (sound, v) => {
+    const st = get(sound, v);
     let finite = true;
     for (const x of st.l) if (!Number.isFinite(x)) finite = false;
     for (const x of st.r) if (!Number.isFinite(x)) finite = false;
     expect(finite).toBe(true);
-    expect(m.peakDb).toBeLessThanOrEqual(old.peakDb + 0.01);
-    expect(m.rmsDb).toBeLessThanOrEqual(old.rmsDb);
-    expect(m.energyDb).toBeLessThanOrEqual(old.energyDb);
-    expect(m.durationSec).toBeLessThan(3.2);
+    const m = measureSound(st);
+    expect(m.peakDb).toBeLessThanOrEqual(CEILING_DB + 0.01);
+    expect(Math.abs(m.heardDb - HEARD[sound])).toBeLessThan(1.5);
+    expect(m.durationSec).toBeLessThan(3.5);
   });
 
-  it('лесенка: чем весомее событие, тем громче', () => {
-    const loud = (tier: (typeof TIERS)[number]) => measureStereo(renderSound(tier, 0)).rmsDb;
-    expect(loud('pickup')).toBeLessThan(loud('pickupBig'));
-    expect(loud('pickupBig')).toBeLessThan(loud('whistle'));
-    expect(loud('whistle')).toBeLessThan(loud('jackpot'));
-    expect(loud('runEnd')).toBeLessThan(loud('jackpot'));
-    expect(loud('runLoss')).toBeLessThan(loud('runEnd'));
-    expect(LOUDNESS.record).toBeGreaterThanOrEqual(LOUDNESS.jackpot);
+  it('лесенка на слух: возвышение тише дивайна, дивайн тише рекорда', () => {
+    const heard = (sound: (typeof SOUNDS)[number]) => measureSound(get(sound)).heardDb;
+    expect(heard('exalted')).toBeLessThan(heard('divine'));
+    expect(heard('divine')).toBeLessThan(heard('record'));
   });
 
-  it('ассеты — ровно наши файлы: все ступени и варианты, стерео 24 кГц, ничего лишнего', () => {
+  it('ассеты — ровно наши файлы: все звуки и варианты, стерео 48 кГц, ничего лишнего', () => {
     const dir = join(import.meta.dirname, '../src/renderer/assets/sfx');
-    const expected = all.map(([tier, v]) => assetName(tier, v)).sort();
+    const expected = all.map(([sound, v]) => assetName(sound, v)).sort();
     expect(readdirSync(dir).sort()).toEqual(expected);
     for (const name of expected) {
       const path = join(dir, name);
       expect(existsSync(path)).toBe(true);
       const bytes = readFileSync(path);
       expect(bytes.readUInt16LE(22)).toBe(2);
-      expect(bytes.readUInt32LE(24)).toBe(SR);
+      expect(bytes.readUInt32LE(24)).toBe(ASSET_RATE);
     }
   });
 });

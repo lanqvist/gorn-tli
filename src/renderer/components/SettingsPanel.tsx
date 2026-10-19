@@ -10,17 +10,14 @@ import { playPreview, playTest, type SoundPreview } from '../overlay/sound.js';
  * подбираются на слух, без ожидания золотой находки на карте.
  */
 const SOUND_PREVIEWS: ReadonlyArray<readonly [SoundPreview, string, string]> = [
-  ['pickup', 'Подбор', 'Pickup'],
-  ['whistle', 'Свист', 'Whistle'],
-  ['jackpot', 'Золотая находка', 'Golden drop'],
-  ['jackpotHot', 'Вторая подряд', 'Streak'],
-  ['runEnd', 'Итог карты', 'Map total'],
-  ['runLoss', 'Карта в минус', 'Map at a loss'],
+  ['exalted', 'Возвышение', 'Exalted'],
+  ['divine', 'Дивайн', 'Divine'],
   ['record', 'Рекорд', 'Record'],
 ];
 
-/** Пороги свиста: от «почти всё ценное» до «только дорогое». */
-const WHISTLE_STEPS: readonly number[] = [5, 10, 20, 50, 100];
+/** Пороги звуков находок: от «почти всё ценное» до «только дорогое». */
+const EXALTED_STEPS: readonly number[] = [3, 5, 10, 20];
+const DIVINE_STEPS: readonly number[] = [10, 20, 50, 100];
 
 /**
  * Язык названий предметов.
@@ -120,9 +117,9 @@ export function SettingsPanel({
     popups: true,
     sound: true,
     volume: 0.5,
-    soundImportantOnly: false,
+    divineFe: 20,
     jackpotFe: 50,
-    whistleFe: 10,
+    exaltedFe: 5,
     fontScale: 1,
     opacity: 0.9,
     goalFe: 0,
@@ -147,9 +144,9 @@ export function SettingsPanel({
         popups: s.popups ?? true,
         sound: s.sound ?? true,
         volume: s.volume ?? 0.5,
-        soundImportantOnly: s.soundImportantOnly ?? false,
+        divineFe: s.divineFe ?? 20,
         jackpotFe: s.jackpotFe ?? 50,
-        whistleFe: s.whistleFe ?? 10,
+        exaltedFe: s.exaltedFe ?? 5,
         fontScale: s.fontScale ?? 1,
         opacity: s.opacity ?? 0.9,
         goalFe: s.goalFe ?? 0,
@@ -178,9 +175,6 @@ export function SettingsPanel({
     if (opacity !== undefined) window.gorn?.overlay.setOpacity(opacity);
   };
 
-  const soundMode = !prefs.sound ? 'off' : prefs.soundImportantOnly ? 'important' : 'all';
-  const setSoundMode = (mode: 'all' | 'important' | 'off') =>
-    patch({ sound: mode !== 'off', soundImportantOnly: mode === 'important' });
 
   const chooseDir = () => {
     void window.gorn?.settings.chooseLogDir().then((r) => {
@@ -233,25 +227,18 @@ export function SettingsPanel({
 
         <section className="set-section">
           <h3>{tr('Звук', 'Sound')}</h3>
-          <div
-            className="lang-switch set-seg"
-            role="group"
-            aria-label={tr('Режим звука', 'Sound mode')}
-          >
-            <button className={soundMode === 'all' ? 'on' : ''} onClick={() => setSoundMode('all')}>
-              {tr('Все находки', 'All drops')}
-            </button>
+          <div className="lang-switch set-seg" role="group" aria-label={tr('Звук', 'Sound')}>
             <button
-              className={soundMode === 'important' ? 'on' : ''}
+              className={prefs.sound ? 'on' : ''}
               title={tr(
-                'Звучат только свист, золотая находка и итог карты; обычные подборы молчат',
-                'Only the whistle, a golden drop and the map total play a sound; regular pickups stay silent',
+                'Звучат только дорогие находки и рекорд; обычные подборы и итог карты молчат',
+                'Only pricey drops and a record play a sound; regular pickups and the map total stay silent',
               )}
-              onClick={() => setSoundMode('important')}
+              onClick={() => patch({ sound: true })}
             >
-              {tr('Только важное', 'Important only')}
+              {tr('Звук', 'Sound on')}
             </button>
-            <button className={soundMode === 'off' ? 'on' : ''} onClick={() => setSoundMode('off')}>
+            <button className={prefs.sound ? '' : 'on'} onClick={() => patch({ sound: false })}>
               {tr('Без звука', 'Muted')}
             </button>
           </div>
@@ -267,36 +254,34 @@ export function SettingsPanel({
               onPointerUp={() => playTest(prefs.volume)}
             />
           </label>
-          <label
-            className={`set-row ${prefs.sound ? '' : 'set-disabled'}`}
-            title={tr(
-              'Свист, как в фильтрах PoE: предмет дороже порога слышно не глядя. Золотая находка звучит своим звуком',
-              'A whistle like PoE loot filters: you hear a pricey item without looking. Golden drops keep their own sound',
+          <ThresholdRow
+            label={tr('«Возвышение» на предмет дороже', '“Exalted” for items over')}
+            hint={tr(
+              'Как в фильтрах PoE: ценный предмет слышно не глядя',
+              'Like PoE loot filters: you hear a valuable item without looking',
             )}
-          >
-            <span>{tr('Свист на предмет дороже', 'Whistle for items over')}</span>
-            <select
-              value={String(prefs.whistleFe)}
-              disabled={!prefs.sound}
-              onChange={(e) => {
-                const whistleFe = Number(e.target.value);
-                patch({ whistleFe });
-                if (whistleFe > 0) playPreview('whistle', prefs.volume);
-              }}
-            >
-              <option value="0">{tr('не свистеть', 'off')}</option>
-              {WHISTLE_STEPS.map((fe) => (
-                <option key={fe} value={String(fe)}>
-                  {tr(`${fe} ФЕ`, `${fe} FE`)}
-                </option>
-              ))}
-              {prefs.whistleFe > 0 && !WHISTLE_STEPS.includes(prefs.whistleFe) && (
-                <option value={String(prefs.whistleFe)}>
-                  {tr(`${prefs.whistleFe} ФЕ`, `${prefs.whistleFe} FE`)}
-                </option>
-              )}
-            </select>
-          </label>
+            value={prefs.exaltedFe}
+            steps={EXALTED_STEPS}
+            disabled={!prefs.sound}
+            onChange={(exaltedFe) => {
+              patch({ exaltedFe });
+              if (exaltedFe > 0) playPreview('exalted', prefs.volume);
+            }}
+          />
+          <ThresholdRow
+            label={tr('«Дивайн» на предмет дороже', '“Divine” for items over')}
+            hint={tr(
+              'Звук дорогой находки; золотая находка звучит им же',
+              'The pricey-drop sound; golden drops use it too',
+            )}
+            value={prefs.divineFe}
+            steps={DIVINE_STEPS}
+            disabled={!prefs.sound}
+            onChange={(divineFe) => {
+              patch({ divineFe });
+              if (divineFe > 0) playPreview('divine', prefs.volume);
+            }}
+          />
           <div className={`set-dir ${prefs.sound ? '' : 'set-disabled'}`}>
             <span className="muted small">{tr('Прослушать', 'Preview')}</span>
             <div className="set-actions">
@@ -325,7 +310,7 @@ export function SettingsPanel({
             />
           </label>
           <label className="set-row">
-            <span>{tr('Золотая плашка и её звук', 'Golden popup and its sound')}</span>
+            <span>{tr('Золотая плашка', 'Golden popup')}</span>
             <select
               value={String(prefs.jackpotFe)}
               onChange={(e) => patch({ jackpotFe: Number(e.target.value) })}
@@ -596,5 +581,31 @@ export function SettingsPanel({
         </section>
       </aside>
     </>
+  );
+}
+
+/** Строка порога звука находки: «выключен» или ступень в ФЕ (нестандартное значение тоже видно). */
+function ThresholdRow(props: {
+  label: string;
+  hint: string;
+  value: number;
+  steps: readonly number[];
+  disabled: boolean;
+  onChange: (fe: number) => void;
+}) {
+  const { label, hint, value, steps, disabled, onChange } = props;
+  return (
+    <label className={`set-row ${disabled ? 'set-disabled' : ''}`} title={hint}>
+      <span>{label}</span>
+      <select value={String(value)} disabled={disabled} onChange={(e) => onChange(Number(e.target.value))}>
+        <option value="0">{tr('выключен', 'off')}</option>
+        {steps.map((fe) => (
+          <option key={fe} value={String(fe)}>
+            {tr(`${fe} ФЕ`, `${fe} FE`)}
+          </option>
+        ))}
+        {value > 0 && !steps.includes(value) && <option value={String(value)}>{tr(`${value} ФЕ`, `${value} FE`)}</option>}
+      </select>
+    </label>
   );
 }

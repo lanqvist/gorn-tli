@@ -14,8 +14,23 @@
  * генератора, поэтому рендер детерминирован: тот же рецепт — тот же файл.
  */
 
-/** Частота дискретизации ассетов. Верх всё равно срезается мастером ниже 8 кГц. */
-export const SR = 24000;
+/**
+ * Частота дискретизации рендера. Ассеты «Подписи» — 24 кГц: верх всё
+ * равно срезается мастером ниже 8.5 кГц. Прототипам с «воздухом»
+ * (шиммер, супер-пила) нужно больше — их рендерят внутри withRate.
+ */
+export let SR = 24000;
+
+/** Отрендерить fn на другой частоте дискретизации и вернуть прежнюю. */
+export function withRate<T>(rate: number, fn: () => T): T {
+  const prev = SR;
+  SR = rate;
+  try {
+    return fn();
+  } finally {
+    SR = prev;
+  }
+}
 
 export type Signal = Float32Array<ArrayBuffer>;
 
@@ -74,7 +89,7 @@ export function curve(points: ReadonlyArray<readonly [number, number]>): (t: num
 // ── источники ───────────────────────────────────────────────────
 
 /** Сглаживание разрыва (polyBLEP): пила и меандр без алиасного свиста. */
-function blep(t: number, dt: number): number {
+export function blep(t: number, dt: number): number {
   if (t < dt) {
     const x = t / dt;
     return x + x - x * x - 1;

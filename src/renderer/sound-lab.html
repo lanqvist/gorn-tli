@@ -14,6 +14,7 @@
       .controls { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; padding: 14px 0; border-block: 1px solid var(--line); margin-bottom: 22px; }
       label { display: flex; align-items: center; gap: 10px; color: var(--muted); }
       input { accent-color: var(--gold); }
+      select { background: #28292e; color: var(--text); border: 1px solid #4b4d55; border-radius: 6px; padding: 6px 8px; font: inherit; }
       #status { color: var(--muted); font-size: 13px; min-height: 20px; margin: -10px 0 18px; font-variant-numeric: tabular-nums; }
       .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
       .card { padding: 18px; border: 1px solid var(--line); border-top: 2px solid var(--k, #8c7858); border-radius: 10px; background: var(--card); }
@@ -22,10 +23,13 @@
       h2 { font-size: 20px; font-weight: 500; margin: 0 0 6px; color: var(--k, var(--gold)); }
       .card p { color: var(--muted); margin: 0 0 14px; font-size: 14px; }
       .btns { display: flex; flex-wrap: wrap; gap: 7px; }
+      .btns + .btns { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+      .card.wide { grid-column: 1 / -1; }
       button { background: #28292e; color: var(--text); border: 1px solid #4b4d55; border-radius: 6px; padding: 8px 12px; cursor: pointer; font: inherit; font-size: 13.5px; }
       button:hover { border-color: var(--k, var(--gold)); }
       button.main { border-color: var(--k, var(--gold)); }
       button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+      h2.section { font-size: 22px; color: var(--text); margin: 28px 0 8px; }
       small { display: block; color: var(--muted); font-size: 12px; margin-top: 10px; min-height: 1.3em; font-variant-numeric: tabular-nums; }
     </style>
   </head>
@@ -39,10 +43,27 @@
     </p>
     <div class="controls">
       <label>Громкость <input id="vol" type="range" min="0" max="100" value="60" /></label>
+      <label><input id="mono" type="checkbox" /> Моно (проверка одного динамика)</label>
       <button id="stop">■ Стоп (Esc)</button>
     </div>
     <div id="status" role="status"></div>
     <section class="card ref" id="ref"></section>
+    <h2 class="section">Премиум</h2>
+    <main class="grid" id="forge"></main>
+    <h2 class="section">Раунд 2 · по партитуре эталона</h2>
+    <p class="sub">
+      Не тембр эталона, а его исполнение: вспышка, громкий широкий вздох, затем в центре загорается одна нота,
+      просадка, хвост с низкими тонами и тихий широкий космос — или, как у сферы возвышения, саб и звенящая вспышка.
+      Тембры свои: космос, кузня, EDM. Уровни фаз выставлены замером по эталону.
+    </p>
+    <main class="grid" id="score"></main>
+    <h2 class="section">Раунд 1 · хаус + космос + EDM</h2>
+    <p class="sub">
+      Прототипы на выбор: четыре концепции по три ступени и свист с объёмом и сценой. Всё в тональности
+      подписи, рендер 48 кГц, громкость по той же лесенке. «В сессии» — как на карте, вперемешку со свистом.
+    </p>
+    <main class="grid" id="club"></main>
+    <h2 class="section">Сейчас · «Подпись»</h2>
     <main class="grid" id="grid"></main>
     <script type="module" src="./sound-lab.ts"></script>
   </body>

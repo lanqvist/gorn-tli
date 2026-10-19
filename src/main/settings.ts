@@ -77,16 +77,16 @@ export interface Settings {
     placement: OverlayPlacement | null;
     /** Всплывающий доход: «+N ФЕ» при подборе, итог при закрытии карты. */
     popups: boolean;
-    /** Звук подбора и закрытия карты. */
+    /** Звук дорогих находок и рекорда (подбор и итог карты молчат). */
     sound: boolean;
     /** Громкость звука, 0–1. */
     volume: number;
-    /** Озвучивать только золотые находки и итог карты. */
-    soundImportantOnly: boolean;
+    /** Звук «дивайн» на предмет дороже этого порога, в ФЕ. 0 — выключен. Золотая находка звучит им же. */
+    divineFe: number;
     /** Порог «золотой» находки, в ФЕ. */
     jackpotFe: number;
-    /** Свист на предмет дороже этого порога, в ФЕ. 0 — без свиста. */
-    whistleFe: number;
+    /** Звук «возвышение» на предмет дороже этого порога, в ФЕ. 0 — выключен. */
+    exaltedFe: number;
     /** Первое включение оверлея уже было — больше не открывать открепленным. */
     introShown: boolean;
     /** Цель сессии в ФЕ: оверлей показывает прогресс. 0 — выключено. */
@@ -117,9 +117,9 @@ const DEFAULTS: Settings = {
     popups: true,
     sound: true,
     volume: 0.5,
-    soundImportantOnly: false,
+    divineFe: 20,
     jackpotFe: 50,
-    whistleFe: 10,
+    exaltedFe: 5,
     introShown: false,
     goalFe: 0,
   },

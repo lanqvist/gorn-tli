@@ -29,9 +29,9 @@ export function prefsPayload(prefs: Settings['overlay']): {
   popups: boolean;
   sound: boolean;
   volume: number;
-  soundImportantOnly: boolean;
+  divineFe: number;
   jackpotFe: number;
-  whistleFe: number;
+  exaltedFe: number;
   fontScale: number;
   goalFe: number;
 } {
@@ -39,9 +39,9 @@ export function prefsPayload(prefs: Settings['overlay']): {
     popups: prefs.popups,
     sound: prefs.sound,
     volume: prefs.volume,
-    soundImportantOnly: prefs.soundImportantOnly,
+    divineFe: prefs.divineFe,
     jackpotFe: prefs.jackpotFe,
-    whistleFe: prefs.whistleFe,
+    exaltedFe: prefs.exaltedFe,
     fontScale: prefs.fontScale,
     goalFe: prefs.goalFe,
   };
@@ -242,9 +242,9 @@ export class Overlay {
     popups?: boolean;
     sound?: boolean;
     volume?: number;
-    soundImportantOnly?: boolean;
+    divineFe?: number;
     jackpotFe?: number;
-    whistleFe?: number;
+    exaltedFe?: number;
     fontScale?: number;
     goalFe?: number;
   }): void {
@@ -259,9 +259,13 @@ export class Overlay {
       // 0 — «авто»: порог берётся из снапшота (P95 цен сезона).
       clean.jackpotFe = Math.max(0, clean.jackpotFe);
     }
-    if (clean.whistleFe !== undefined) {
-      // 0 — свист выключен.
-      clean.whistleFe = Math.max(0, clean.whistleFe);
+    if (clean.exaltedFe !== undefined) {
+      // 0 — звук «возвышение» выключен.
+      clean.exaltedFe = Math.max(0, clean.exaltedFe);
+    }
+    if (clean.divineFe !== undefined) {
+      // 0 — звук «дивайн» выключен.
+      clean.divineFe = Math.max(0, clean.divineFe);
     }
     if (clean.fontScale !== undefined) {
       clean.fontScale = Math.min(1.6, Math.max(0.8, clean.fontScale));

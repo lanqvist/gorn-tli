@@ -4,7 +4,7 @@ import { tr } from '../../core/i18n.js';
 import type { Snapshot } from '../../main/engine.js';
 import { Fe, FeIcon } from '../components/Fe.js';
 import { clock } from '../format.js';
-import { playCoinRain, playJackpot, playPickup, playRunEnd, playWhistle } from './sound.js';
+import { playDrop, playRecord } from './sound.js';
 
 /**
  * Всплывающий доход в оверлее.
@@ -62,12 +62,12 @@ export interface ToastOptions {
   popups: boolean;
   sound: boolean;
   volume: number;
-  /** Озвучивать только золотые находки и итог карты — без «тук» на подбор. */
-  soundImportantOnly: boolean;
   /** Порог «золотой» находки, в ФЕ. */
   jackpotFe: number;
-  /** Свист на предмет дороже этого порога, в ФЕ. 0 — без свиста. */
-  whistleFe: number;
+  /** Звук «возвышение» на предмет дороже этого порога, в ФЕ. 0 — выключен. */
+  exaltedFe: number;
+  /** Звук «дивайн» на предмет дороже этого порога, в ФЕ. 0 — выключен. */
+  divineFe: number;
 }
 
 interface RunFingerprint {
@@ -112,7 +112,7 @@ export function useIncomeToasts(snapshot: Snapshot | null, opts: ToastOptions): 
         }
       : null;
 
-    const { popups, sound, volume, soundImportantOnly, jackpotFe, whistleFe } = optsRef.current;
+    const { popups, sound, volume, jackpotFe, exaltedFe, divineFe } = optsRef.current;
     if (!popups && !sound) return;
 
     const commit = (list: Toast[]): void => {
@@ -173,10 +173,8 @@ export function useIncomeToasts(snapshot: Snapshot | null, opts: ToastOptions): 
           deltaPct:
             median > 0 ? Math.round(((finished.perHour - median) / median) * 100) : null,
         });
-        if (sound) {
-          if (record) playCoinRain(volume);
-          else playRunEnd(finished.netFe, volume);
-        }
+        // Звучит только рекорд: обычный итог карты молчит, его читают глазами.
+        if (sound && record) playRecord(volume);
       }
     }
 
@@ -216,7 +214,8 @@ export function useIncomeToasts(snapshot: Snapshot | null, opts: ToastOptions): 
         icon: jackpot.icon,
         hot,
       });
-      if (sound) playJackpot(volume, hot);
+      // Золотая находка всегда дороже порогов звука — звучит «дивайн».
+      if (sound) playDrop('divine', volume);
       return;
     }
 
@@ -224,12 +223,11 @@ export function useIncomeToasts(snapshot: Snapshot | null, opts: ToastOptions): 
     const merged = now - lastPickupAt.current < MERGE_WINDOW_MS;
     lastPickupAt.current = now;
 
-    // Дорогой, но не золотой предмет — свист, как в фильтрах PoE. Он
-    // сам по себе важный сигнал, поэтому звучит и в режиме «только важное».
-    // Остальное — удар подбора: темп и громкость сглаживает sound.ts
-    // (троттлинг с накоплением), дельта уходит туда как есть.
-    if (sound && whistleFe > 0 && priciest >= whistleFe) playWhistle(volume);
-    else if (sound && !soundImportantOnly) playPickup(gained, volume);
+    // Дорогой, но не золотой предмет — как в фильтрах PoE: что упало, слышно
+    // не глядя. Дороже второго порога — «дивайн», первого — «возвышение».
+    // Остальные подборы молчат: звук на каждый тик — фон, а не событие.
+    if (sound && divineFe > 0 && priciest >= divineFe) playDrop('divine', volume);
+    else if (sound && exaltedFe > 0 && priciest >= exaltedFe) playDrop('exalted', volume);
     if (!popups) return;
 
     if (merged) {

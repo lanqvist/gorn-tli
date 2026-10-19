@@ -20,9 +20,9 @@ export function ToastLayerApp() {
     popups: true,
     sound: true,
     volume: 0.5,
-    soundImportantOnly: false,
+    divineFe: 20,
     jackpotFe: 50,
-    whistleFe: 10,
+    exaltedFe: 5,
     fontScale: 1,
     goalFe: 0,
   });
@@ -85,9 +85,9 @@ export function ToastLayerApp() {
         popups: s.popups ?? true,
         sound: s.sound ?? true,
         volume: s.volume ?? 0.5,
-        soundImportantOnly: s.soundImportantOnly ?? false,
+        divineFe: s.divineFe ?? 20,
         jackpotFe: s.jackpotFe ?? 50,
-        whistleFe: s.whistleFe ?? 10,
+        exaltedFe: s.exaltedFe ?? 5,
         fontScale: s.fontScale ?? 1,
         goalFe: s.goalFe ?? 0,
       });

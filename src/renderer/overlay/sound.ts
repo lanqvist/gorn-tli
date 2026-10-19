@@ -1,28 +1,24 @@
 /**
  * Звук слоя всплывающего дохода.
  *
- * Сами звуки — готовые стерео-ассеты «Подписи»: их заранее рендерит наш
- * генератор (src/sfx, npm run sounds) — один фирменный звук дорогой
- * находки (глубокий вздох и звон обертонов, мягкий удар, чистый мерцающий
- * тон, тихий космос) и все ступени, выведенные из него. Громкость каждого
- * файла выверена замером ещё при рендере, поэтому здесь только выбор,
- * когда и что проиграть.
+ * Сами звуки — готовые стерео-ассеты «Кузни»: их заранее рендерит наш
+ * генератор (src/sfx/sounds.ts, npm run sounds). Звуков три, и только
+ * на то, что стоит услышать не глядя:
+ *  - «возвышение» — предмет дороже первого порога;
+ *  - «дивайн» — предмет дороже второго порога и золотая находка;
+ *  - «рекорд» — карта с лучшим темпом сессии.
+ * Подбор и итог карты молчат: звук на каждый тик — фон, от которого
+ * игрок за час выключит звук совсем. Громкость файлов выверена ещё при
+ * рендере, поэтому здесь только выбор, когда и что проиграть.
  *
- * Ступени — как в фильтрах добычи PoE: что упало, слышно не глядя.
- * У частых ступеней несколько вариантов, они идут по кругу, и каждый
- * повтор чуть сдвинут по высоте (±0.5%) — ухо не замыливается, а тон
- * подписи не «плывёт».
- *
- * Подборы звучат не чаще одного удара за окно троттлинга: лог тикает
- * каждые 300 мс, и удар на каждый тик — звуковой спам, от которого игрок
- * за час выключит звук совсем. Дельты внутри окна копятся и озвучиваются
- * одним ударом с весом накопленного; мелочь тише порога не звенит вовсе.
+ * У частого «возвышения» несколько вариантов, они идут по кругу, и каждый
+ * повтор чуть сдвинут по высоте (±0.5%) — ухо не замыливается.
  *
  * Файлы встроены в бандл как data-URL: страницы грузятся с file://,
  * и так звук работает одинаково в деве и в собранном приложении.
  * AudioContext и декодирование — лениво: слой почти всё время молчит.
  */
-import type { Tier } from '../../sfx/kit.js';
+import type { Sound } from '../../sfx/sounds.js';
 
 const FILES = import.meta.glob<string>('../assets/sfx/*.wav', {
   query: '?inline',
@@ -30,13 +26,13 @@ const FILES = import.meta.glob<string>('../assets/sfx/*.wav', {
   eager: true,
 });
 
-/** Ступень → её варианты (data-URL), по порядку номеров в имени файла. */
-const BANK = new Map<Tier, string[]>();
+/** Звук → его варианты (data-URL), по порядку номеров в имени файла. */
+const BANK = new Map<Sound, string[]>();
 for (const [path, url] of Object.entries(FILES).sort(([a], [b]) => a.localeCompare(b))) {
   const match = /\/([A-Za-z]+)-\d+\.wav$/.exec(path);
   if (!match) continue;
-  const tier = match[1] as Tier;
-  BANK.set(tier, [...(BANK.get(tier) ?? []), url]);
+  const sound = match[1] as Sound;
+  BANK.set(sound, [...(BANK.get(sound) ?? []), url]);
 }
 
 let ctx: AudioContext | null = null;
@@ -49,9 +45,9 @@ function context(): AudioContext {
 let bus: DynamicsCompressorNode | null = null;
 
 /**
- * Общая выходная шина с компрессором-лимитером: хвосты подборов,
- * свист и джекпот могут наложиться, и на громкости ближе к единице
- * без него возможен клиппинг.
+ * Общая выходная шина с компрессором-лимитером: хвост рекорда и дивайн
+ * могут наложиться, и на громкости ближе к единице без него возможен
+ * клиппинг.
  */
 function output(): AudioNode {
   const audio = context();
@@ -85,14 +81,14 @@ function load(url: string): Promise<AudioBuffer> {
   return buffer;
 }
 
-const turn = new Map<Tier, number>();
+const turn = new Map<Sound, number>();
 
-/** Проиграть очередной вариант ступени. Ошибки глотаются: звук — украшение. */
-function playTier(tier: Tier, volume: number): void {
-  const variants = BANK.get(tier);
+/** Проиграть очередной вариант звука. Ошибки глотаются: звук — украшение. */
+function play(sound: Sound, volume: number): void {
+  const variants = BANK.get(sound);
   if (!variants || variants.length === 0 || volume <= 0) return;
-  const n = turn.get(tier) ?? 0;
-  turn.set(tier, n + 1);
+  const n = turn.get(sound) ?? 0;
+  turn.set(sound, n + 1);
   const url = variants[n % variants.length]!;
   try {
     const audio = context();
@@ -115,132 +111,37 @@ function playTier(tier: Tier, volume: number): void {
   }
 }
 
-/** Подбор: весомый (≈13 ФЕ и выше) — тон с коротким вздохом, мелкий — один короткий тон. */
-function pickupVoice(valueFe: number, volume: number): void {
-  const weight = Math.min(1, Math.log10(Math.max(1, valueFe)) / 2.5); // 0..1 к ~300 ФЕ
-  playTier(weight > 0.45 ? 'pickupBig' : 'pickup', volume);
-}
-
-/** Пикапы звучат не чаще одного удара за это окно. */
-const PICKUP_THROTTLE_MS = 1800;
-/** Накопленная мелочь тише этого порога не озвучивается вовсе. */
-const PICKUP_MIN_FE = 1;
-
-let pendingFe = 0;
-let pendingVolume = 0;
-let lastHitAt = 0;
-let flushTimer: ReturnType<typeof setTimeout> | null = null;
+/** Находки звучат не чаще раза в это окно: босс может высыпать пачку дорогого. */
+const DROP_GAP_MS = 1500;
+let lastDropAt = 0;
+let lastDrop: Sound | null = null;
 
 /**
- * Подбор добычи: короткий тон подписи.
- *
- * Троттлинг живёт здесь, а не у вызывающего: дельты внутри окна копятся
- * и звучат одним ударом с весом накопленной суммы. Джекпот и итог карты
- * идут мимо — они редкие и осмысленные.
+ * Дорогая находка: «возвышение» или «дивайн». Внутри окна второй звук
+ * не играет — кроме дивайна после возвышения: более ценное перебивает.
  */
-export function playPickup(valueFe: number, volume: number): void {
-  if (volume <= 0) return;
-  pendingFe += valueFe;
-  pendingVolume = Math.max(pendingVolume, volume);
-  const sinceLast = Date.now() - lastHitAt;
-  if (sinceLast >= PICKUP_THROTTLE_MS) {
-    flushPickup();
-  } else if (flushTimer === null) {
-    flushTimer = setTimeout(flushPickup, PICKUP_THROTTLE_MS - sinceLast);
-  }
-}
-
-function flushPickup(): void {
-  if (flushTimer !== null) {
-    clearTimeout(flushTimer);
-    flushTimer = null;
-  }
-  const valueFe = pendingFe;
-  const volume = pendingVolume;
-  pendingFe = 0;
-  pendingVolume = 0;
-  // Не добравшаяся до порога мелочь сбрасывается, а не копится вечно:
-  // иначе мусор по 0,1 ФЕ раз в десять минут внезапно звенел бы.
-  if (valueFe < PICKUP_MIN_FE) return;
-  lastHitAt = Date.now();
-  pickupVoice(valueFe, volume);
-}
-
-/** Свист не чаще раза в это окно: босс может высыпать пачку дорогого. */
-const WHISTLE_GAP_MS = 1500;
-let lastWhistleAt = 0;
-
-/**
- * Дорогой предмет — свист, как в фильтрах PoE. Свист заменяет удар
- * подбора: накопленная мелочь сгорает, и следующий удар ждёт полное
- * окно троттлинга, чтобы подбор не наступал свисту на хвост.
- */
-export function playWhistle(volume: number): void {
+export function playDrop(kind: 'exalted' | 'divine', volume: number): void {
   if (volume <= 0) return;
   const now = Date.now();
-  if (now - lastWhistleAt < WHISTLE_GAP_MS) return;
-  lastWhistleAt = now;
-  if (flushTimer !== null) {
-    clearTimeout(flushTimer);
-    flushTimer = null;
-  }
-  pendingFe = 0;
-  pendingVolume = 0;
-  lastHitAt = now;
-  playTier('whistle', volume);
+  if (now - lastDropAt < DROP_GAP_MS && !(kind === 'divine' && lastDrop === 'exalted')) return;
+  lastDropAt = now;
+  lastDrop = kind;
+  play(kind, volume);
 }
 
-/**
- * Крупная находка — полная подпись. Стрик (второй джекпот подряд)
- * добавляет к тону квинту и октаву.
- */
-export function playJackpot(volume: number, hot = false): void {
-  playTier(hot ? 'jackpotHot' : 'jackpot', volume);
+/** Рекорд сессии — «Пламя». */
+export function playRecord(volume: number): void {
+  play('record', volume);
 }
 
-/** Рекорд сессии: подпись с аккордом и самым длинным космосом. */
-export function playCoinRain(volume: number): void {
-  playTier('record', volume);
-}
-
-/** Карта закрыта: квинта разрешается в тон. Минус — низкий тон проседает и глохнет. */
-export function playRunEnd(netFe: number, volume: number): void {
-  playTier(netFe >= 0 ? 'runEnd' : 'runLoss', volume);
-}
-
-/**
- * Пробный удар для ползунка громкости: средний подбор, мимо троттлинга —
- * игрок крутит ползунок и должен слышать результат сразу.
- */
+/** Пробный звук для ползунка громкости — «возвышение», самый частый из трёх. */
 export function playTest(volume: number): void {
-  pickupVoice(40, volume);
+  play('exalted', volume);
 }
 
-export type SoundPreview =
-  | 'pickup'
-  | 'whistle'
-  | 'jackpot'
-  | 'jackpotHot'
-  | 'runEnd'
-  | 'runLoss'
-  | 'record';
+export type SoundPreview = Sound;
 
-/** Прослушивание из настроек: каждый звук как в игре, мимо троттлинга. */
+/** Прослушивание из настроек: каждый звук как в игре, мимо окна между находками. */
 export function playPreview(kind: SoundPreview, volume: number): void {
-  switch (kind) {
-    case 'pickup':
-      return playTest(volume);
-    case 'whistle':
-      return playTier('whistle', volume);
-    case 'jackpot':
-      return playJackpot(volume);
-    case 'jackpotHot':
-      return playJackpot(volume, true);
-    case 'runEnd':
-      return playRunEnd(100, volume);
-    case 'runLoss':
-      return playRunEnd(-10, volume);
-    case 'record':
-      return playCoinRain(volume);
-  }
+  play(kind, volume);
 }

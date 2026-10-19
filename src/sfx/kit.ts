@@ -463,6 +463,15 @@ function recipe(p: Profile, tier: Tier, v: number, r: Random): Stereo {
   }
 }
 
+/**
+ * Сырой рецепт без мастера. dry — без хвоста космоса: прототипы сцены
+ * (src/sfx/club.ts) вешают на тот же тембр своё пространство.
+ */
+export function rawSound(tier: Tier, variant: number, dry = false): Stereo {
+  const profile = dry ? { ...SIGNATURE, space: 0 } : SIGNATURE;
+  return recipe(profile, tier, variant, rng(seedOf(`signature:${tier}:${variant}`)));
+}
+
 const BASE = baseline.files as Record<string, { peakDb: number; rmsDb: number; energyDb: number }>;
 
 /** Пределы ступени по прежним файлам: самый тихий из её вариантов. */

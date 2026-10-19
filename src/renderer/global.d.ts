@@ -14,9 +14,9 @@ declare global {
     popups: boolean;
     sound: boolean;
     volume: number;
-    soundImportantOnly: boolean;
+    divineFe: number;
     jackpotFe: number;
-    whistleFe: number;
+    exaltedFe: number;
     fontScale: number;
     goalFe: number;
   }
@@ -31,9 +31,9 @@ declare global {
       popups: boolean;
       sound: boolean;
       volume: number;
-      soundImportantOnly: boolean;
+      divineFe: number;
       jackpotFe: number;
-      whistleFe: number;
+      exaltedFe: number;
       goalFe: number;
     }>;
     toggle: () => Promise<boolean>;

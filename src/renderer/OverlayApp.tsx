@@ -48,9 +48,9 @@ const DEFAULT_PREFS: GornOverlayPrefs = {
   popups: true,
   sound: true,
   volume: 0.5,
-  soundImportantOnly: false,
+  divineFe: 20,
   jackpotFe: 50,
-  whistleFe: 10,
+  exaltedFe: 5,
   fontScale: 1,
   goalFe: 0,
 };
@@ -167,9 +167,9 @@ export function OverlayApp() {
         popups: s.popups ?? true,
         sound: s.sound ?? true,
         volume: s.volume ?? 0.5,
-        soundImportantOnly: s.soundImportantOnly ?? false,
+        divineFe: s.divineFe ?? 20,
         jackpotFe: s.jackpotFe ?? 50,
-        whistleFe: s.whistleFe ?? 10,
+        exaltedFe: s.exaltedFe ?? 5,
         fontScale: s.fontScale ?? 1,
         goalFe: s.goalFe ?? 0,
       });
@@ -424,7 +424,7 @@ function DropBars({
 }) {
   // Порог «золота» тот же, что у плашек: явный из настроек либо авто (P95 цен).
   const goldFe = prefs.jackpotFe > 0 ? prefs.jackpotFe : snapshot.jackpotAutoFe;
-  const orangeFe = prefs.whistleFe > 0 ? prefs.whistleFe : goldFe / 5;
+  const orangeFe = prefs.exaltedFe > 0 ? prefs.exaltedFe : goldFe / 5;
   const shown = drops
     .filter(
       (d) =>
