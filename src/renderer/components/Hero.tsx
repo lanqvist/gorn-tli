@@ -1,8 +1,10 @@
 import { tr } from '../../core/i18n.js';
 import { RUN, pluralize } from '../../core/plural.js';
+import { NORM_WINDOW } from '../../core/analysis.js';
 import type { Snapshot } from '../../main/engine.js';
 import { NBSP, cacheDate, duration, num, time } from '../format.js';
 import { Fe } from './Fe.js';
+import { spreadText } from '../heroText.js';
 import { ConfidenceBadge, Tile, Tip } from './ui.js';
 
 /**
@@ -67,9 +69,11 @@ function RateSparkline({ snapshot }: { snapshot: Snapshot }) {
 }
 
 /**
- * Главный блок. Медиана крупно, среднее рядом мелко — сознательно:
- * среднее в ARPG задирается одной редкой находкой и описывает забег,
- * которого не бывает. Под числом всегда видно, насколько ему верить.
+ * Главный блок. Крупно — медиана последних забегов: «как идёт сейчас».
+ * Медиана всего сезона копит ранние слабые недели (412 в час при сессии
+ * в 1 446) и отвечает на другой вопрос — она стоит ниже, как норма.
+ * Среднее рядом мелко — сознательно: в ARPG оно задирается одной редкой
+ * находкой и описывает забег, которого не бывает.
  */
 export function Hero({ snapshot }: { snapshot: Snapshot }) {
   const { rate, feRate, totals } = snapshot;
@@ -78,25 +82,56 @@ export function Hero({ snapshot }: { snapshot: Snapshot }) {
   // одна: у расходника нет цены, и вычесть нечего.
   const unpricedCost = snapshot.missing.find((m) => m.isCost);
 
+  // norm — медиана последних 20 забегов (как у сравнений «к норме»).
+  const recentCount = Math.min(NORM_WINDOW, rate.sampleSize);
+  const now = rate.sampleSize > 0 ? snapshot.norm : 0;
+  const vsSeason =
+    rate.sampleSize > NORM_WINDOW && rate.median > 0
+      ? Math.round(((now - rate.median) / rate.median) * 100)
+      : null;
+  const spreadNote = spreadText(rate.sampleSize, spread > rate.median * 0.8);
+
   return (
     <section className="hero">
       <div className="hero-main">
         <div className="hero-label">
           <Tip
             tip={tr(
-              'Оценка всей добычи по ценам (свои пробивки + база сообщества) минус вложения в карты. Медиана по забегам: устойчива к одной редкой дорогой находке.',
-              'All loot valued at prices (your own price checks + community prices) minus map costs. Median across runs: it holds steady against a single rare expensive drop.',
+              'Оценка всей добычи по ценам (свои пробивки + база сообщества) минус вложения в карты. Медиана последних 20 забегов: показывает, как идёт сейчас, и устойчива к одной редкой дорогой находке.',
+              'All loot valued at prices (your own price checks + community prices) minus map costs. Median of the last 20 runs: shows how things go right now and holds steady against a single rare expensive drop.',
             )}
           >
-            {tr('Добыча в час, за вычетом вложений', 'Loot per hour, net of map costs')}
+            {tr('Добыча в час сейчас, за вычетом вложений', 'Loot per hour now, net of map costs')}
           </Tip>
         </div>
         <div className="hero-value">
-          <Fe value={rate.median} />
+          <Fe value={now} />
+          {vsSeason !== null && (
+            <span
+              className={`hero-vs ${vsSeason >= 0 ? 'up' : 'down'}`}
+              title={tr('Последние забеги к медиане сезона', 'Recent runs vs the season median')}
+            >
+              {vsSeason === 0
+                ? tr('на уровне сезона', 'on par with the season')
+                : `${vsSeason > 0 ? '↑' : '↓'} ${Math.abs(vsSeason)}% ${tr('к сезону', 'vs season')}`}
+            </span>
+          )}
         </div>
         <div className="hero-sub">
+          <span className="muted">
+            {tr('медиана · последние', 'median · last')} {pluralize(recentCount, RUN)}
+          </span>
+          <Tip
+            tip={tr(
+              'Медиана по всем забегам сезона (или выбранного персонажа) — норма, с которой сравниваются забеги.',
+              'Median across all runs of the season (or the chosen character) — the norm runs are compared against.',
+            )}
+          >
+            <span>
+              {tr('сезон', 'season')} <Fe value={rate.median} /> · {pluralize(rate.sampleSize, RUN)}
+            </span>
+          </Tip>
           <ConfidenceBadge level={rate.confidence} />
-          <span>{pluralize(rate.sampleSize, RUN)}</span>
           <Tip
             tip={tr(
               'P25–P75: половина забегов укладывается в эти границы.',
@@ -118,15 +153,7 @@ export function Hero({ snapshot }: { snapshot: Snapshot }) {
             </span>
           </Tip>
         </div>
-        {rate.sampleSize > 0 && spread > rate.median * 0.8 && (
-          <p className="note">
-            {tr(
-              'Забеги сильно различаются: разброс шире самой медианы. Цифра станет устойчивой после',
-              'Runs vary a lot: the spread is wider than the median itself. The number will settle after',
-            )}{' '}
-            {pluralize(rate.sampleSize < 15 ? 15 : 50, RUN)}.
-          </p>
-        )}
+        {spreadNote && <p className="note">{spreadNote}</p>}
         {rate.topShare > 0.3 && rate.sampleSize > 1 && (
           <p className="note warn">
             {tr(

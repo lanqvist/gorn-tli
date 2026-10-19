@@ -357,6 +357,27 @@ button {
   line-height: 1.1;
   margin: 6px 0 10px;
   color: var(--accent);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+/* Последние забеги к медиане сезона: растёшь или проседаешь. */
+.hero-vs {
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 600;
+  background: rgb(255 255 255 / 5%);
+}
+
+.hero-vs.up {
+  background: rgb(95 208 138 / 14%);
+}
+
+.hero-vs.down {
+  background: rgb(224 112 95 / 14%);
 }
 
 .hero-sub {
