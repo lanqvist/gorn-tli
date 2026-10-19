@@ -96,3 +96,24 @@ describe('секундный таймер — только у часов', () =>
     expect(css).toMatch(/\.status-pulse i \{\s*animation: status-pulse 1\.4s ease-out 2;/);
   });
 });
+
+describe('пульт по клавише', () => {
+  it('спрятанный пульт не рисует и не тикает: тикают только часы забега', () => {
+    const app = src('PanelApp.tsx');
+    expect(app).not.toMatch(/setInterval/);
+    expect(app).toMatch(/if \(!visible\) return null;/);
+    expect(app).toMatch(/function RunClock[\s\S]*useNow\(1000\)/);
+    expect(app).toMatch(/const SessionTab = memo\([\s\S]*useNow\(60_000\)/);
+  });
+
+  it('в пульте нет анимаций', () => {
+    expect(src('panel.css')).not.toMatch(/animation|transition/);
+  });
+
+  it('снимки — только открытому пульту; окно непрозрачное', () => {
+    const main = readFileSync(join(__dirname, '../src/main/panel.ts'), 'utf8');
+    expect(main).toMatch(/new SnapshotGate<Snapshot>/);
+    expect(main).toMatch(/visible: \(\) => this\.window!\.isVisible\(\)/);
+    expect(main).toMatch(/transparent: false/);
+  });
+});

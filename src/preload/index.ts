@@ -133,6 +133,22 @@ contextBridge.exposeInMainWorld('gorn', {
       ipcRenderer.send('capture:frame', id, frame, err),
   },
 
+  /** Пульт поверх игры: открывается клавишей, закрывается по Esc. */
+  panel: {
+    onOpen: (callback: (req: { tab: string | null; scale: number }) => void) => {
+      const handler = (_e: unknown, req: { tab: string | null; scale: number }) => callback(req);
+      ipcRenderer.on('panel:open', handler);
+      return () => ipcRenderer.removeListener('panel:open', handler);
+    },
+    onHidden: (callback: () => void) => {
+      const handler = () => callback();
+      ipcRenderer.on('panel:hidden', handler);
+      return () => ipcRenderer.removeListener('panel:hidden', handler);
+    },
+    close: () => ipcRenderer.send('panel:close'),
+    setTab: (tab: string) => ipcRenderer.send('panel:tab', tab),
+  },
+
   /** Слой всплывающего дохода у центра экрана. */
   toasts: {
     reportHeight: (height: number) => ipcRenderer.send('toasts:height', height),

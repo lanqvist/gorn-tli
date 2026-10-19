@@ -52,6 +52,9 @@ declare global {
 
   type NameLanguage = 'ru' | 'en' | 'both';
 
+  /** Вкладки пульта — как PanelTab в main/panel.ts. */
+  type GornPanelTab = 'run' | 'session' | 'prices' | 'maps';
+
   interface GornApi {
     getSnapshot: () => Promise<Snapshot | null>;
     onSnapshot: (cb: (snapshot: Snapshot) => void) => () => void;
@@ -79,6 +82,12 @@ declare global {
         | { status: 'saved'; path: string }
         | { status: 'error'; message: string }
       >;
+    };
+    panel: {
+      onOpen: (cb: (req: { tab: GornPanelTab | null; scale: number }) => void) => () => void;
+      onHidden: (cb: () => void) => () => void;
+      close: () => void;
+      setTab: (tab: GornPanelTab) => void;
     };
     toasts: {
       reportHeight: (height: number) => void;

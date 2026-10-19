@@ -21,6 +21,7 @@ import { DebugSink } from './debug.js';
 import { Engine, type Snapshot } from './engine.js';
 import { IconCache, registerIconScheme } from './icons.js';
 import { Overlay, prefsPayload } from './overlay.js';
+import { Panel, type PanelTab } from './panel.js';
 import { PrisonAssist } from './prison/assist.js';
 import { SettingsStore, type NameLanguage, type OverlayMode } from './settings.js';
 import { SnapshotGate } from './snapshotGate.js';
@@ -60,6 +61,7 @@ const windowSnapshots = new SnapshotGate<Snapshot>(() =>
 );
 let overlay: Overlay | null = null;
 let toastLayer: ToastLayer | null = null;
+let panel: Panel | null = null;
 let settings: SettingsStore | null = null;
 let debugSink: DebugSink | null = null;
 let updater: Updater | null = null;
@@ -147,6 +149,7 @@ function createWindow(): void {
     window = null;
     overlay?.close(false);
     toastLayer?.close();
+    panel?.destroy();
     // Окно стрелок и скрытое окно потока экрана тюрьмы тоже держат
     // приложение: без этого Горн оставался фоновым процессом без трея.
     prison?.dispose();
@@ -245,6 +248,7 @@ app.whenReady().then(async () => {
   setUiLanguage(settings.uiLanguage);
   overlay = new Overlay(settings);
   toastLayer = new ToastLayer(settings);
+  panel = new Panel(() => settings?.overlay.fontScale ?? 1);
   engine = new Engine(app.getPath('userData'), items, settings.itemNames, {
     communityPrices: settings.communityPrices,
     playerFilter: settings.playerFilter,
@@ -276,6 +280,8 @@ app.whenReady().then(async () => {
     windowSnapshots.push(snapshot);
     overlay?.send('snapshot', snapshot);
     toastLayer?.send('snapshot', snapshot);
+    // Спрятанному пульту — не слать: последний уйдёт при открытии.
+    panel?.pushSnapshot(snapshot);
     debugSink?.record(snapshot);
   });
   prison = new PrisonAssist({
@@ -420,6 +426,10 @@ app.whenReady().then(async () => {
     await mkdir(prisonShotsDir, { recursive: true });
     return shell.openPath(prisonShotsDir);
   });
+
+  // Пульт: Esc, вкладка, переключённая в нём самом.
+  ipcMain.on('panel:close', () => panel?.hide());
+  ipcMain.on('panel:tab', (_e, tab: PanelTab) => panel?.setTab(tab));
 
   ipcMain.handle('overlay:state', () => settings?.overlay ?? null);
   ipcMain.handle('overlay:toggle', () => {
@@ -631,6 +641,11 @@ function registerShortcuts(): void {
     ['Control+Alt+M', () => overlay?.cycleMode()],
     // Подсказка в тюрьме вручную: если автоматический снимок не сработал.
     ['Control+Alt+P', () => prison?.captureNow()],
+    // Пульт поверх игры. Ctrl+Alt+Space на машине автора занят другой
+    // программой (проверка 19.10), поэтому T — «табло».
+    ['Control+Alt+T', () => panel?.toggle()],
+    // Сразу к поиску цены.
+    ['Control+Alt+F', () => panel?.toggle('prices')],
   ];
 
   for (const [accelerator, handler] of bindings) {

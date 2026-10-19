@@ -373,8 +373,8 @@ export function SettingsPanel({
           </label>
           <p className="muted small">
             {tr(
-              'Ctrl+Alt+G — показать · Ctrl+Alt+L — закрепить · Ctrl+Alt+M — режим',
-              'Ctrl+Alt+G — show · Ctrl+Alt+L — pin · Ctrl+Alt+M — mode',
+              'Ctrl+Alt+G — показать · Ctrl+Alt+L — закрепить · Ctrl+Alt+M — режим · Ctrl+Alt+T — пульт · Ctrl+Alt+F — цены',
+              'Ctrl+Alt+G — show · Ctrl+Alt+L — pin · Ctrl+Alt+M — mode · Ctrl+Alt+T — panel · Ctrl+Alt+F — prices',
             )}
           </p>
           {sys && sys.busyHotkeys.length > 0 && (
