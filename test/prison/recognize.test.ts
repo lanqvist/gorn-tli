@@ -313,7 +313,12 @@ describe.skipIf(!Object.keys(PANELS_19).every((n) => gornShot('2026-10-19', n)))
   });
 });
 
-describe.skipIf(!['172404-856-instruments.png', '175837-884-instruments.png'].every((n) => gornShot('2026-10-19', n)))('карты выбора (забеги 2026-10-19)', () => {
+describe.skipIf(!['172404-856-instruments.png', '175837-884-instruments.png', '201141-701-instruments.png'].every((n) => gornShot('2026-10-19', n)))('карты выбора (забеги 2026-10-19)', () => {
+  it('«Висельная петля» под курсором (20:11:41)', () => {
+    const p = read(frame(gornShot('2026-10-19', '201141-701-instruments.png')!), null).view;
+    expect(p.screen === 'pick' && p.pick.cards).toEqual(['cage', 'shortchain', 'rope']);
+  });
+
   it('«Грязный железный коготь: Вожак» узнаётся (17:24:04 — эталон, 17:58:37 — проверка)', () => {
     const p1 = read(frame(gornShot('2026-10-19', '172404-856-instruments.png')!), null).view;
     const p2 = read(frame(gornShot('2026-10-19', '175837-884-instruments.png')!), null).view;

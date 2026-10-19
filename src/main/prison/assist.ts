@@ -4,6 +4,7 @@ import { mkdir, readdir, readFile, rm, rmdir, stat, writeFile } from 'node:fs/pr
 import { dirname, join } from 'node:path';
 
 import { frameHash, screenChanged } from '../../core/prison/frameHash.js';
+import { PrisonPresence } from '../../core/prison/presence.js';
 import { planPrune, shotOutcome, type ShotEntry } from '../../core/prisonShots.js';
 import { PrisonTriggers, stampMs, type PrisonShot } from '../../core/prisonTriggers.js';
 import { ArrowLayer } from './arrowLayer.js';
@@ -51,6 +52,7 @@ export class PrisonAssist {
   private readonly layer = new ArrowLayer();
   private readonly stream = new ScreenStream();
   private readonly triggers = new PrisonTriggers((shot) => void this.capture(shot));
+  private readonly presence = new PrisonPresence();
   private enabled = false;
   private nextId = 0;
   private display: Display | null = null;
@@ -184,7 +186,8 @@ export class PrisonAssist {
   /** Сырые строки лога от движка. */
   onLines(lines: readonly string[]): void {
     if (!this.enabled) return;
-    if (lines.some((l) => l.includes('S16'))) {
+    const change = this.presence.feed(lines);
+    if (this.presence.inside) {
       const display = this.gameDisplay();
       // В тюрьме — поток экрана открыт заранее, к первому нужному кадру.
       this.stream.warm(display);
@@ -193,6 +196,24 @@ export class PrisonAssist {
       if (lines.some((l) => PLAYER_ACTION.test(l))) this.layer.thinking(display);
     }
     this.triggers.feed(lines);
+    if (change === 'leave') this.leavePrison();
+  }
+
+  /**
+   * Вышли из тюрьмы: захват экрана в 4K — не нужен (он отнимает у игры
+   * процессор и видеокарту), ждущие кадры — тоже: сняли бы карту мира.
+   */
+  private leavePrison(): void {
+    console.log('[тюрьма] вышли из тюрьмы — поток экрана закрыт');
+    this.triggers.cancel();
+    this.queue = this.queue.filter((q) => q.manual);
+    this.stream.stop();
+    this.layer.clear();
+  }
+
+  /** Автокадр после выхода из тюрьмы не снимается (хоткей — всегда). */
+  private outside(manual: boolean): boolean {
+    return !manual && !this.presence.inside;
   }
 
   /** Снять кадр сейчас (хоткей): экран определится по картинке. */
@@ -243,7 +264,7 @@ export class PrisonAssist {
   }
 
   private async capture(shot: PrisonShot, manual = false): Promise<void> {
-    if (!this.enabled) return;
+    if (!this.enabled || this.outside(manual)) return;
     if (shot.kind === 'treasure' && !manual) {
       // Окно подарков: доска за ним уже известна, рамка ставится по месту
       // карточки — без снимка и без очереди. Ждущий автокадр снял бы уже
@@ -285,6 +306,8 @@ export class PrisonAssist {
     const okAge = manual ? 60_000 : lineAt ? Math.max(0, t0 - lineAt - STATIC_AFTER_LINE_MS) : 0;
     let frame = await this.stream.grab(display, manual ? 0 : STABLE_MS, manual ? 600 : STABLE_MAX_MS, okAge);
     let via = 'поток';
+    // Пока ждали кадр, игрок вышел из тюрьмы: поток не переоткрывать.
+    if (this.outside(manual)) return;
     if (!frame && this.stream.lastMiss === 'silent') {
       // Поток молчит — открыть заново и спросить ещё раз. При «stale» (игра
       // не пересобирает экран) переоткрытие не помогает — сразу снимок.
@@ -327,7 +350,7 @@ export class PrisonAssist {
     }
     // Пока снимали, открылось окно подарков: доску учесть, совет — по подаркам.
     const late = seq !== this.treasureSeq;
-    if (late && shot.kind !== 'board') return;
+    if ((late && shot.kind !== 'board') || this.outside(manual)) return;
     this.lastPosted = frameHash(frame);
     this.post(shot, manual, frame, display, via, t0, late);
   }
