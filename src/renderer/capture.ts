@@ -22,12 +22,23 @@ let canvas: OffscreenCanvas | null = null;
  */
 const MAX_WIDTH = 2600;
 
+/**
+ * Кадров в секунду из потока. Экран «успокоился» — 300 мс без изменений:
+ * при 10 кадрах это три кадра подряд, кадр приходит в среднем на 17 мс
+ * позже, чем при 15, а захват 4K дешевле на треть (замер 19.10).
+ */
+const FPS = 10;
+
 // ---------- Отпечаток кадра: заметил ли глаз изменение ----------
 
 const SIG_W = 64;
 const SIG_H = 36;
 const sigCanvas = new OffscreenCanvas(SIG_W, SIG_H);
-const sigCtx = sigCanvas.getContext('2d', { willReadFrequently: true });
+// Холст на видеокарте (без willReadFrequently): кадр 4K уменьшается там, а
+// читается только 64×36. Холст в памяти процессора тянул каждый кадр 4K
+// целиком — 14,7 мс на кадр, ~20% ядра на окно захвата и GPU (замер 19.10);
+// на видеокарте — 4,3 мс.
+const sigCtx = sigCanvas.getContext('2d');
 let lastSig: Uint8ClampedArray | null = null;
 /**
  * Средняя разница отпечатков (0–255), выше которой картинка «изменилась».
@@ -66,7 +77,7 @@ async function start(sourceId: string, width: number, height: number): Promise<v
         maxWidth: width,
         minHeight: height,
         maxHeight: height,
-        maxFrameRate: 15,
+        maxFrameRate: FPS,
       },
     },
   } as unknown as MediaStreamConstraints;

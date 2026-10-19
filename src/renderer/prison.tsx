@@ -58,7 +58,8 @@ function PrisonApp() {
   }
   return (
     <>
-      <svg className="prison-marks" width="100%" height="100%">
+      {/* Новый ход — новые метки и вспышки заново; тот же ход («проверено») — без вспышек. */}
+      <svg key={`${hint.text}|${JSON.stringify(hint.marks)}`} className="prison-marks" width="100%" height="100%">
         <defs>
           <marker id="head" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
             <path d="M0,0 L10,5 L0,10 z" className="prison-head" />
