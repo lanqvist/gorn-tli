@@ -1,6 +1,6 @@
 {
   "name": "gorn-tli",
-  "version": "1.0.26",
+  "version": "1.0.27",
   "private": true,
   "description": "Горн — трекер валюты и фарм-эффективности для Torchlight: Infinite",
   "type": "module",
