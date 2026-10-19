@@ -428,6 +428,7 @@ app.whenReady().then(async () => {
   });
 
   // Пульт: Esc, вкладка, переключённая в нём самом.
+  ipcMain.on('panel:ready', (e) => panel?.markReady(e.sender));
   ipcMain.on('panel:close', () => panel?.hide());
   ipcMain.on('panel:tab', (_e, tab: PanelTab) => panel?.setTab(tab));
 
@@ -526,6 +527,8 @@ app.whenReady().then(async () => {
   ipcMain.handle('update:check', () => updater?.check());
 
   registerShortcuts();
+  // Пульт заранее, спрятанным: первое нажатие открывает его сразу и с фокусом.
+  panel.warm();
   syncTray();
   // Синхронизируем автозагрузку с настройкой: пользователь мог удалить
   // запись руками, а установка — переехать в другую папку.

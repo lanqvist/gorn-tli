@@ -86,6 +86,7 @@ declare global {
     panel: {
       onOpen: (cb: (req: { tab: GornPanelTab | null; scale: number }) => void) => () => void;
       onHidden: (cb: () => void) => () => void;
+      ready: () => void;
       close: () => void;
       setTab: (tab: GornPanelTab) => void;
     };

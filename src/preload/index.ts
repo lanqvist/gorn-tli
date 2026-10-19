@@ -145,6 +145,8 @@ contextBridge.exposeInMainWorld('gorn', {
       ipcRenderer.on('panel:hidden', handler);
       return () => ipcRenderer.removeListener('panel:hidden', handler);
     },
+    /** Страница подписалась — main может её показывать. */
+    ready: () => ipcRenderer.send('panel:ready'),
     close: () => ipcRenderer.send('panel:close'),
     setTab: (tab: string) => ipcRenderer.send('panel:tab', tab),
   },

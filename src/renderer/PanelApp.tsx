@@ -72,6 +72,8 @@ export function PanelApp() {
       );
     });
     const offHidden = window.gorn.panel.onHidden(() => setVisible(false));
+    // Только теперь main может показывать пульт: раньше «открыть» ушло бы в пустоту.
+    window.gorn.panel.ready();
     return () => {
       offSnapshot();
       offOpen();
