@@ -351,6 +351,26 @@ export const demoSnapshot: Snapshot = {
       isCost: false,
     },
   ],
+  sessionTop: [
+    {
+      configBaseId: 10022,
+      name: 'Soldier Compass',
+      icon: `${CDN}/Compass/128/UI_Compass_MonsterNormal_1_1_Icon_128.webp`,
+      qty: 2,
+      totalFe: 68,
+      at: now - 14 * 60_000,
+      runName: 'Святилище агонии',
+    },
+    {
+      configBaseId: 200028,
+      name: 'Precious Ember',
+      icon: `${CDN}/Ash/128/UI_Ash_20StonelowYOUZHI_Icon_128.webp`,
+      qty: 4,
+      totalFe: 25.6,
+      at: now - 40 * 60_000,
+      runName: 'Мерзкий лес',
+    },
+  ],
   diagnostics: {
     unknownProtos: [],
     pricedItems: 58,

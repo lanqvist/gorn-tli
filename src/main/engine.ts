@@ -13,6 +13,7 @@ import {
   runFe,
   runKey,
   runNet,
+  topDrops,
   type PriceLookup,
   type RunPricing,
   type StrategyStats,
@@ -233,6 +234,8 @@ export interface Snapshot {
   minDropFe: number;
   /** Предметы без цены, по влиянию на оценку. */
   missing: MissingPriceView[];
+  /** Самые дорогие находки сессии, дорогие первыми, до трёх. */
+  sessionTop: SessionDropView[];
   diagnostics: {
     unknownProtos: Array<[string, number]>;
     pricedItems: number;
@@ -251,6 +254,19 @@ export interface StrategyView extends Omit<StrategyStats, 'costItems'> {
   /** Человекочитаемое имя: из чего открывалась карта. */
   title: string;
   costItems: Array<{ configBaseId: ConfigBaseId; name: string; icon: string | null }>;
+}
+
+/** Дорогая находка сессии — «крупное за сессию» в оверлее. */
+export interface SessionDropView {
+  configBaseId: ConfigBaseId;
+  name: string;
+  icon: string | null;
+  qty: number;
+  totalFe: number;
+  /** Когда выпала последняя штука. */
+  at: number;
+  /** Карта, где выпала. */
+  runName: string;
 }
 
 export interface MissingPriceView {
@@ -1304,6 +1320,15 @@ export class Engine extends EventEmitter {
           name: this.displayName(m.configBaseId),
           icon: this.items.get(m.configBaseId)?.icon ? iconUrl(m.configBaseId) : null,
         })),
+      sessionTop: topDrops(sessionCounted, pricing).map((t) => ({
+        configBaseId: t.configBaseId,
+        name: this.displayName(t.configBaseId),
+        icon: this.items.get(t.configBaseId)?.icon ? iconUrl(t.configBaseId) : null,
+        qty: t.qty,
+        totalFe: t.totalFe,
+        at: t.at,
+        runName: this.runName(t.run),
+      })),
       session: {
         startedAt: this.sessionStartedAt,
         previous: this.previousSummary(farming, pricing),

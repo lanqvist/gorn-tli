@@ -10,6 +10,7 @@ import {
   runFe,
   runNet,
   strategyKey,
+  topDrops,
 } from '../src/core/analysis.js';
 import {
   FE_ID,
@@ -340,5 +341,47 @@ describe('забеги разных сезонов — по ценам свое�
   it('одна таблица на всех по-прежнему работает', () => {
     const flat = (id: number) => (id === ITEM ? 5 : null);
     expect(runNet(ss13, flat)).toBe(50);
+  });
+});
+
+describe('крупное за сессию', () => {
+  const prices: Record<number, number> = { 200028: 6.4, 5028: 3, 100300: 1, 7001: 51 };
+  const priceOf = (id: number) => prices[id] ?? null;
+
+  it('штуки предмета в забеге складываются, дорогие первыми, не больше лимита', () => {
+    const a = run({
+      startedAt: T0,
+      endedAt: T0 + 90_000,
+      drops: [
+        delta(200028, 1, T0 + 10_000),
+        delta(200028, 1, T0 + 40_000),
+        delta(5028, 1, T0 + 20_000),
+      ],
+    });
+    const b = run({
+      startedAt: T0 + 200_000,
+      endedAt: T0 + 290_000,
+      drops: [delta(7001, 1, T0 + 250_000), delta(5028, 2, T0 + 260_000)],
+    });
+    const top = topDrops([a, b], priceOf, 2);
+    expect(top.map((t) => [t.configBaseId, t.totalFe])).toEqual([
+      [7001, 51],
+      [200028, 12.8],
+    ]);
+    expect(top[1]!.at).toBe(T0 + 40_000);
+    expect(top[1]!.run).toBe(a);
+  });
+
+  it('ФЕ, предметы без цены и израсходованное не в счёт', () => {
+    const r = run({
+      startedAt: T0,
+      endedAt: T0 + 90_000,
+      drops: [
+        delta(FE_ID, 300, T0 + 1_000),
+        delta(9999, 5, T0 + 2_000),
+        delta(5028, -1, T0 + 3_000),
+      ],
+    });
+    expect(topDrops([r], priceOf)).toEqual([]);
   });
 });

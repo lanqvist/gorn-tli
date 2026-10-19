@@ -257,3 +257,48 @@ export function rollingNorm(rates: number[], window = NORM_WINDOW): number {
   if (recent.length === 0) return 0;
   return percentile([...recent].sort((a, b) => a - b), 0.5);
 }
+
+/** Дорогая находка сессии: предмет в одном забеге, все его штуки вместе. */
+export interface TopDrop {
+  configBaseId: ConfigBaseId;
+  qty: number;
+  totalFe: number;
+  /** Когда выпала последняя штука. */
+  at: number;
+  run: Run;
+}
+
+/**
+ * Самые дорогие находки по забегам — для «крупного за сессию» в оверлее.
+ *
+ * Плашка джекпота живёт секунды, а потом дорогая находка пропадает из виду
+ * до конца забега. Здесь она остаётся. Сам ФЕ не в счёт: сотня монет,
+ * собранная по одной за карту, — это доход, а не находка.
+ *
+ * Сессия без сброса — вся история сезона, поэтому без сортировки всего
+ * подряд: держим только `limit` лучших.
+ */
+export function topDrops(runs: Run[], pricing: RunPricing, limit = 3): TopDrop[] {
+  const top: TopDrop[] = [];
+  for (const run of runs) {
+    const priceOf = pricesFor(pricing, run);
+    const byItem = new Map<ConfigBaseId, { qty: number; at: number }>();
+    for (const d of run.drops) {
+      if (d.configBaseId === FE_ID) continue;
+      const e = byItem.get(d.configBaseId) ?? { qty: 0, at: 0 };
+      e.qty += d.qty;
+      e.at = Math.max(e.at, d.ts);
+      byItem.set(d.configBaseId, e);
+    }
+    for (const [configBaseId, e] of byItem) {
+      const unit = priceOf(configBaseId);
+      if (unit === null || unit <= 0 || e.qty <= 0) continue;
+      const totalFe = unit * e.qty;
+      if (top.length === limit && totalFe <= top[limit - 1]!.totalFe) continue;
+      top.push({ configBaseId, qty: e.qty, totalFe, at: e.at, run });
+      top.sort((a, b) => b.totalFe - a.totalFe);
+      if (top.length > limit) top.pop();
+    }
+  }
+  return top;
+}

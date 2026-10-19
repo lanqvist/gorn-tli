@@ -85,6 +85,8 @@ describe('секундный таймер — только у часов', () =>
     const ov = src('OverlayApp.tsx');
     expect(ov).toMatch(/const DropBars = memo\(/);
     expect(ov).toMatch(/const GoalProgress = memo\(/);
+    // Крупное за сессию: возраст находки — раз в минуту, не каждую секунду.
+    expect(ov).toMatch(/const SessionFind = memo\([\s\S]*useNow\(60_000\)/);
   });
 
   it('бесконечные анимации в дашборде — только спиннер загрузки', () => {

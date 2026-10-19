@@ -2,11 +2,12 @@ import { memo, useEffect, useRef, useState } from 'react';
 
 import { tr } from '../core/i18n.js';
 import { RUN, pluralize } from '../core/plural.js';
-import type { DropView, Snapshot } from '../main/engine.js';
+import type { DropView, SessionDropView, Snapshot } from '../main/engine.js';
 import type { OverlayMode } from '../main/settings.js';
 import { Fe, FeIcon } from './components/Fe.js';
-import { clock, NBSP, num } from './format.js';
+import { ago, clock, NBSP, num } from './format.js';
 import { Icon } from './overlay/icons.js';
+import { useNow } from './useNow.js';
 
 type Mode = OverlayMode;
 
@@ -324,15 +325,24 @@ export function OverlayApp() {
         </div>
       )}
 
+      {/* Забег, час и сессия одним взглядом — на карте, кроме минимума. */}
+      {place === 'map' && run && mode !== 'minimal' && snapshot && (
+        <RunTrio pace={pace} liveRate={snapshot.liveRate} sessionNet={sessionNet} />
+      )}
+
       <div className="ov-rows">
-        <div className="ov-row">
-          <Icon name="pace" />
-          <span>{tr('темп, медиана', 'pace, median')}</span>
-          <b>
-            <Fe value={median} />
-            <small>{tr('/ч', '/h')}</small>
-          </b>
-        </div>
+        {/* В компактном режиме на карте медиана уже стоит за процентом у
+            главной цифры, а строка ушла под тройку. */}
+        {!(place === 'map' && mode === 'compact') && (
+          <div className="ov-row">
+            <Icon name="pace" />
+            <span>{tr('темп, медиана', 'pace, median')}</span>
+            <b>
+              <Fe value={median} />
+              <small>{tr('/ч', '/h')}</small>
+            </b>
+          </div>
+        )}
         {mode !== 'minimal' && place === 'map' && ghost !== null && (
           <div
             className="ov-row ov-row-dim"
@@ -358,15 +368,6 @@ export function OverlayApp() {
             </b>
           </div>
         )}
-        {mode === 'full' && place === 'map' && (
-          <div className="ov-row ov-row-dim">
-            <Icon name="bag" />
-            <span>{tr('за сессию', 'this session')}</span>
-            <b>
-              <Fe value={sessionNet} signed />
-            </b>
-          </div>
-        )}
         {mode === 'full' && place !== 'offline' && snapshot && (
           <div className="ov-row ov-row-dim">
             <Icon name="runs" />
@@ -382,6 +383,11 @@ export function OverlayApp() {
 
       {place === 'map' && run && DROP_ROWS[mode] > 0 && snapshot && (
         <DropBars drops={run.drops} rows={DROP_ROWS[mode]} snapshot={snapshot} prefs={prefs} />
+      )}
+
+      {/* Дорогая находка не пропадает вместе с золотой плашкой. */}
+      {mode !== 'minimal' && place !== 'offline' && snapshot && (
+        <SessionFind top={snapshot.sessionTop[0] ?? null} goldFe={goldOf(prefs, snapshot)} />
       )}
 
       {/* Цель сессии: полоса прогресса с ETA по накопительному темпу.
@@ -405,6 +411,83 @@ function Delta({ value }: { value: number }) {
   );
 }
 
+/** Порог «золота» тот же, что у плашек: явный из настроек либо авто (P95 цен). */
+function goldOf(prefs: GornOverlayPrefs, snapshot: Snapshot): number {
+  return prefs.jackpotFe > 0 ? prefs.jackpotFe : snapshot.jackpotAutoFe;
+}
+
+/**
+ * Забег, час и сессия рядом: «иду ли я лучше обычного» и «сколько всего»
+ * читаются одним взглядом, без режима «полный». Темп забега до минуты
+ * не показывается — знаменатель слишком мал.
+ */
+function RunTrio({
+  pace,
+  liveRate,
+  sessionNet,
+}: {
+  pace: number | null;
+  liveRate: number;
+  sessionNet: number;
+}) {
+  return (
+    <div className="ov-trio">
+      <div className="ov-trio-run" title={tr('Темп этого забега', 'This run’s pace')}>
+        <small>{tr('забег, /ч', 'run, /h')}</small>
+        <b>{pace === null ? '—' : num(pace)}</b>
+      </div>
+      <div title={tr('Темп сессии вместе с этим забегом', 'Session pace including this run')}>
+        <small>{tr('в час', 'per hour')}</small>
+        <b>{num(liveRate)}</b>
+      </div>
+      <div title={tr('Итог сессии', 'Session total')}>
+        <small>{tr('сессия', 'session')}</small>
+        <b>
+          {sessionNet > 0 ? '+' : ''}
+          {num(sessionNet)}
+        </b>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Самая дорогая находка сессии — пока она «золотая». Плашка джекпота
+ * живёт секунды; здесь находка стоит до конца сессии. Подсветка
+ * статичная: постоянная анимация поверх игры стоит GPU.
+ */
+const SessionFind = memo(function SessionFind({
+  top,
+  goldFe,
+}: {
+  top: SessionDropView | null;
+  goldFe: number;
+}) {
+  // Возраст раз в минуту: «14 мин назад» точнее и не нужно.
+  const now = useNow(60_000);
+  if (!top || goldFe <= 0 || top.totalFe < goldFe) return null;
+  return (
+    <div className="ov-find" title={tr('Крупное за сессию', 'Top drop this session')}>
+      <Icon name="star" />
+      <span className="ov-drop-icon">
+        <ItemIcon drop={top} />
+      </span>
+      <span className="ov-find-text">
+        <span className="ov-drop-name">
+          {top.name}
+          {top.qty > 1 && ` ×${num(top.qty)}`}
+        </span>
+        <small>
+          {top.runName} · {ago(now - top.at)}
+        </small>
+      </span>
+      <span className="ov-drop-fe">
+        <Fe value={top.totalFe} />
+      </span>
+    </div>
+  );
+});
+
 /**
  * Находки забега полосами, как в Details!: длина — доля от самой дорогой
  * находки, цвет кромки — ступень ценности (те же пороги, что у свиста
@@ -424,8 +507,7 @@ const DropBars = memo(function DropBars({
   snapshot: Snapshot;
   prefs: GornOverlayPrefs;
 }) {
-  // Порог «золота» тот же, что у плашек: явный из настроек либо авто (P95 цен).
-  const goldFe = prefs.jackpotFe > 0 ? prefs.jackpotFe : snapshot.jackpotAutoFe;
+  const goldFe = goldOf(prefs, snapshot);
   const orangeFe = prefs.exaltedFe > 0 ? prefs.exaltedFe : goldFe / 5;
   const shown = drops
     .filter(
@@ -459,7 +541,7 @@ const DropBars = memo(function DropBars({
 });
 
 /** Иконка предмета; без неё или при ошибке загрузки — первая буква на плашке. */
-function ItemIcon({ drop }: { drop: DropView }) {
+function ItemIcon({ drop }: { drop: { icon: string | null; name: string } }) {
   const [failed, setFailed] = useState(false);
   if (!drop.icon || failed) return <span className="ov-drop-ph">{drop.name.slice(0, 1)}</span>;
   return <img src={drop.icon} alt="" draggable={false} onError={() => setFailed(true)} />;

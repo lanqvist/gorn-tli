@@ -28,7 +28,8 @@ export type IconName =
   | 'mute'
   | 'popups'
   | 'close'
-  | 'check';
+  | 'check'
+  | 'star';
 
 const PATHS: Record<IconName, ReactNode> = {
   // Секундомер: кнопка сверху и стрелка — время на карте.
@@ -123,6 +124,13 @@ const PATHS: Record<IconName, ReactNode> = {
   popups: <path d="M12 3c.6 4.3 2.7 6.4 7 7-4.3.6-6.4 2.7-7 7-.6-4.3-2.7-6.4-7-7 4.3-.6 6.4-2.7 7-7ZM18.5 16.5c.3 1.6 1 2.3 2.5 2.5-1.5.2-2.2.9-2.5 2.5-.3-1.6-1-2.3-2.5-2.5 1.5-.2 2.2-.9 2.5-2.5Z" />,
   close: <path d="M6 6l12 12M18 6 6 18" />,
   check: <path d="m5 12.5 4.5 4.5L19 7.5" />,
+  // Звезда — крупная находка сессии.
+  star: (
+    <path
+      d="m12 3.5 2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9Z"
+      fill="currentColor"
+    />
+  ),
 };
 
 export function Icon({ name, className }: { name: IconName; className?: string }) {
