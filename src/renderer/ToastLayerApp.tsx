@@ -10,7 +10,15 @@ const CDN = 'https://cdn.tlidb.com/UI/Textures/Common/Icon';
  * и без затухания — живые плашки гаснут за секунды, их не разглядеть.
  */
 const PREVIEW: Toast[] = [
-  { id: 1, kind: 'pickup', fe: 6.4 },
+  { id: 1, kind: 'pickup', fe: 0.8 },
+  {
+    id: 6,
+    kind: 'notable',
+    fe: 14.6,
+    name: 'Precious Ember ×2',
+    icon: `${CDN}/Ash/128/UI_Ash_20StonelowYOUZHI_Icon_128.webp`,
+    more: 2,
+  },
   {
     id: 2,
     kind: 'jackpot',

@@ -23,7 +23,11 @@ import { playDrop, playRecord } from './sound.js';
  *    фанфарами.
  */
 
-export type ToastKind = 'pickup' | 'jackpot' | 'runEnd' | 'prison';
+/**
+ * Ступени подбора — как в лут-фильтрах PoE: мелочь (pickup) — короткая цифра,
+ * оранжевое (notable) — с иконкой и названием, золото (jackpot) — карточка.
+ */
+export type ToastKind = 'pickup' | 'notable' | 'jackpot' | 'runEnd' | 'prison';
 
 /** Ступень ценности — те же пороги и цвета, что у полос дропа в оверлее. */
 export type Tier = 'gold' | 'orange' | 'plain';
@@ -32,7 +36,7 @@ export interface Toast {
   id: number;
   kind: ToastKind;
   fe: number;
-  /** Название предмета — только у золотых плашек. */
+  /** Название предмета — у оранжевых и золотых плашек. */
   name?: string;
   icon?: string | null;
   /** Длительность забега — только у итога карты. */
@@ -45,6 +49,12 @@ export interface Toast {
   hot?: boolean;
   /** Лучший темп сессии — карта-рекорд, с монетным дождём. */
   record?: boolean;
+  /** Цена самой дорогой находки в склеенной плашке — по ней выбирается название. */
+  topFe?: number;
+  /** Сколько ещё заметных находок склеено в оранжевую плашку. */
+  more?: number;
+  /** Плашка уходит: класс запускает затухание, через LEAVE_MS её не станет. */
+  leaving?: boolean;
 }
 
 /** Порог «золотой» находки по умолчанию, в ФЕ. Настраивается игроком. */
@@ -58,10 +68,17 @@ const RECORD_COOLDOWN_MS = 3_600_000;
 /** Сколько всплывашка живёт на экране. Итог карты читают — ему дольше. */
 const TTL_MS: Record<ToastKind, number> = {
   pickup: 2400,
+  notable: 3200,
   jackpot: 4200,
   runEnd: 5200,
   prison: 4200,
 };
+/**
+ * Затухание перед исчезновением. Запускается классом по таймеру, а не
+ * задержкой в CSS: склеенная плашка продлевает жизнь, и CSS-задержка
+ * от первого подбора гасила её, пока лут ещё сыпался.
+ */
+const LEAVE_MS = 420;
 /** Больше трёх плашек — уже стена текста поверх игры. */
 const MAX_VISIBLE = 3;
 
@@ -104,6 +121,28 @@ export function topDropsOf(
     }));
 }
 
+/**
+ * Склейка подбора в живую плашку: сумма растёт, затухание отменяется,
+ * ступень только повышается (мелочь — в оранжевую), название — у самой
+ * дорогой находки пачки, остальные заметные считаются «и ещё N».
+ */
+export function mergePickup(
+  was: Toast,
+  gained: number,
+  notable: { name: string; icon: string | null; fe: number } | null,
+): Toast {
+  const next: Toast = { ...was, fe: was.fe + gained, leaving: false };
+  if (!notable) return next;
+  next.kind = 'notable';
+  next.more = was.kind === 'notable' ? (was.more ?? 0) + 1 : 0;
+  if (was.kind === 'pickup' || notable.fe > (was.topFe ?? 0)) {
+    next.name = notable.name;
+    next.icon = notable.icon;
+    next.topFe = notable.fe;
+  }
+  return next;
+}
+
 let nextId = 1;
 
 export function useIncomeToasts(snapshot: Snapshot | null, opts: ToastOptions): Toast[] {
@@ -113,7 +152,8 @@ export function useIncomeToasts(snapshot: Snapshot | null, opts: ToastOptions): 
   const listRef = useRef<Toast[]>([]);
   // Таймеры гашения по id плашки — чтобы при схлопывании продлевать жизнь,
   // а не давать плашке умереть по таймеру от самого первого подбора.
-  const timers = useRef(new Map<number, ReturnType<typeof setTimeout>>());
+  // Два таймера на плашку: начать затухание и убрать.
+  const timers = useRef(new Map<number, Array<ReturnType<typeof setTimeout>>>());
   const prev = useRef<RunFingerprint | null>(null);
   const lastPickupAt = useRef(0);
   const lastJackpotAt = useRef(0);
@@ -124,7 +164,7 @@ export function useIncomeToasts(snapshot: Snapshot | null, opts: ToastOptions): 
   useEffect(() => {
     const pending = timers.current;
     return () => {
-      for (const timer of pending.values()) clearTimeout(timer);
+      for (const pair of pending.values()) pair.forEach(clearTimeout);
       pending.clear();
     };
   }, []);
@@ -151,15 +191,17 @@ export function useIncomeToasts(snapshot: Snapshot | null, opts: ToastOptions): 
 
     // (Пере)взводит таймер гашения: старый таймер той же плашки снимается.
     const scheduleExpiry = (id: number, kind: ToastKind): void => {
-      const old = timers.current.get(id);
-      if (old !== undefined) clearTimeout(old);
-      timers.current.set(
-        id,
+      timers.current.get(id)?.forEach(clearTimeout);
+      const ttl = TTL_MS[kind];
+      timers.current.set(id, [
+        setTimeout(() => {
+          commit(listRef.current.map((t) => (t.id === id ? { ...t, leaving: true } : t)));
+        }, ttl - LEAVE_MS),
         setTimeout(() => {
           timers.current.delete(id);
           commit(listRef.current.filter((t) => t.id !== id));
-        }, TTL_MS[kind]),
-      );
+        }, ttl),
+      ]);
     };
 
     const push = (toast: Toast): void => {
@@ -230,32 +272,34 @@ export function useIncomeToasts(snapshot: Snapshot | null, opts: ToastOptions): 
 
     // Порог «золота»: явный из настроек либо «авто» — P95 цен сезона,
     // чтобы золотая плашка оставалась событием и в зрелой экономике.
+    // «Оранжевое» — те же пороги, что у полос дропа в оверлее.
     const goldFe = jackpotFe > 0 ? jackpotFe : (snapshot?.jackpotAutoFe ?? JACKPOT_FE);
+    const orangeFe = exaltedFe > 0 ? exaltedFe : goldFe / 5;
 
-    // Дорогая находка определяется по конкретному предмету, а не по сумме
-    // дельты: пачка мелочи на 60 ФЕ — обычный подбор, а не джекпот.
-    let jackpot: { name: string; icon: string | null; fe: number } | null = null;
-    let priciest = 0;
+    // Ступень — по конкретному предмету, а не по сумме дельты: пачка
+    // мелочи на 60 ФЕ — обычный подбор, а не джекпот.
+    let top: { name: string; icon: string | null; fe: number } | null = null;
     for (const d of current.drops) {
       const gainedQty = d.qty - (before.qtyByItem.get(d.configBaseId) ?? 0);
       if (gainedQty <= 0 || d.unitFe === null) continue;
       const value = gainedQty * d.unitFe;
-      priciest = Math.max(priciest, value);
-      if (value >= goldFe && (jackpot === null || value > jackpot.fe)) {
-        jackpot = { name: d.name, icon: d.icon, fe: value };
+      if (top === null || value > top.fe) {
+        const name = gainedQty > 1 ? `${d.name} ×${gainedQty}` : d.name;
+        top = { name, icon: d.icon, fe: value };
       }
     }
+    const priciest = top?.fe ?? 0;
 
-    if (jackpot) {
+    if (top && priciest >= goldFe) {
       // Стрик: второй джекпот подряд получает искры и звон закалки.
       const hot = Date.now() - lastJackpotAt.current < HOT_STREAK_MS;
       lastJackpotAt.current = Date.now();
       push({
         id: nextId++,
         kind: 'jackpot',
-        fe: jackpot.fe,
-        name: jackpot.name,
-        icon: jackpot.icon,
+        fe: top.fe,
+        name: top.name,
+        icon: top.icon,
         hot,
       });
       // Золотая находка всегда дороже порогов звука — звучит «дивайн».
@@ -274,22 +318,36 @@ export function useIncomeToasts(snapshot: Snapshot | null, opts: ToastOptions): 
     else if (sound && exaltedFe > 0 && priciest >= exaltedFe) playDrop('exalted', volume);
     if (!popups) return;
 
-    if (merged) {
-      // Продлеваем и наращиваем последнюю плашку подбора, а не плодим новые.
-      const idx = listRef.current.findIndex((t) => t.kind === 'pickup');
-      if (idx === -1) {
-        // Плашка успела погаснуть — начинаем новую, дельту не теряем.
-        push({ id: nextId++, kind: 'pickup', fe: gained });
-      } else {
-        const updated = [...listRef.current];
-        updated[idx] = { ...updated[idx]!, fe: updated[idx]!.fe + gained };
-        commit(updated);
-        scheduleExpiry(updated[idx]!.id, 'pickup');
-      }
+    const notable = top && priciest >= orangeFe ? top : null;
+
+    // Лут-пылесос после босса — десятки подборов в секунду. Подряд идущие
+    // склеиваются в одну плашку: сумма растёт, ступень только повышается
+    // (мелочь — в оранжевую), название — у самой дорогой находки пачки.
+    const idx = merged
+      ? listRef.current.findIndex((t) => t.kind === 'pickup' || t.kind === 'notable')
+      : -1;
+    if (idx !== -1) {
+      const next = mergePickup(listRef.current[idx]!, gained, notable);
+      const updated = [...listRef.current];
+      updated[idx] = next;
+      commit(updated);
+      scheduleExpiry(next.id, next.kind);
       return;
     }
 
-    push({ id: nextId++, kind: 'pickup', fe: gained });
+    push(
+      notable
+        ? {
+            id: nextId++,
+            kind: 'notable',
+            fe: gained,
+            name: notable.name,
+            icon: notable.icon,
+            topFe: notable.fe,
+            more: 0,
+          }
+        : { id: nextId++, kind: 'pickup', fe: gained },
+    );
   }, [snapshot]);
 
   return toasts;
@@ -302,7 +360,9 @@ export function ToastList({ toasts }: { toasts: Toast[] }) {
       {toasts.map((t) => (
         <div
           key={t.id}
-          className={`ov-toast ov-toast-${t.kind} ${t.hot ? 'ov-toast-hot' : ''} ${
+          className={`ov-toast ov-toast-${t.kind} ${t.leaving ? 'ov-toast-leaving' : ''} ${
+            t.hot ? 'ov-toast-hot' : ''
+          } ${
             t.record ? 'ov-toast-record' : ''
           }`}
         >
@@ -330,7 +390,21 @@ export function ToastList({ toasts }: { toasts: Toast[] }) {
               <span className="ov-toast-name">{t.name}</span>
             </>
           )}
-          {(t.kind === 'pickup' || t.kind === 'jackpot') && (
+          {t.kind === 'notable' && (
+            <>
+              {t.icon && <img className="ov-toast-icon" src={t.icon} alt="" draggable={false} />}
+              <span className="ov-toast-name">
+                {t.name}
+                {(t.more ?? 0) > 0 && (
+                  <span className="ov-toast-more">
+                    {' '}
+                    {tr(`и ещё ${t.more}`, `+${t.more} more`)}
+                  </span>
+                )}
+              </span>
+            </>
+          )}
+          {(t.kind === 'pickup' || t.kind === 'notable' || t.kind === 'jackpot') && (
             <Fe value={t.fe} signed className="ov-toast-fe" />
           )}
           {t.kind === 'prison' && (
