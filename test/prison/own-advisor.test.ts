@@ -151,6 +151,18 @@ describe('свой путь подсказок', () => {
     expect(text(rs)).toEqual(['Не узнал карты выбора — выбери сам']);
   });
 
+  it('начало забега по логу сбрасывает память, даже если карты выбора не прочитались', async () => {
+    const { own, shot } = setup();
+    const b = board({ inmates: { 4: 'mammoth1', 6: 'lion1' }, warden: 4, decision: MANAGE_ALL, kinds: ['consume', 'replace', 'end'], tools: ['coin'] });
+    b.toolSlots = ['coin'];
+    await shot({ screen: 'board', board: b });
+    await shot({ screen: 'board', board: b });
+    expect((own.memory as { tools: string[] }).tools).toEqual(['coin']);
+    // Кадр «выбор орудий, начало забега» снят на анимации появления карт.
+    await shot({ screen: 'other' }, { kind: 'instruments', fresh: true });
+    expect((own.memory as { tools: string[] }).tools).toEqual([]);
+  });
+
   it('память и геометрия переживают перезапуск', async () => {
     const { shot, replies } = setup();
     // Орудия без выбора — со второго кадра подряд.

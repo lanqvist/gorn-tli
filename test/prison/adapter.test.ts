@@ -425,3 +425,46 @@ describe('адаптер: орудия из выбора и день из лог
     expect([b.mem.day, b.mem.dayLimit, b.mem.start]).toEqual([0, 30, 'ironlaw']);
   });
 });
+
+describe('адаптер: орудия другого забега не задерживаются', () => {
+  // 19.10 23:29: память прошлой партии («Молот», «Клещи») доехала до новой;
+  // с Молотом мамонт по модели ест волка выше редкостью, игра такую цель не
+  // даёт — советник крутил «Пожирание: съесть №12» ↔ «Отменить».
+  const fire = () => {
+    const b = board({ inmates: { 5: 'mammoth2', 12: 'wolf3', 15: 'wolf2' }, warden: 5, decision: MANAGE_ALL, kinds: ['consume', 'replace', 'end'], tools: ['fire'] });
+    b.toolSlots = ['fire'];
+    return b;
+  };
+
+  it('startRun сбрасывает орудия прошлой партии', () => {
+    const a = new PrisonAdapter();
+    a.mem.tools = ['maul', 'tongs'];
+    a.startRun();
+    expect(a.mem.tools).toEqual([]);
+    expect(a.mem.runStart).toBe(true);
+  });
+
+  it('целиком узнанная панель без орудия три кадра подряд — орудие забыто', () => {
+    const a = new PrisonAdapter();
+    a.mem.tools = ['maul', 'fire'];
+    a.board(fire());
+    a.board(fire());
+    expect(a.mem.tools).toContain('maul');
+    a.board(fire());
+    expect(a.mem.tools).toEqual(['fire']);
+    // Без Молота мамонт-2 не ест волка-3: в ходах только волк-2 из №15.
+    const devours = legal(ok(a).state).map(decode).filter((x) => x.type === 'devour');
+    expect(devours).toEqual([{ type: 'devour', to: C(15) }]);
+  });
+
+  it('панель с неузнанной иконкой или частично пустая — орудия из памяти не трогаем', () => {
+    const a = new PrisonAdapter();
+    a.mem.tools = ['maul', 'fire'];
+    for (let i = 0; i < 4; i++) {
+      const b = fire();
+      b.toolSlots = ['fire', null];
+      a.board(b);
+    }
+    expect(a.mem.tools).toEqual(['maul', 'fire']);
+  });
+});

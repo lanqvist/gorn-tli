@@ -128,6 +128,10 @@ export class OwnAdvisor {
   async handle(msg: PrisonShotMessage, frame: Frame | null): Promise<void> {
     this.current = msg.id;
     this.lastOptions = [];
+    // Начало забега по логу — сброс памяти, даже если карты выбора на этом
+    // кадре не читаются (анимация появления): дальше выбор может идти по
+    // хоткею без пометки начала, и память прошлой партии осталась бы.
+    if (msg.kind === 'instruments' && msg.fresh) this.adapter.startRun();
     // День — по логу (главный источник), экран — запасной.
     this.adapter.logDay(msg.day);
     const size = { w: msg.width, h: msg.height };

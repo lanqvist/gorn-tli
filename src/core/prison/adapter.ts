@@ -259,6 +259,8 @@ export class PrisonAdapter {
    * таком кадре — вчерашняя надпись после «Выслеживания», не тропа и не выбор.
    */
   private freshDay = false;
+  /** Сколько кадров подряд целиком узнанная панель не показывает орудие из памяти. */
+  private toolMisses = new Map<ToolId, number>();
 
   constructor(saved?: unknown, private readonly p: Readonly<Params> = DEFAULT_PARAMS) {
     this.mem = loadMemory(saved);
@@ -494,6 +496,7 @@ export class PrisonAdapter {
       m.tools.push(t);
     }
     m.assumed = m.assumed.filter((a) => !v.tools.includes(a.tool));
+    this.forgetMissingTools(v);
     if (!v.toolSlots || !m.pickOffer.length) return;
     const offer = m.pickOffer;
     const advised = m.pickAdvised;
@@ -503,6 +506,33 @@ export class PrisonAdapter {
     if (advised && !m.tools.includes(advised)) {
       m.tools.push(advised);
       m.assumed.push({ tool: advised, offer });
+    }
+  }
+
+  /**
+   * Панель видна и каждая её иконка узнана — значит, на ней все орудия забега.
+   * Орудие из памяти, которого на такой панели нет три кадра подряд, —
+   * осколок другого забега (перезапуск Горна посреди партии, пропущенное
+   * начало забега): оно меняет правила (Молот разрешает есть зверя выше
+   * редкостью) и уводит советы в ходы, которых игра не даёт. Пара кадров —
+   * не повод: панель бывает частично перекрыта.
+   */
+  private forgetMissingTools(v: BoardView): void {
+    const m = this.mem;
+    const slots = v.toolSlots;
+    if (!slots || slots.length === 0 || slots.some((t) => t === null)) return;
+    for (const t of [...m.tools]) {
+      if (v.tools.includes(t)) {
+        this.toolMisses.delete(t);
+        continue;
+      }
+      const n = (this.toolMisses.get(t) ?? 0) + 1;
+      this.toolMisses.set(t, n);
+      if (n >= 3) {
+        m.tools = m.tools.filter((x) => x !== t);
+        m.assumed = m.assumed.filter((a) => a.tool !== t);
+        this.toolMisses.delete(t);
+      }
     }
   }
 
@@ -526,6 +556,28 @@ export class PrisonAdapter {
     m.resumeAfter = 'morning';
   }
 
+  /**
+   * Новый забег: доска за выбором — чистая. Цель и тему с окон перед
+   * выбором (если были) не теряем. Зовётся и по сигналу лога, когда сами
+   * карты стартового выбора не прочитались: иначе память прошлого забега
+   * (его орудия!) переезжала в новый — 19.10 23:29 первый кадр выбора
+   * пришёлся на анимацию появления карт, дальше выбор шёл по хоткею без
+   * пометки начала забега, и «Молот» прошлой партии дал петлю
+   * «Пожирание: съесть №12» ↔ «Отменить»: игра такую цель не предлагает.
+   */
+  startRun(): void {
+    const theme = this.mem.runStart || this.mem.themeFresh;
+    const keep = {
+      objective: this.mem.runStart ? this.mem.objective : null,
+      start: theme ? this.mem.start : ('none' as StartEventId),
+      dayLimit: theme ? this.mem.dayLimit : DEFAULT_PARAMS.days,
+      themeFresh: this.mem.themeFresh,
+    };
+    this.mem = { ...blankMemory(), ...keep };
+    this.mem.runStart = true;
+    this.toolMisses.clear();
+  }
+
   pick(v: PickView, fresh: boolean, rerolled: boolean, after: ShotCause = ''): void {
     if (!['pick', 'gift', 'wait'].includes(this.mem.step)) {
       if (after === 'morning' && !fresh) this.resumeMorning();
@@ -534,19 +586,7 @@ export class PrisonAdapter {
         this.mem.resumeAfter = '';
       }
     }
-    if (fresh && !v.reward) {
-      // Новый забег: доска за выбором — чистая. Цель и тему с окон перед
-      // выбором (если были) не теряем.
-      const theme = this.mem.runStart || this.mem.themeFresh;
-      const keep = {
-        objective: this.mem.runStart ? this.mem.objective : null,
-        start: theme ? this.mem.start : ('none' as StartEventId),
-        dayLimit: theme ? this.mem.dayLimit : DEFAULT_PARAMS.days,
-        themeFresh: this.mem.themeFresh,
-      };
-      this.mem = { ...blankMemory(), ...keep };
-      this.mem.runStart = true;
-    }
+    if (fresh && !v.reward) this.startRun();
     this.mem.step = 'pick';
     this.mem.offer = v.cards.filter((c): c is ToolId => c !== null && !this.mem.tools.includes(c));
     this.mem.pickOffer = [...this.mem.offer];
