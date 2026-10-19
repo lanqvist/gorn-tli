@@ -200,6 +200,117 @@ describe('цены с биржи', () => {
     expect(observation!.unitPrices).toEqual([12.5, 13.0, 20.0]);
   });
 
+  /** Ответ RESPONSE (SynId 96) на запрос с заданным телом. */
+  const observe = (body: string[]): PriceObservationEvent | null => {
+    const parser = new EventParser();
+    let observation: PriceObservationEvent | null = null;
+    const request = [
+      '[2026.10.19-17.05.13:900][900]TLNetGame: Display: [Game] ----Socket SendMessage STT----XchgSearchPrice----SynId = 96',
+      '[2026.10.19-17.05.13:900][900]TLNetGame: Display: [Game] ',
+      ...body,
+      '[2026.10.19-17.05.13:900][900]TLNetGame: Display: [Game] ----Socket SendMessage End----',
+    ];
+    for (const line of [...request, ...RESPONSE]) {
+      const ev = parser.parse(line);
+      if (ev?.kind === 'priceObservation') observation = ev;
+    }
+    return observation;
+  };
+
+  it('пробивка с фильтром по аффиксу — не цена базы', () => {
+    // Подлинный запрос 19 октября: воспоминание 71001 с аффиксом от 36
+    // и вторым аффиксом от 10. Лоты в ответе — только с таким роллом.
+    const filtered = observe([
+      '+typ3 [42]',
+      '+filters+1+refer [71001]',
+      '|       | +key [4]',
+      '|       +2+params',
+      '|       | +refer [0]',
+      '|       | +key [20]',
+      '|       +3+params+1+maxSet [true]',
+      '|       | |      | +max [0]',
+      '|       | |      | +min [0]',
+      '|       | |      | +minSet [true]',
+      '|       | +refer [0]',
+      '|       | +key [58]',
+      '|       +6+params+1+min [36]',
+      '|       | |      | +minSet [true]',
+      '|       | |      | +max [0]',
+      '|       | |      | +maxSet [false]',
+      '|       | +refer [101010089_d1_mt31]',
+      '|       | +key [5]',
+      '|       +7+params+1+min [10]',
+      '|       | |      | +minSet [true]',
+      '|       | |      | +max [0]',
+      '|       | |      | +maxSet [false]',
+      '|       | +refer [101010134_d1_mt32]',
+      '|       | +key [5]',
+    ]);
+    expect(filtered).toBeNull();
+  });
+
+  it('пробивка навыка Тартара с фильтрами — не цена навыка', () => {
+    // Подлинный запрос 19 октября: «Талос: Разрывная искра II» с уровнем
+    // от 1 и аффиксом. Так навыки получали «свои» цены 333–370 ФЕ при
+    // медиане сообщества 4.
+    const skill = observe([
+      '+typ3 [174]',
+      '+filters+1+refer [3970431]',
+      '|       | +key [4]',
+      '|       +2+params+1+maxSet [false]',
+      '|       | |      | +max [0]',
+      '|       | |      | +min [1]',
+      '|       | |      | +minSet [true]',
+      '|       | +refer [0]',
+      '|       | +key [14]',
+      '|       +3+params',
+      '|       | +refer [916010025_d1_d2_mt30]',
+      '|       | +key [5]',
+    ]);
+    expect(skill).toBeNull();
+  });
+
+  it('диапазон значений без аффикса — тоже фильтр', () => {
+    const ranged = observe([
+      '+typ3 [38]',
+      '+filters+1+refer [113111]',
+      '|       | +key [16]',
+      '|       +3+params+1+maxSet [true]',
+      '|       | |      | +max [0]',
+      '|       | |      | +min [80]',
+      '|       | |      | +minSet [true]',
+      '|       | +refer [0]',
+      '|       | +key [32]',
+    ]);
+    expect(ranged).toBeNull();
+  });
+
+  it('пустые параметры по умолчанию фильтром не считаются', () => {
+    // Подлинный запрос 19 октября: клиент шлёт min/max 0 и refer [0]
+    // даже в обычной пробивке без единого фильтра.
+    const plain = observe([
+      '+typ3 [38]',
+      '+filters+1+refer [113111]',
+      '|       | +key [16]',
+      '|       +2+key [21]',
+      '|       +3+params+1+maxSet [true]',
+      '|       | |      | +max [0]',
+      '|       | |      | +min [0]',
+      '|       | |      | +minSet [true]',
+      '|       | +refer [0]',
+      '|       | +key [32]',
+      '|       +4+params+1+maxSet [true]',
+      '|       | |      | +max [0]',
+      '|       | |      | +min [0]',
+      '|       | |      | +minSet [true]',
+      '|       | +refer [0]',
+      '|       | +key [15]',
+    ]);
+    expect(plain?.configBaseId).toBe(113111);
+    // Обычный стакуемый предмет — как и раньше.
+    expect(observe(['+typ3 [70]', '+filters+1+refer [5310]', '|       | +key [4]'])?.configBaseId).toBe(5310);
+  });
+
   it('ответ без парного запроса игнорируется', () => {
     const parser = new EventParser();
     let seen = false;

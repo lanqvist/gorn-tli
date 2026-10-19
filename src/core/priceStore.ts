@@ -71,6 +71,25 @@ export function choosePrice(
   return community ? { fe: community.fe, source: 'community' } : null;
 }
 
+/**
+ * Цена сообщества для оценки добычи.
+ *
+ * Для предметов справочника — медиана: стакуемые валюты и материалы
+ * одинаковы, разброс между пробивками — это рынок. Экипировка вне
+ * справочника — другое дело: ConfigBaseId у неё — база, а цена целиком
+ * зависит от аффиксов конкретного экземпляра. Медиана сообщества по базе
+ * смешивает удачные роллы с мусором: у базы 2019 медиана 280 ФЕ при
+ * нижней цене 3,1, а падает почти всегда мусор. Поэтому такая вещь
+ * оценивается по нижней цене (P10) — тому, за что её реально продать.
+ */
+export function communityReference(
+  price: { fe: number; p10: number },
+  inCatalogue: boolean,
+): number {
+  if (inCatalogue) return price.fe;
+  return Number.isFinite(price.p10) && price.p10 > 0 && price.p10 < price.fe ? price.p10 : price.fe;
+}
+
 /** Точка истории цены: когда пробили и сколько вышло. */
 export interface PricePoint {
   t: number;

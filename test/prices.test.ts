@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import { bagValue } from '../src/core/bag.js';
-import { PriceStore, priceTrend } from '../src/core/priceStore.js';
+import { communityReference, PriceStore, priceTrend } from '../src/core/priceStore.js';
 import { FE_ID } from '../src/core/types.js';
 import { Storage } from '../src/storage/db.js';
 
@@ -104,5 +104,21 @@ describe('история пробивок', () => {
       db.close();
       rmSync(dir, { recursive: true, force: true });
     }
+  });
+});
+
+describe('цена сообщества для оценки добычи', () => {
+  it('предмет справочника — по медиане', () => {
+    expect(communityReference({ fe: 7.66, p10: 7 }, true)).toBe(7.66);
+  });
+
+  it('экипировка вне справочника — по нижней цене', () => {
+    // Подлинные цены 19 октября: база 2019, медиана 280 при P10 3,1.
+    expect(communityReference({ fe: 280, p10: 3.1 }, false)).toBe(3.1);
+  });
+
+  it('без осмысленной нижней цены остаётся медиана', () => {
+    expect(communityReference({ fe: 70, p10: 0 }, false)).toBe(70);
+    expect(communityReference({ fe: 70, p10: 90 }, false)).toBe(70);
   });
 });

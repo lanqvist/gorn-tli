@@ -240,7 +240,11 @@ export class EventParser {
       // Поиск по категории (а не по конкретному предмету) поля refer не содержит,
       // и привязать такие цены к предмету нельзя — пропускаем.
       const refer = Number(findValue(fields, 'refer'));
-      if (Number.isFinite(refer) && refer > 0) this.priceRequests.set(msg.synId, refer);
+      // Пробивка с фильтрами по аффиксам — цена конкретного ролла, а не базы:
+      // такой ответ ценой предмета не записываем (см. isFilteredSearch).
+      if (Number.isFinite(refer) && refer > 0 && !isFilteredSearch(fields)) {
+        this.priceRequests.set(msg.synId, refer);
+      }
       return null;
     }
 
@@ -366,6 +370,52 @@ export type BodyNode = Map<string, BodyNode | string>;
  * тем более что счётчик кадров растёт и меняет длину префикса посреди дампа.
  */
 const BODY_PREFIX_RE = /^\[[^\]]*\]\[[^\]]*\][^:[\]]*:\s*Display:\s*\[Game\]\s?/;
+
+/** Все листья поддерева: путь ключей и значение. */
+function leaves(node: BodyNode, path: string[] = []): Array<{ path: string[]; value: string }> {
+  const out: Array<{ path: string[]; value: string }> = [];
+  for (const [key, child] of node) {
+    if (child instanceof Map) out.push(...leaves(child, [...path, key]));
+    else out.push({ path: [...path, key], value: child });
+  }
+  return out;
+}
+
+/**
+ * Пробивка с фильтрами: биржа ищет не базу целиком, а лоты с заданными
+ * аффиксами или диапазоном значений.
+ *
+ * Шмотки и воспоминания пробиваются именно так — подлинный запрос:
+ *   +filters+1+refer [71001]                ← база
+ *   |       +6+params+1+min [36] … +refer [101010089_d1_mt31]  ← аффикс от 36
+ * Парсер брал только первый refer, и цена лотов с конкретным роллом
+ * записывалась ценой любого предмета этой базы: обычная редкая шмотка
+ * 2019 получила «свою» цену 1522 ФЕ при нижней цене рынка 3,1 и дала
+ * 28% чистого дохода за день. В логе за 19 октября так устроены 35
+ * пробивок из 60.
+ *
+ * Фильтр — любой refer кроме первого (базы), отличный от «0», или
+ * ненулевые min/max. Пустые параметры по умолчанию (refer [0], min [0],
+ * max [0]) клиент шлёт и в обычной пробивке — они фильтром не считаются.
+ */
+export function isFilteredSearch(fields: BodyNode): boolean {
+  const filters = fields.get('filters');
+  if (!(filters instanceof Map)) return false;
+  let baseSeen = false;
+  for (const { path, value } of leaves(filters)) {
+    const key = path[path.length - 1];
+    if (key === 'refer') {
+      // Первый refer — сам предмет: `+filters+1+refer [71001]`.
+      if (!baseSeen && path.length === 2) {
+        baseSeen = true;
+        continue;
+      }
+      if (value !== '0' && value !== '') return true;
+    }
+    if ((key === 'min' || key === 'max') && Number(value) !== 0) return true;
+  }
+  return false;
+}
 
 export function parseBody(lines: string[]): BodyNode {
   const root: BodyNode = new Map();

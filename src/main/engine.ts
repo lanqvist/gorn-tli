@@ -35,6 +35,7 @@ import {
 } from '../core/history.js';
 import {
   choosePrice,
+  communityReference,
   isBoundName,
   PriceStore,
   priceTrend,
@@ -847,7 +848,11 @@ export class Engine extends EventEmitter {
     const community = this.communityEnabled && feed ? feed.priceOf(id) : null;
     return choosePrice(
       own,
-      community && { fe: community.fe, updatedAtMs: () => Date.parse(community.updatedAt) },
+      community && {
+        // Экипировка вне справочника — по нижней цене (правило в communityReference).
+        fe: communityReference(community, this.items.has(id)),
+        updatedAtMs: () => Date.parse(community.updatedAt),
+      },
       past ? Infinity : Date.now(),
     );
   }
