@@ -58,6 +58,8 @@ export interface FrameRec {
   best: number | null;
   /** На сколько живой ход хуже лучшего по повтору (null — не оценён). */
   liveGap: number | null;
+  /** В логе кадра подтверждено событие («!»): исход случаен, смена ожидания — не скачок. */
+  event?: boolean;
   mem: { day: number; dayLimit: number; storage: number; tools: string[]; assumed: string[]; step: string; start: string };
 }
 
@@ -80,6 +82,8 @@ export const AUDIT = {
 } as const;
 
 const NO_JUMP = new Set(['pick', 'treasure', 'board']);
+/** Подтверждение окна события в логе игры. */
+export const EVENT_RE = /Btn_S16Board_EventPop_Confirm\b/;
 const hhmmss = (t: string) => `${t.slice(0, 2)}:${t.slice(2, 4)}:${t.slice(4, 6)}`;
 const seconds = (t: string) => (Number(t.slice(0, 2)) * 60 + Number(t.slice(2, 4))) * 60 + Number(t.slice(4, 6));
 /** Совет на тот же экран пришёл со следующим кадром почти сразу (кадр снят чуть раньше окна). */
@@ -96,7 +100,10 @@ export function findings(recs: readonly FrameRec[]): Finding[] {
   };
   let maxStorage = -1;
   let prev: FrameRec | null = null;
+  // Событие подтверждено после прошлого кадра с оценкой (клик бывает на кадре без расчёта).
+  let event = false;
   recs.forEach((r, i) => {
+    event ||= !!r.event;
     const next = recs[i + 1];
     const soon = !!next && next.screen === r.screen && !!next.live && seconds(next.time) - seconds(r.time) <= ANSWER_SOON_S;
     if (r.hasPng && r.actionable && !r.live && r.answered && !soon && r.kind !== 'manual') {
@@ -111,14 +118,17 @@ export function findings(recs: readonly FrameRec[]): Finding[] {
     if (r.logDay && r.logDay.cur > 0 && r.mem.day + 1 !== r.logDay.cur && r.kind === 'board') {
       add('день', r, `день в памяти ${r.mem.day + 1}, по логу ${r.logDay.cur}`);
     }
-    if (prev && prev.best !== null && r.best !== null && prev.mem.day === r.mem.day && !NO_JUMP.has(r.screen) && !NO_JUMP.has(prev.screen)) {
+    if (prev && prev.best !== null && r.best !== null && prev.mem.day === r.mem.day && !event && !NO_JUMP.has(r.screen) && !NO_JUMP.has(prev.screen)) {
       const d = r.best - prev.best;
       const same = prev.screen === r.screen && prev.mine === r.mine;
       if (Math.abs(d) >= (same ? AUDIT.jumpSame : AUDIT.jumpAny)) {
         add('скачок', r, `ожидание ${prev.best.toFixed(2)} → ${r.best.toFixed(2)} (${hhmmss(prev.time)} «${prev.screen}» → «${r.screen}»)${same ? ' без хода' : ''}`);
       }
     }
-    if (r.best !== null) prev = r;
+    if (r.best !== null) {
+      prev = r;
+      event = false;
+    }
   });
   const last = [...recs].reverse().find((r) => r.mem.tools.length || r.mem.assumed.length);
   if (last && last.mem.assumed.length) {

@@ -87,6 +87,17 @@ describe('аудит забегов: находки', () => {
     expect(f).toEqual([]);
   });
 
+  it('исход события — не скачок, даже если подтверждение на кадре без оценки', () => {
+    const f = findings([
+      rec('180000', { best: 5.1, mine: 'Иди в №14 · событие' }),
+      rec('180003', { best: null, screen: 'other', event: true }),
+      rec('180005', { best: 3.5, screen: 'manage', mine: 'Заменить' }),
+      rec('180010', { best: 1.5, screen: 'manage', mine: 'Заменить' }),
+    ]);
+    expect(f.map((x) => x.kind)).toEqual(['скачок']);
+    expect(f[0]!.time).toBe('18:00:10');
+  });
+
   it('сводка: ожидание на первом обходе, итог по хранилищу, дни по логу', () => {
     const s = summary([
       rec('150000', { screen: 'pick', best: 3 }),

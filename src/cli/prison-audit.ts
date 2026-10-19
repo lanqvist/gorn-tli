@@ -24,7 +24,7 @@ import { clearSolveCache } from '../core/prison/solver/solve.js';
 import { stampMs } from '../core/prisonTriggers.js';
 import { OwnAdvisor } from '../main/prison/ownAdvisor.js';
 import type { PrisonShotMessage, PrisonWorkerReply } from '../main/prison/protocol.js';
-import { NET_RE, findings, splitRuns, summary, type FrameRec, type Finding } from './prison-audit-core.js';
+import { EVENT_RE, NET_RE, findings, splitRuns, summary, type FrameRec, type Finding } from './prison-audit-core.js';
 import { lastHint, moveKey } from './prison-moves.js';
 
 function arg(name: string): string | null {
@@ -129,6 +129,7 @@ async function replay(dir: string, files: string[]): Promise<{ recs: FrameRec[];
     const mem = advisor.memory as { day: number; dayLimit: number; storage: number; tools: string[]; assumed: { tool: string }[]; step: string; start: string };
     recs.push({
       file: f, time: f.slice(0, 6), kind: s.kind, hasPng: !!frame, logDay: s.day ?? logDay, live, answered: (s.hints ?? []).length > 0, screen, actionable, pickUnknown, mine, best, liveGap,
+      event: (s.lines ?? []).some((l) => EVENT_RE.test(l)),
       mem: { day: mem.day, dayLimit: mem.dayLimit, storage: mem.storage, tools: [...mem.tools], assumed: mem.assumed.map((a) => a.tool), step: mem.step, start: mem.start },
     });
   }
