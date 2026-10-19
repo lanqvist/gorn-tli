@@ -313,6 +313,31 @@ describe.skipIf(!Object.keys(PANELS_19).every((n) => gornShot('2026-10-19', n)))
   });
 });
 
+/** Кадры 2026-10-19 22:49, не вошедшие в эталоны: «Клещи порока» (tongs) на панели. */
+const PANELS_TONGS: Record<string, string[]> = {
+  '225107-912-board.png': ['maul', 'tongs'],
+  '225147-790-board.png': ['maul', 'tongs'],
+  '225221-368-board.png': ['maul', 'tongs'],
+};
+
+describe.skipIf(!Object.keys(PANELS_TONGS).every((n) => gornShot('2026-10-19', n)))('панель орудий (забег 2026-10-19 22:49)', () => {
+  it('«Клещи порока» — не «без эталона» (раньше орудие было только «предположительно»)', () => {
+    for (const [name, tools] of Object.entries(PANELS_TONGS)) {
+      const b = board(read(frame(gornShot('2026-10-19', name)!), null).view);
+      expect(b.toolSlots, name).toEqual(tools);
+    }
+  });
+});
+
+describe.skipIf(!gornShot('2026-10-18', '140412-100-instruments.png') || !gornShot('2026-10-19', '210657-658-instruments.png'))('карта выбора под курсором всплывает', () => {
+  it('«Жетон каторжника» и «Чёрный список экзекутора» под курсором узнаются', () => {
+    const p1 = read(frame(gornShot('2026-10-18', '140412-100-instruments.png')!), null).view;
+    const p2 = read(frame(gornShot('2026-10-19', '210657-658-instruments.png')!), null).view;
+    expect(p1.screen === 'pick' && p1.pick.cards).toEqual(['shortchain', 'dogtag', 'pestle']);
+    expect(p2.screen === 'pick' && p2.pick.cards).toEqual(['stake', 'blacklist', 'rope']);
+  });
+});
+
 describe.skipIf(!['172404-856-instruments.png', '175837-884-instruments.png', '201141-701-instruments.png'].every((n) => gornShot('2026-10-19', n)))('карты выбора (забеги 2026-10-19)', () => {
   it('«Висельная петля» под курсором (20:11:41)', () => {
     const p = read(frame(gornShot('2026-10-19', '201141-701-instruments.png')!), null).view;

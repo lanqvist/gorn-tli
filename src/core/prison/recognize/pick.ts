@@ -37,31 +37,44 @@ export function pickHeader(frame: Frame, geo: Geometry, t: ScreensTemplate): 'st
   return best.score >= HEADER_MIN ? (best.label as 'start' | 'reward') : null;
 }
 
+/**
+ * Сдвиги карты по вертикали (опорные px). Карта под курсором «всплывает»:
+ * название и картинка уходят вверх на ~6 px, и название без сдвига не
+ * совпадало с эталоном — так не узнавались «Жетон каторжника» и «Чёрный
+ * список экзекутора» под курсором (кадры 18.10 14:04, 19.10 21:06).
+ */
+const CARD_DY = [0, -6, -3, -9, 3];
+
+const shiftY = (b: readonly [number, number, number, number], dy: number) =>
+  [b[0], b[1] + dy, b[2], b[3] + dy] as [number, number, number, number];
+
 /** Карта орудия: сумма сходства картинки и названия по каждому орудию. */
 function readCard(frame: Frame, geo: Geometry, cx: number, t: ScreensTemplate): ToolId | null {
-  // Картинку ищем с небольшим сдвигом: обрезанные скриншоты сдвигают экран на десяток px.
-  let artScores = new Map<string, number>();
-  let bestArt = -2;
-  for (let dx = -12; dx <= 12; dx += 6) {
-    sample(frame, geo, pickArt(cx + dx), 16, 16, 3, artBuf);
-    normalize(artBuf);
-    const s = scoresByLabel(artBuf, t.pickArt);
-    const top = Math.max(...s.values());
-    if (top > bestArt) {
-      bestArt = top;
-      artScores = s;
-    }
-  }
-  sample(frame, geo, pickTitle(cx), 86, 11, 1, titleBuf);
-  normalize(titleBuf);
-  const titleScores = scoresByLabel(titleBuf, t.pickTitles);
   let id: string | null = null;
   let best = CARD_MIN;
-  for (const [label, a] of artScores) {
-    const s = (a + Math.max(titleScores.get(label) ?? 0, 0)) / 2;
-    if (s > best) {
-      best = s;
-      id = label;
+  for (const dy of CARD_DY) {
+    // Картинку ищем и с горизонтальным сдвигом: обрезанные скриншоты сдвигают экран на десяток px.
+    let artScores = new Map<string, number>();
+    let bestArt = -2;
+    for (let dx = -12; dx <= 12; dx += 6) {
+      sample(frame, geo, shiftY(pickArt(cx + dx), dy), 16, 16, 3, artBuf);
+      normalize(artBuf);
+      const s = scoresByLabel(artBuf, t.pickArt);
+      const top = Math.max(...s.values());
+      if (top > bestArt) {
+        bestArt = top;
+        artScores = s;
+      }
+    }
+    sample(frame, geo, shiftY(pickTitle(cx), dy), 86, 11, 1, titleBuf);
+    normalize(titleBuf);
+    const titleScores = scoresByLabel(titleBuf, t.pickTitles);
+    for (const [label, a] of artScores) {
+      const s = (a + Math.max(titleScores.get(label) ?? 0, 0)) / 2;
+      if (s > best) {
+        best = s;
+        id = label;
+      }
     }
   }
   return id && (TOOL_IDS as readonly string[]).includes(id) ? (id as ToolId) : null;

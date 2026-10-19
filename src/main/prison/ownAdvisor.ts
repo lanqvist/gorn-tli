@@ -132,6 +132,10 @@ export class OwnAdvisor {
     this.adapter.logDay(msg.day);
     const size = { w: msg.width, h: msg.height };
     const ctx: HintContext = { warden: null };
+    // Неузнанная карта на выборе орудий: «Обновить» не советуем — вслепую
+    // решатель считает её пустой, и обновление выглядит выгоднее, чем есть
+    // (аудит 19.10: так советовал «Обновить» вместо карты лучше на 0,5 призм).
+    let blindPick = false;
     const plainGeo = () => this.geo && this.geo.width === msg.width && this.geo.height === msg.height ? this.geo : defaultGeometry({ width: msg.width, height: msg.height, data: new Uint8ClampedArray(0) });
     let kind: string = msg.kind;
     let seen = frame ? this.read(frame) : null;
@@ -206,7 +210,10 @@ export class OwnAdvisor {
       this.adapter.pick(p, fresh, msg.rerolled, msg.after);
       ctx.pick = p;
       ctx.reroll = rerollBox(plainGeo());
-      if (known < p.cards.length) ctx.reason = 'одну карту не узнал';
+      if (known < p.cards.length) {
+        ctx.reason = 'одну карту не узнал';
+        blindPick = true;
+      }
     } else {
       this.reply({ type: 'clear', id: msg.id });
       return;
@@ -234,7 +241,8 @@ export class OwnAdvisor {
     const mem = this.adapter.mem;
     const held = this.held;
     const state = mem.step === 'chain' && mem.firstBite && held && held.step === 'manage' && held.warden === mem.warden && held.day === mem.day ? held.state : pos.state;
-    await this.advise(msg, { ...pos, state }, ctx, size);
+    const allowed = blindPick ? (code: number) => pos.allowed(code) && decode(code).type !== 'reroll' : pos.allowed;
+    await this.advise(msg, { ...pos, state, allowed }, ctx, size);
   }
 
   private read(frame: Frame): ReturnType<typeof read>['view'] {

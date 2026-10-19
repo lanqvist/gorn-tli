@@ -140,7 +140,12 @@ describe('свой путь подсказок', () => {
   it('неузнанная карта не глушит совет; две неузнанные — не совет, но и не молчание', async () => {
     const { shot } = setup();
     let rs = await shot({ screen: 'pick', pick: pick(['crown', null, 'saw']) }, { kind: 'instruments', fresh: true });
-    expect(text(rs)[0]).toMatch(/одну карту не узнал|^Взять|^Обновить/);
+    // Вслепую «Обновить» не советуем: неузнанную карту решатель считает
+    // пустой, и обновление выглядело выгоднее, чем есть (аудит 19.10, −0,5 призм).
+    for (const t of text(rs)) {
+      expect(t).not.toMatch(/^Обновить/);
+      expect(t).toMatch(/^Взять: .* · одну карту не узнал$/);
+    }
     rs = await shot({ screen: 'pick', pick: pick(['crown', null, null]) }, { kind: 'instruments', fresh: true });
     // Не молчать: без подсказки выбор выглядит зависшим (18.10 20:48).
     expect(text(rs)).toEqual(['Не узнал карты выбора — выбери сам']);
