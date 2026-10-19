@@ -116,19 +116,17 @@ describe('выбор орудий', () => {
 });
 
 describe('утро: пункты назначения', () => {
-  it('обычно 3 карточки, в 16,9 % — 2', () => {
+  it('без «минус-карточных» орудий всегда 3 карточки (кадры: 548 утр из 549)', () => {
     const s = blank();
     dealDoors(s, NO, P);
     expect(s.m[DOORS_N]).toBe(3);
     dealDoors(s, YES, P);
-    expect(s.m[DOORS_N]).toBe(2);
+    expect(s.m[DOORS_N]).toBe(3);
     const r = new Rng(9);
-    let twos = 0;
-    for (let i = 0; i < 20000; i++) {
+    for (let i = 0; i < 5000; i++) {
       dealDoors(s, r, P);
-      if (s.m[DOORS_N] === 2) twos++;
+      expect(s.m[DOORS_N]).toBe(3);
     }
-    expect(twos / 20000).toBeCloseTo(0.169, 1);
   });
 
   it('карточки — среди шагов 1–6, допросная тоже, шаги поровну', () => {
@@ -581,7 +579,7 @@ describe('события', () => {
     expect(run(EVENT.usurp4)).toEqual({ tiers: [2, 2, 2], pool: -1 });
   });
 
-  it('в начале забега 4 камеры открыты и есть метка события (клиент 309, 310); утром метка добирается', () => {
+  it('в начале забега 4 камеры открыты и есть метка события (клиент 309, 310); утром метки не добираются', () => {
     const p = { ...DEFAULT_PARAMS };
     const s = blank({ params: p });
     expect(inmates(s)).toBe(4);
@@ -594,7 +592,8 @@ describe('события', () => {
     settle(s, new Rng(3), p);
     events = 0;
     for (let c = 1; c < 16; c++) if (s.m[EVT + c] !== 0) events++;
-    expect(events).toBe(1);
+    // добор — только сразу после сработавшей метки (лог: утром ни разу)
+    expect(events).toBe(0);
   });
 
   it('Заклятый враг: открывается камера с едой текущего узника его редкости', () => {
@@ -688,6 +687,39 @@ describe('события', () => {
       eventDecision(s, NO, P, true);
     }
     expect(s.m[OBJ_DONE]).toBe(1);
+  });
+
+  it('сработала последняя метка — новая сразу, в любую камеру без события, кроме допросной и надзирателя', () => {
+    const p = { ...P, eventMin: 1 };
+    const r = new Rng(21);
+    const where = new Set<number>();
+    for (let i = 0; i < 3000; i++) {
+      const s = blank();
+      put(s, 3, WOLF, 0);
+      s.m[WARDEN] = 3;
+      s.m[EVT + 3] = EVENT.chain + 1;
+      eventDecision(s, r, p, true);
+      const marks = [];
+      for (let c = 0; c < 16; c++) if (s.m[EVT + c] !== 0) marks.push(c);
+      expect(marks).toHaveLength(1);
+      where.add(marks[0]!);
+    }
+    expect(where.has(0)).toBe(false);
+    expect(where.has(3)).toBe(false);
+    expect(where.size).toBe(14);
+  });
+
+  it('пока на поле есть метка, после события новых не добавляется', () => {
+    const p = { ...P, eventMin: 1 };
+    const s = blank();
+    put(s, 3, WOLF, 0);
+    s.m[WARDEN] = 3;
+    s.m[EVT + 3] = EVENT.chain + 1;
+    s.m[EVT + 9] = EVENT.freedom + 1;
+    eventDecision(s, new Rng(4), p, true);
+    const marks = [];
+    for (let c = 0; c < 16; c++) if (s.m[EVT + c] !== 0) marks.push(c);
+    expect(marks).toEqual([9]);
   });
 });
 

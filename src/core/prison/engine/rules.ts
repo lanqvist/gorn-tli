@@ -165,8 +165,10 @@ function eventCount(s: State): number {
 
 /**
  * Клиент 310 «棋盘最小事变标记数» = 1: меток событий на поле не меньше
- * eventMin. Добираются в любую камеру без события, открытую или запертую.
- * [догадка: когда и куда добираются]
+ * eventMin. Добираются сразу, как сработала последняя метка, в случайную
+ * камеру без события, открытую или запертую, кроме камеры надзирателя
+ * [замер 19.10: 206 доборов на кадрах — равномерно по камерам и шагам, в
+ * камеру надзирателя ни разу; лог — сразу после окна события, утром ни разу].
  */
 export function topUpEvents(s: State, r: Rng, p: Params): void {
   for (let n = eventCount(s); n < p.eventMin; n++) addEvent(s, r, p, noEventMask(s));
@@ -174,7 +176,8 @@ export function topUpEvents(s: State, r: Rng, p: Params): void {
 
 function noEventMask(s: State): number {
   let mask = 0;
-  for (let c = 1; c < CELLS; c++) if (s.m[EVT + c] === 0) mask |= 1 << c;
+  const w = s.m[WARDEN]!;
+  for (let c = 1; c < CELLS; c++) if (s.m[EVT + c] === 0 && c !== w) mask |= 1 << c;
   return mask;
 }
 
@@ -569,7 +572,6 @@ export function morning(s: State, r: Rng, p: Params): void {
     if (lion > 0) raise(s, r, p, lion, 1);
   }
 
-  topUpEvents(s, r, p);
   dealDoors(s, r, p);
   m[NEXT] = P_PATROL;
 }
@@ -789,10 +791,12 @@ export function eventDecision(s: State, r: Rng, p: Params, accept: boolean): voi
   const ev = m[EVT + c]! - 1;
   m[EVT + c] = 0;
   m[NEXT] = P_MANAGE;
-  if (!accept || ev < 0) return;
-  m[STAT_EVENTS] = m[STAT_EVENTS]! + 1;
-  runEvent(s, r, p, c, ev);
-  progress(s, r, p, OBJECTIVE.currents, 1);
+  if (accept && ev >= 0) {
+    m[STAT_EVENTS] = m[STAT_EVENTS]! + 1;
+    runEvent(s, r, p, c, ev);
+    progress(s, r, p, OBJECTIVE.currents, 1);
+  }
+  topUpEvents(s, r, p);
 }
 
 /** Действие события ev в камере c. */
