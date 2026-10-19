@@ -297,6 +297,22 @@ const PANELS: Record<string, string[]> = {
   '210500-681-board.png': ['maul', 'coin'],
 };
 
+/** Кадры 2026-10-19, не вошедшие в эталоны: «Весы тюремщика» (scales) на панели. */
+const PANELS_19: Record<string, string[]> = {
+  '145757-503-board.png': ['rope', 'scales'],
+  '145808-234-board.png': ['rope', 'scales'],
+  '145829-899-board.png': ['rope', 'scales'],
+};
+
+describe.skipIf(!Object.keys(PANELS_19).every((n) => gornShot('2026-10-19', n)))('панель орудий (забег 2026-10-19 14:54)', () => {
+  it('«Весы тюремщика» — не «без эталона»', () => {
+    for (const [name, tools] of Object.entries(PANELS_19)) {
+      const b = board(read(frame(gornShot('2026-10-19', name)!), null).view);
+      expect(b.toolSlots, name).toEqual(tools);
+    }
+  });
+});
+
 describe.skipIf(!Object.keys(PANELS).every((n) => gornShot('2026-10-18', n)))('панель орудий и карты выбора (забеги 2026-10-18)', () => {
   it('иконки панели: Шампур, Секира, Саркофаг, Дева мстителя, Козёл отпущения, Крюк, Ошейник, Клетка, Железный ящик, Капкан, Цепь, Кандалы, Молот; пустое место с отсветом — не орудие', () => {
     for (const [name, tools] of Object.entries(PANELS)) {
