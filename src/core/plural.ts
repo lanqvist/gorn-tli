@@ -44,6 +44,13 @@ export const ITEM = {
   en: ['item', 'items'],
 } as const;
 export const FIND = { one: 'находка', few: 'находки', many: 'находок', en: ['find', 'finds'] } as const;
+/** Заходы в тюрьму: «за 4 захода», «за 11 заходов». */
+export const VISIT = {
+  one: 'заход',
+  few: 'захода',
+  many: 'заходов',
+  en: ['visit', 'visits'],
+} as const;
 export const LOT = { one: 'лот', few: 'лота', many: 'лотов', en: ['listing', 'listings'] } as const;
 
 /** «47 забегов» — число и правильная форма слова. */

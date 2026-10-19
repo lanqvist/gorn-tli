@@ -295,6 +295,8 @@ export const demoSnapshot: Snapshot = {
       runs: Math.round(netFe / 24),
       netFe,
       inMapMs: Math.round((netFe / 820) * 3_600_000),
+      prisonFe: 0,
+      prisonRuns: 0,
     }),
   ),
   sessions: [
@@ -304,6 +306,8 @@ export const demoSnapshot: Snapshot = {
       runs: 23,
       netFe: 1_180 - 690,
       inMapMs: 41 * 60_000,
+      prisonFe: 0,
+      prisonRuns: 0,
     },
     {
       startedAt: now - 28 * 3_600_000,
@@ -311,6 +315,8 @@ export const demoSnapshot: Snapshot = {
       runs: 14,
       netFe: 3_240,
       inMapMs: 2 * 3_600_000 + 10 * 60_000,
+      prisonFe: 0,
+      prisonRuns: 0,
     },
     {
       startedAt: now - 3 * DAY,
@@ -318,6 +324,8 @@ export const demoSnapshot: Snapshot = {
       runs: 31,
       netFe: 4_300,
       inMapMs: 3 * 3_600_000 + 25 * 60_000,
+      prisonFe: 0,
+      prisonRuns: 0,
     },
   ],
   bag: {
@@ -351,6 +359,8 @@ export const demoSnapshot: Snapshot = {
       isCost: false,
     },
   ],
+  // Тюрьма за сессию: в итоге есть, в темпе — нет.
+  prison: { netFe: 312, runs: 4 },
   sessionTop: [
     {
       configBaseId: 10022,

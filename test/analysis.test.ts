@@ -385,3 +385,15 @@ describe('крупное за сессию', () => {
     expect(topDrops([r], priceOf)).toEqual([]);
   });
 });
+
+describe('тюрьма Талоса', () => {
+  it('узнаётся по ассету и не идёт в темп', async () => {
+    const { isPrisonRun, isRatedRun } = await import('../src/core/analysis.js');
+    const prison = run({ startedAt: T0, endedAt: T0 + 100_000, asset: 'ZhongZuiDiYu' });
+    const map = run({ startedAt: T0, endedAt: T0 + 100_000 });
+    expect(isPrisonRun(prison)).toBe(true);
+    expect(isRatedRun(prison)).toBe(false);
+    expect(isRatedRun(map)).toBe(true);
+    expect(isPrisonRun({ asset: null })).toBe(false);
+  });
+});

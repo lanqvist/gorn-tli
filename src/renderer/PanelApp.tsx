@@ -1,7 +1,7 @@
 import { memo, useEffect, useRef, useState } from 'react';
 
 import { tr } from '../core/i18n.js';
-import { RUN, pluralize } from '../core/plural.js';
+import { RUN, VISIT, pluralize } from '../core/plural.js';
 import type { DropView, PriceRow, RunView, Snapshot } from '../main/engine.js';
 import { Fe, FeIcon } from './components/Fe.js';
 import { ItemIcon } from './components/ui.js';
@@ -330,6 +330,13 @@ const SessionTab = memo(function SessionTab({ snapshot }: { snapshot: Snapshot }
             <b>{duration(snapshot.totals.inMapMs)}</b>
           </div>
         </div>
+        {snapshot.prison.runs > 0 && (
+          <p className="pn-muted">
+            {tr('тюрьма', 'prison')}: <Fe value={snapshot.prison.netFe} signed /> {tr('за', 'in')}{' '}
+            {pluralize(snapshot.prison.runs, VISIT)} —{' '}
+            {tr('в итоге сессии есть, в темпе нет', 'in the session total, not in the pace')}
+          </p>
+        )}
         <h3>
           {tr('Последние забеги', 'Recent runs')} ·{' '}
           <span className="pn-muted">{pluralize(snapshot.totals.runs, RUN)}</span>

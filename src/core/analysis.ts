@@ -23,6 +23,22 @@ export function isFarmingRun(run: Run): boolean {
   return !run.isHub && (run.durationMs ?? 0) > 5000;
 }
 
+/**
+ * Сезонная «Тюрьма Талоса». Лог видит у неё только финальную комнату
+ * (36–100 с), а игра на доске проходит вне карт и во время не попадает:
+ * 171 ФЕ за «1 м 40 с» давали 6 141 в час. Поэтому тюрьма — отдельный
+ * источник дохода: в итогах ФЕ она есть, во всём «в час», медианах,
+ * рекордах, картах и стратегиях — нет.
+ */
+export function isPrisonRun(run: Pick<Run, 'asset'>): boolean {
+  return run.asset?.startsWith('ZhongZuiDiYu') ?? false;
+}
+
+/** Забег, который идёт в темп: фарм без тюрьмы. */
+export function isRatedRun(run: Run): boolean {
+  return isFarmingRun(run) && !isPrisonRun(run);
+}
+
 /** Сколько самой валюты ФЕ упало за забег — без оценки предметов. */
 export function runFe(run: Run): number {
   let fe = 0;

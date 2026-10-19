@@ -5,6 +5,7 @@ import {
   activeDuration,
   groupByStrategy,
   isFarmingRun,
+  isPrisonRun,
   mergeRuns,
   missingPrices,
   pricesFor,
@@ -237,6 +238,11 @@ export interface Snapshot {
   missing: MissingPriceView[];
   /** Самые дорогие находки сессии, дорогие первыми, до трёх. */
   sessionTop: SessionDropView[];
+  /**
+   * Тюрьма за сессию: её добыча входит в totals.valueFe, но не в темп,
+   * время в картах и число забегов — показывается отдельной строкой.
+   */
+  prison: { netFe: number; runs: number };
   diagnostics: {
     unknownProtos: Array<[string, number]>;
     pricedItems: number;
@@ -941,8 +947,10 @@ export class Engine extends EventEmitter {
     const pricing = this.runPricing();
     for (const run of matched) {
       const net = runNet(run, pricing);
-      const active = activeDuration(run);
       netFe += net;
+      // Тюрьма — в итоге, но не в темпе: её время лог не видит.
+      if (isPrisonRun(run)) continue;
+      const active = activeDuration(run);
       inMapMs += active;
       rates.push(perHour(net, active));
     }
@@ -1227,8 +1235,10 @@ export class Engine extends EventEmitter {
 
     // Время считаем активное, а не по часам: простой внутри карты
     // раздувает знаменатель и тихо занижает любую цифру «в час».
-    const netRates = farming.map((r) => perHour(runNet(r, pricing), activeDuration(r)));
-    const feRates = farming.map((r) => perHour(runFe(r), activeDuration(r)));
+    // Темп, медианы, рекорды, карты и стратегии — без тюрьмы (isPrisonRun).
+    const rated = farming.filter((r) => !isPrisonRun(r));
+    const netRates = rated.map((r) => perHour(runNet(r, pricing), activeDuration(r)));
+    const feRates = rated.map((r) => perHour(runFe(r), activeDuration(r)));
 
     // У выплат биржи нет пометки сезона — границы сезона берём по его
     // забегам. Иначе коэффициент реализации смешивал бы старые лоты
@@ -1243,7 +1253,10 @@ export class Engine extends EventEmitter {
     // Текущий забег обязан попадать в итоги: иначе подобранное «сейчас»
     // не видно нигде до выхода из карты, и экран кажется замершим.
     const openFarming = open && !open.isHub ? open : null;
-    const openElapsed = openFarming ? activeDuration(openFarming, undefined, Date.now()) : 0;
+    const openElapsed =
+      openFarming && !isPrisonRun(openFarming)
+        ? activeDuration(openFarming, undefined, Date.now())
+        : 0;
     const counted = openFarming ? [...farming, openFarming] : farming;
 
     let unpricedDrops = 0;
@@ -1263,7 +1276,13 @@ export class Engine extends EventEmitter {
     const sessionFarming = farming.filter((r) => runEnd(r) >= this.sessionStartedAt);
     const sessionCounted = openFarming ? [...sessionFarming, openFarming] : sessionFarming;
 
-    const inMapMs = sessionFarming.reduce((a, r) => a + activeDuration(r), 0) + openElapsed;
+    // Итог сессии — вместе с тюрьмой, время и темп — без неё.
+    const sessionRated = sessionCounted.filter((r) => !isPrisonRun(r));
+    const sessionPrison = sessionCounted.filter(isPrisonRun);
+    const prisonFe = sessionPrison.reduce((a, r) => a + runNet(r, pricing), 0);
+    const inMapMs =
+      sessionFarming.reduce((a, r) => a + (isPrisonRun(r) ? 0 : activeDuration(r)), 0) +
+      openElapsed;
     const valueFe = sessionCounted.reduce((a, r) => a + runValue(r, pricing), 0);
     const costFe = sessionCounted.reduce((a, r) => a + runCost(r, pricing), 0);
 
@@ -1287,16 +1306,16 @@ export class Engine extends EventEmitter {
       players: this.playerOptions(allRuns),
       playerFilter: this.playerFilter,
       current: open && !open.isHub ? this.toView(open) : null,
-      recent: farming
+      recent: rated
         .slice(-25)
         .reverse()
         .map((r) => this.toView(r)),
       rate: summarize(netRates),
       feRate: summarize(feRates),
-      liveRate: perHour(valueFe - costFe, inMapMs),
+      liveRate: perHour(valueFe - costFe - prisonFe, inMapMs),
       norm: rollingNorm(netRates),
       jackpotAutoFe: this.jackpotAutoFe(),
-      strategies: groupByStrategy(farming, pricing)
+      strategies: groupByStrategy(rated, pricing)
         .filter((s) => s.runs >= 2)
         .slice(0, 6)
         .map((s) => ({
@@ -1308,7 +1327,7 @@ export class Engine extends EventEmitter {
             icon: this.items.get(id)?.icon ? iconUrl(id) : null,
           })),
         })),
-      maps: groupByMap(farming, (r) => this.mapName(r.asset, r.areaId), pricing).slice(0, 8),
+      maps: groupByMap(rated, (r) => this.mapName(r.asset, r.areaId), pricing).slice(0, 8),
       days: dailyTotals(farming, pricing, 14, Date.now()),
       sessions: sessionTotals(this.sessions, farming, pricing).slice(0, 10),
       bag: this.bagView(),
@@ -1325,7 +1344,7 @@ export class Engine extends EventEmitter {
           name: this.displayName(m.configBaseId),
           icon: this.items.get(m.configBaseId)?.icon ? iconUrl(m.configBaseId) : null,
         })),
-      sessionTop: topDrops(sessionCounted, pricing).map((t) => ({
+      sessionTop: topDrops(sessionRated, pricing).map((t) => ({
         configBaseId: t.configBaseId,
         name: this.displayName(t.configBaseId),
         icon: this.items.get(t.configBaseId)?.icon ? iconUrl(t.configBaseId) : null,
@@ -1334,12 +1353,13 @@ export class Engine extends EventEmitter {
         at: t.at,
         runName: this.runName(t.run),
       })),
+      prison: { netFe: prisonFe, runs: sessionPrison.length },
       session: {
         startedAt: this.sessionStartedAt,
         previous: this.previousSummary(farming, pricing),
       },
       totals: {
-        runs: sessionCounted.length,
+        runs: sessionRated.length,
         inMapMs,
         feGained: sessionCounted.reduce((a, r) => a + runFe(r), 0),
         valueFe,
@@ -1391,8 +1411,8 @@ export class Engine extends EventEmitter {
     if (runs.length === 0) return null;
     return {
       netFe: runs.reduce((a, r) => a + runNet(r, pricing), 0),
-      inMapMs: runs.reduce((a, r) => a + activeDuration(r), 0),
-      runs: runs.length,
+      inMapMs: runs.reduce((a, r) => a + (isPrisonRun(r) ? 0 : activeDuration(r)), 0),
+      runs: runs.filter((r) => !isPrisonRun(r)).length,
     };
   }
 

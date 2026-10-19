@@ -1,4 +1,4 @@
-import { activeDuration, runEnd, runNet, type RunPricing } from './analysis.js';
+import { activeDuration, isPrisonRun, runEnd, runNet, type RunPricing } from './analysis.js';
 import { perHour, summarize, type RateSummary } from './stats.js';
 import type { Run } from './types.js';
 
@@ -65,19 +65,35 @@ export function groupByMap(
 }
 
 export interface PeriodTotals {
+  /** Забеги в темп — без тюрьмы. */
   runs: number;
+  /** Итог, вместе с тюрьмой. */
   netFe: number;
+  /** Время в картах — без тюрьмы: её время лог не видит. */
   inMapMs: number;
+  /** Тюрьма отдельно: в netFe она есть, в темп (netFe − prisonFe) / inMapMs — нет. */
+  prisonFe: number;
+  prisonRuns: number;
 }
 
 function totalsOf(runs: Run[], pricing: RunPricing): PeriodTotals {
   let netFe = 0;
   let inMapMs = 0;
+  let rated = 0;
+  let prisonFe = 0;
+  let prisonRuns = 0;
   for (const run of runs) {
-    netFe += runNet(run, pricing);
-    inMapMs += activeDuration(run);
+    const net = runNet(run, pricing);
+    netFe += net;
+    if (isPrisonRun(run)) {
+      prisonFe += net;
+      prisonRuns++;
+    } else {
+      inMapMs += activeDuration(run);
+      rated++;
+    }
   }
-  return { runs: runs.length, netFe, inMapMs };
+  return { runs: rated, netFe, inMapMs, prisonFe, prisonRuns };
 }
 
 /** Полночь местного времени для метки. */
@@ -151,6 +167,6 @@ export function sessionTotals(
       });
       return { ...s, ...totalsOf(inside, pricing) };
     })
-    .filter((s) => s.runs > 0)
+    .filter((s) => s.runs + s.prisonRuns > 0)
     .sort((a, b) => b.startedAt - a.startedAt);
 }

@@ -8,7 +8,12 @@ import { Fe, FeIcon } from './Fe.js';
 
 type Day = Snapshot['days'][number];
 
-const rateOf = (netFe: number, ms: number) => (ms > 0 ? (netFe / ms) * 3_600_000 : 0);
+/**
+ * Темп периода. Тюрьма в итоге есть, а в темпе нет: её время лог не видит,
+ * и её добыча, делённая на чужие минуты, задрала бы «в час».
+ */
+const rateOf = (t: { netFe: number; prisonFe: number; inMapMs: number }) =>
+  t.inMapMs > 0 ? ((t.netFe - t.prisonFe) / t.inMapMs) * 3_600_000 : 0;
 
 /**
  * Чистыми по дням за две недели. Одна серия — легенда не нужна,
@@ -99,7 +104,7 @@ function DaysChart({ days }: { days: Day[] }) {
       </svg>
       <div className="days-tip" aria-live="polite">
         {active ? (
-          active.runs === 0 ? (
+          active.runs + active.prisonRuns === 0 ? (
             <>
               <b>{dayFull(active.day)}</b> · {tr('не играл', "didn't play")}
             </>
@@ -108,7 +113,7 @@ function DaysChart({ days }: { days: Day[] }) {
               <b>{dayFull(active.day)}</b> · <Fe value={active.netFe} signed /> ·{' '}
               {pluralize(active.runs, RUN)} · {duration(active.inMapMs)}{' '}
               {tr('в картах', 'in maps')} ·{' '}
-              {num(rateOf(active.netFe, active.inMapMs))}/{tr('час', 'h')}
+              {num(rateOf(active))}/{tr('час', 'h')}
             </>
           )
         ) : (
@@ -127,11 +132,12 @@ function DaysChart({ days }: { days: Day[] }) {
  */
 export function History({ snapshot }: { snapshot: Snapshot }) {
   const { days, sessions } = snapshot;
-  const played = days.filter((d) => d.runs > 0);
+  const played = days.filter((d) => d.runs + d.prisonRuns > 0);
   if (played.length === 0 && sessions.length === 0) return null;
 
   const total = played.reduce((a, d) => a + d.netFe, 0);
   const totalMs = played.reduce((a, d) => a + d.inMapMs, 0);
+  const totalPrison = played.reduce((a, d) => a + d.prisonFe, 0);
 
   return (
     <section className="card">
@@ -151,7 +157,7 @@ export function History({ snapshot }: { snapshot: Snapshot }) {
             <p className="history-sum">
               {tr('За две недели:', 'Last two weeks:')} <Fe value={total} signed /> ·{' '}
               {duration(totalMs)}{' '}
-              {tr('в картах', 'in maps')} · {num(rateOf(total, totalMs))}/{tr('час', 'h')}
+              {tr('в картах', 'in maps')} · {num(rateOf({ netFe: total, prisonFe: totalPrison, inMapMs: totalMs }))}/{tr('час', 'h')}
               <span className="muted">
                 {' · '}
                 {tr(`дней с игрой: ${played.length}`, `days played: ${played.length}`)}
@@ -189,7 +195,7 @@ export function History({ snapshot }: { snapshot: Snapshot }) {
                   <td className="r">
                     <Fe value={s.netFe} />
                   </td>
-                  <td className="r muted">{num(rateOf(s.netFe, s.inMapMs))}</td>
+                  <td className="r muted">{num(rateOf(s))}</td>
                 </tr>
               ))}
             </tbody>

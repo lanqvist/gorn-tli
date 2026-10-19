@@ -178,3 +178,26 @@ describe('история по ценам сезона забега', () => {
     expect(sessionTotals([{ startedAt: 0, endedAt: null }], runs, pricing)[0]!.netFe).toBe(70);
   });
 });
+
+describe('тюрьма — в итоге, но не в темпе', () => {
+  it('добыча тюрьмы входит в итог дня и сессии, время и число забегов — нет', () => {
+    const runs = [run(NOW - 60 * 60_000, 20), run(NOW - 30 * 60_000, 171, 'ZhongZuiDiYu')];
+    const [session] = sessionTotals([{ startedAt: 0, endedAt: null }], runs, priceOf);
+    expect(session).toMatchObject({ netFe: 191, prisonFe: 171, prisonRuns: 1, runs: 1, inMapMs: 60_000 });
+    const today = dailyTotals(runs, priceOf, 1, NOW)[0]!;
+    expect(today).toMatchObject({ netFe: 191, prisonFe: 171, runs: 1, inMapMs: 60_000 });
+  });
+
+  it('сессия только с тюрьмой не теряется', () => {
+    const runs = [run(NOW - 10 * 60_000, 50, 'ZhongZuiDiYu')];
+    expect(sessionTotals([{ startedAt: 0, endedAt: null }], runs, priceOf)).toHaveLength(1);
+  });
+
+  it('карты считаются без тюрьмы, если движок отдаёт им забеги в темп', () => {
+    const runs = [run(NOW - 60 * 60_000, 20), run(NOW - 30 * 60_000, 171, 'ZhongZuiDiYu')];
+    const rated = runs.filter((r) => !r.asset?.startsWith('ZhongZuiDiYu'));
+    expect(groupByMap(rated, (r) => r.asset ?? '', priceOf).map((m) => m.name)).toEqual([
+      'YL_MaNeiLaYuLin100',
+    ]);
+  });
+});

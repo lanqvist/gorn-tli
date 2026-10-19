@@ -363,6 +363,21 @@ button {
   flex-wrap: wrap;
 }
 
+/* Тюрьма отдельной строкой: в итоге сессии есть, в темпе нет. */
+.hero-prison {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.hero-prison .fe {
+  color: var(--text);
+  font-weight: 600;
+}
+
 /* Последние забеги к медиане сезона: растёшь или проседаешь. */
 .hero-vs {
   padding: 3px 10px;

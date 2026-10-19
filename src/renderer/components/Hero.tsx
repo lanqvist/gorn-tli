@@ -1,5 +1,5 @@
 import { tr } from '../../core/i18n.js';
-import { RUN, pluralize } from '../../core/plural.js';
+import { RUN, VISIT, pluralize } from '../../core/plural.js';
 import { NORM_WINDOW } from '../../core/analysis.js';
 import type { Snapshot } from '../../main/engine.js';
 import { NBSP, cacheDate, duration, num, time } from '../format.js';
@@ -207,6 +207,19 @@ export function Hero({ snapshot }: { snapshot: Snapshot }) {
               : {})}
           />
         </div>
+        {snapshot.prison.runs > 0 && (
+          <Tip
+            tip={tr(
+              'Тюрьма Талоса входит в итог сессии, но не в темп, медианы, рекорды, карты и стратегии: игра на доске идёт вне карт, и её время лог не видит.',
+              'Tartarus Prison counts toward the session total but not the pace, medians, records, maps or strategies: the board is played outside maps, and the log cannot see that time.',
+            )}
+          >
+            <span className="hero-prison">
+              {tr('тюрьма', 'prison')}: <Fe value={snapshot.prison.netFe} signed />{' '}
+              {tr('за', 'in')} {pluralize(snapshot.prison.runs, VISIT)}
+            </span>
+          </Tip>
+        )}
         <SessionBar snapshot={snapshot} />
       </div>
     </section>
