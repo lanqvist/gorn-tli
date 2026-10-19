@@ -207,7 +207,10 @@ export function OverlayApp() {
   const sessionNet = snapshot ? snapshot.totals.valueFe - snapshot.totals.costFe : 0;
 
   const pace = run && elapsed >= WARMUP_MS ? (run.netFe / elapsed) * 3_600_000 : null;
-  const delta = pace !== null && median > 0 ? Math.round(((pace - median) / median) * 100) : null;
+  // К норме — медиане последних 20 забегов, как в главном окне и таблице забегов:
+  // медиана всего сезона копит слабые первые недели и завышала бы процент.
+  const norm = snapshot?.norm ?? 0;
+  const delta = pace !== null && norm > 0 ? Math.round(((pace - norm) / norm) * 100) : null;
 
   // «Тень» прошлого забега: сколько он имел к этой же секунде. Оценка
   // грубая — по его среднему темпу, дроп на деле сыплется рывками, —
@@ -354,7 +357,7 @@ export function OverlayApp() {
       )}
 
       <div className="ov-rows">
-        {/* В компактном режиме на карте медиана уже стоит за процентом у
+        {/* В компактном режиме на карте норма уже стоит за процентом у
             главной цифры, а строка ушла под тройку. */}
         {!(place === 'map' && mode === 'compact') && (
           <div className="ov-row">
@@ -428,7 +431,10 @@ function Delta({ value }: { value: number }) {
   return (
     <span
       className={`ov-delta ${value >= 0 ? 'up' : 'down'}`}
-      title={tr('Темп этой карты к медиане', 'This map’s pace vs the median')}
+      title={tr(
+        'Темп этой карты к норме — медиане последних 20 забегов',
+        'This map’s pace vs the norm — the median of the last 20 runs',
+      )}
     >
       <Icon name={value >= 0 ? 'up' : 'down'} />
       {Math.abs(value)}%

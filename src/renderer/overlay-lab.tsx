@@ -68,6 +68,31 @@ function Frame({
   );
 }
 
+/**
+ * Всплывашки у центра экрана — отдельное окно (toastLayer), здесь все виды
+ * разом и без затухания: toasts.html?preview=1. Ширина — WIDTH из
+ * main/toastLayer.ts.
+ */
+function ToastFrame() {
+  const ref = useRef<HTMLIFrameElement>(null);
+  const [height, setHeight] = useState(200);
+  useEffect(() => {
+    const t = setInterval(() => {
+      const body = ref.current?.contentDocument?.body;
+      if (body) setHeight(Math.ceil(body.getBoundingClientRect().height) || 200);
+    }, 300);
+    return () => clearInterval(t);
+  }, []);
+  return (
+    <iframe
+      ref={ref}
+      src={`toasts.html?lang=${uiLanguage()}&preview=1`}
+      title="toasts"
+      style={{ width: 560, height }}
+    />
+  );
+}
+
 function Lab() {
   const [bg, setBg] = useState<(typeof BGS)[number]>('battle');
   const [scale, setScale] = useState(1);
@@ -160,6 +185,21 @@ function Lab() {
           </div>
         </section>
       ))}
+
+      <section className="lab-place">
+        <h2>{tr('всплывашки', 'popups')}</h2>
+        <div className={`scene bg-${bg}`}>
+          <figure>
+            <ToastFrame />
+            <figcaption>
+              {tr(
+                'подбор · золотая находка · итог карты · рекорд · тюрьма',
+                'pickup · gold drop · map summary · record · prison',
+              )}
+            </figcaption>
+          </figure>
+        </div>
+      </section>
     </div>
   );
 }

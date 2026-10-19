@@ -129,3 +129,23 @@ describe('лента', () => {
     expect(src('overlay.css')).not.toMatch(/\binfinite\b/);
   });
 });
+
+describe('«к норме» — от нормы, а не от медианы сезона', () => {
+  it('итог карты, оверлей и пульт сравнивают с медианой последних 20 забегов', () => {
+    const toasts = src('overlay/toasts.tsx');
+    expect(toasts).toMatch(/const norm = snapshot\?\.norm \?\? 0;/);
+    expect(toasts).not.toMatch(/rate\.median/);
+    expect(src('OverlayApp.tsx')).toMatch(/const norm = snapshot\?\.norm \?\? 0;/);
+    expect(src('PanelApp.tsx')).toMatch(/const norm = snapshot\.norm;/);
+  });
+
+  it('у тюрьмы своя плашка итога, без темпа и процентов', () => {
+    const toasts = src('overlay/toasts.tsx');
+    expect(toasts).toMatch(/if \(before\.view\.prison\)/);
+    expect(toasts).toMatch(/kind: 'prison'/);
+  });
+
+  it('в плашках нет бесконечных анимаций', () => {
+    expect(src('toasts.css')).not.toMatch(/\binfinite\b/);
+  });
+});

@@ -55,6 +55,16 @@ body {
     tl-out 420ms ease-in forwards;
 }
 
+/* Стенд: все плашки разом и без появления и затухания. */
+.tl-preview .ov-toasts {
+  flex-direction: column;
+  gap: 12px;
+}
+
+.tl-preview .ov-toast {
+  animation: none;
+}
+
 @keyframes tl-in {
   from {
     opacity: 0;
@@ -74,6 +84,9 @@ body {
   animation-delay: 0ms, 3700ms;
 }
 .ov-toast-runEnd {
+  animation-delay: 0ms, 3700ms;
+}
+.ov-toast-prison {
   animation-delay: 0ms, 3700ms;
 }
 
@@ -170,10 +183,56 @@ body {
   max-width: 100%;
 }
 
+/* Ступени ценности — те же пороги и цвета, что у полос дропа в оверлее. */
+.t-gold {
+  --tier: #ffc94d;
+}
+
+.t-orange {
+  --tier: #ff8a3d;
+}
+
+.t-plain {
+  --tier: #8e94a6;
+}
+
 .ov-runend-drop {
   display: inline-flex;
   align-items: center;
   gap: 5px;
+  padding: 1px 8px 1px 3px;
+  border-radius: 6px;
+  border: 1px solid color-mix(in srgb, var(--tier, #8e94a6) 55%, transparent);
+  background: color-mix(in srgb, var(--tier, #8e94a6) 16%, transparent);
+}
+
+.ov-runend-drop.t-gold {
+  color: #fff1cc;
+}
+
+/* Выход с карты — пауза: подсказка, где смотреть подробности. */
+.ov-runend-hint {
+  font-size: 12px;
+  font-weight: 500;
+  color: #8f99aa;
+}
+
+.ov-runend-hint kbd {
+  padding: 0 5px;
+  border-radius: 4px;
+  border: 1px solid rgb(255 255 255 / 18%);
+  background: rgb(255 255 255 / 7%);
+  color: #d4dae4;
+  font: 600 11px/1.5 Consolas, 'Segoe UI', monospace;
+}
+
+/* Тюрьма — цветом тюремных стрелок: итог есть, темпа нет. */
+.ov-toast-prison {
+  font-size: 17px;
+  color: #b8f5d2;
+  background: rgb(10 22 16 / 74%);
+  border: 1px solid rgb(70 255 154 / 35%);
+  max-width: 548px;
 }
 
 .ov-runend-drop img {

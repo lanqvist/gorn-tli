@@ -179,8 +179,9 @@ const RunTab = memo(function RunTab({ snapshot, tiers }: { snapshot: Snapshot; t
     return <p className="pn-empty">{tr('Забегов ещё нет.', 'No runs yet.')}</p>;
   }
   const live = snapshot.current !== null;
-  const median = snapshot.rate.median;
-  const delta = median > 0 ? Math.round(((run.perHour - median) / median) * 100) : null;
+  // К норме — медиане последних 20 забегов, как везде.
+  const norm = snapshot.norm;
+  const delta = norm > 0 ? Math.round(((run.perHour - norm) / norm) * 100) : null;
   const previous = live ? snapshot.recent[0] ?? null : snapshot.recent[1] ?? null;
 
   return (
@@ -199,7 +200,7 @@ const RunTab = memo(function RunTab({ snapshot, tiers }: { snapshot: Snapshot; t
           {delta !== null && (
             <span
               className={`pn-delta ${delta >= 0 ? 'up' : 'down'}`}
-              title={tr('Темп карты к медиане', 'Map pace vs the median')}
+              title={tr('Темп карты к норме — медиане последних 20 забегов', 'Map pace vs the norm — the median of the last 20 runs')}
             >
               {delta >= 0 ? '↑' : '↓'} {Math.abs(delta)}%
             </span>

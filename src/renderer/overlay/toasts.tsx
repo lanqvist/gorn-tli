@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { tr } from '../../core/i18n.js';
-import type { Snapshot } from '../../main/engine.js';
+import type { DropView, RunView, Snapshot } from '../../main/engine.js';
 import { Fe, FeIcon } from '../components/Fe.js';
 import { clock } from '../format.js';
 import { playDrop, playRecord } from './sound.js';
@@ -23,7 +23,10 @@ import { playDrop, playRecord } from './sound.js';
  *    фанфарами.
  */
 
-export type ToastKind = 'pickup' | 'jackpot' | 'runEnd';
+export type ToastKind = 'pickup' | 'jackpot' | 'runEnd' | 'prison';
+
+/** Ступень ценности — те же пороги и цвета, что у полос дропа в оверлее. */
+export type Tier = 'gold' | 'orange' | 'plain';
 
 export interface Toast {
   id: number;
@@ -35,8 +38,8 @@ export interface Toast {
   /** Длительность забега — только у итога карты. */
   durationMs?: number;
   /** Топ находок закрытой карты — только у итога. */
-  topDrops?: Array<{ name: string; icon: string | null; fe: number }>;
-  /** Отклонение темпа закрытой карты от медианы, в процентах. */
+  topDrops?: Array<{ name: string; icon: string | null; fe: number; tier: Tier }>;
+  /** Отклонение темпа закрытой карты от нормы (медианы последних 20 забегов), в процентах. */
   deltaPct?: number | null;
   /** Стрик: не первый джекпот за короткое время — сессия «жаркая». */
   hot?: boolean;
@@ -53,7 +56,12 @@ const HOT_STREAK_MS = 90_000;
 /** Монетный дождь на рекорд — не чаще раза в час, иначе приестся. */
 const RECORD_COOLDOWN_MS = 3_600_000;
 /** Сколько всплывашка живёт на экране. Итог карты читают — ему дольше. */
-const TTL_MS: Record<ToastKind, number> = { pickup: 2400, jackpot: 4200, runEnd: 5200 };
+const TTL_MS: Record<ToastKind, number> = {
+  pickup: 2400,
+  jackpot: 4200,
+  runEnd: 5200,
+  prison: 4200,
+};
 /** Больше трёх плашек — уже стена текста поверх игры. */
 const MAX_VISIBLE = 3;
 
@@ -71,9 +79,29 @@ export interface ToastOptions {
 }
 
 interface RunFingerprint {
+  /** Последний вид забега: у тюрьмы итога в recent нет — берём отсюда. */
+  view: RunView;
   startedAt: number;
   netFe: number;
   qtyByItem: Map<number, number>;
+}
+
+/** Три самых дорогих находки забега со ступенью ценности — для карточки итога. */
+export function topDropsOf(
+  drops: DropView[],
+  goldFe: number,
+  orangeFe: number,
+): Array<{ name: string; icon: string | null; fe: number; tier: Tier }> {
+  return drops
+    .filter((d) => d.priceSource !== 'excluded' && d.totalFe !== null && d.totalFe > 0)
+    .sort((a, b) => b.totalFe! - a.totalFe!)
+    .slice(0, 3)
+    .map((d) => ({
+      name: d.name,
+      icon: d.icon,
+      fe: d.totalFe!,
+      tier: d.totalFe! >= goldFe ? 'gold' : d.totalFe! >= orangeFe ? 'orange' : 'plain',
+    }));
 }
 
 let nextId = 1;
@@ -106,6 +134,7 @@ export function useIncomeToasts(snapshot: Snapshot | null, opts: ToastOptions): 
     const before = prev.current;
     prev.current = current
       ? {
+          view: current,
           startedAt: current.startedAt,
           netFe: current.netFe,
           qtyByItem: new Map(current.drops.map((d) => [d.configBaseId, d.qty])),
@@ -143,9 +172,29 @@ export function useIncomeToasts(snapshot: Snapshot | null, opts: ToastOptions): 
     // Момент закрытия карты — естественная пауза, игрок готов читать,
     // поэтому итог — карточка с топ-находками, а не одна строка.
     if (before && (!current || current.startedAt !== before.startedAt)) {
-      const finished = snapshot?.recent.find((r) => r.startedAt === before.startedAt);
+      const goldFe = jackpotFe > 0 ? jackpotFe : (snapshot?.jackpotAutoFe ?? JACKPOT_FE);
+      const orangeFe = exaltedFe > 0 ? exaltedFe : goldFe / 5;
+      const top = (drops: DropView[]) => topDropsOf(drops, goldFe, orangeFe);
+
+      // Тюрьма в «последние забеги» не входит — её итог из последнего вида
+      // забега, без темпа и процентов: время на доске лог не видит.
+      if (before.view.prison) {
+        push({
+          id: nextId++,
+          kind: 'prison',
+          fe: before.view.netFe,
+          topDrops: top(before.view.drops),
+        });
+      }
+
+      const finished = before.view.prison
+        ? undefined
+        : snapshot?.recent.find((r) => r.startedAt === before.startedAt);
       if (finished) {
-        const median = snapshot?.rate.median ?? 0;
+        // К норме — медиане последних 20 забегов, как в главном окне
+        // и таблице забегов. Медиана всего сезона копит слабые первые
+        // недели, и почти каждая карта выходила бы «+150% к норме».
+        const norm = snapshot?.norm ?? 0;
 
         // Рекорд сессии: темп выше всех остальных недавних забегов.
         // Кулдаун держит его событием, а не ежечасным фоном.
@@ -165,13 +214,8 @@ export function useIncomeToasts(snapshot: Snapshot | null, opts: ToastOptions): 
           fe: finished.netFe,
           durationMs: finished.durationMs ?? 0,
           record,
-          topDrops: [...finished.drops]
-            .filter((d) => d.totalFe !== null && d.totalFe > 0)
-            .sort((a, b) => b.totalFe! - a.totalFe!)
-            .slice(0, 3)
-            .map((d) => ({ name: d.name, icon: d.icon, fe: d.totalFe! })),
-          deltaPct:
-            median > 0 ? Math.round(((finished.perHour - median) / median) * 100) : null,
+          topDrops: top(finished.drops),
+          deltaPct: norm > 0 ? Math.round(((finished.perHour - norm) / norm) * 100) : null,
         });
         // Звучит только рекорд: обычный итог карты молчит, его читают глазами.
         if (sound && record) playRecord(volume);
@@ -286,7 +330,21 @@ export function ToastList({ toasts }: { toasts: Toast[] }) {
               <span className="ov-toast-name">{t.name}</span>
             </>
           )}
-          {t.kind !== 'runEnd' && <Fe value={t.fe} signed className="ov-toast-fe" />}
+          {(t.kind === 'pickup' || t.kind === 'jackpot') && (
+            <Fe value={t.fe} signed className="ov-toast-fe" />
+          )}
+          {t.kind === 'prison' && (
+            <div className="ov-runend">
+              <div className="ov-runend-head">
+                <span className="ov-toast-label">{tr('тюрьма', 'prison')}</span>
+                <Fe value={t.fe} signed className="ov-toast-fe" />
+                <span className="ov-toast-time">
+                  {tr('в итог сессии, не в темп', 'counts toward the session, not the pace')}
+                </span>
+              </div>
+              {t.topDrops && t.topDrops.length > 0 && <TopDrops drops={t.topDrops} />}
+            </div>
+          )}
           {t.kind === 'runEnd' && (
             <div className="ov-runend">
               <div className="ov-runend-head">
@@ -306,20 +364,29 @@ export function ToastList({ toasts }: { toasts: Toast[] }) {
                   </span>
                 )}
               </div>
-              {t.topDrops && t.topDrops.length > 0 && (
-                <div className="ov-runend-drops">
-                  {t.topDrops.map((d, i) => (
-                    <span key={i} className="ov-runend-drop">
-                      {d.icon && <img src={d.icon} alt="" draggable={false} />}
-                      <span className="ov-runend-name">{d.name}</span>
-                      <Fe value={d.fe} />
-                    </span>
-                  ))}
-                </div>
-              )}
+              {t.topDrops && t.topDrops.length > 0 && <TopDrops drops={t.topDrops} />}
+              {/* Выход с карты — пауза: самое время заглянуть в пульт. */}
+              <span className="ov-runend-hint">
+                {tr('подробнее —', 'details —')} <kbd>Ctrl+Alt+T</kbd>
+              </span>
             </div>
           )}
         </div>
+      ))}
+    </div>
+  );
+}
+
+/** Находки итога: иконка, название и цена, кромка — ступень ценности, как в оверлее. */
+function TopDrops({ drops }: { drops: NonNullable<Toast['topDrops']> }) {
+  return (
+    <div className="ov-runend-drops">
+      {drops.map((d, i) => (
+        <span key={i} className={`ov-runend-drop t-${d.tier}`}>
+          {d.icon && <img src={d.icon} alt="" draggable={false} />}
+          <span className="ov-runend-name">{d.name}</span>
+          <Fe value={d.fe} />
+        </span>
       ))}
     </div>
   );

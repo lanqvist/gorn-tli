@@ -123,6 +123,8 @@ export interface RunView {
   drops: DropView[];
   /** Чем открывалась карта. */
   costs: DropView[];
+  /** Тюрьма Талоса: в итоге сессии есть, в темпе нет (isPrisonRun). */
+  prison?: boolean;
 }
 
 /** Результат поиска по всей истории забегов. */
@@ -1169,6 +1171,7 @@ export class Engine extends EventEmitter {
       perHour: perHour(netFe, duration),
       drops: this.itemViews(run.drops, season),
       costs: this.itemViews(run.costs, season),
+      ...(isPrisonRun(run) ? { prison: true } : {}),
     };
   }
 
