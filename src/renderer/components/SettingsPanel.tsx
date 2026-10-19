@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 
 import type { UpdateState } from '../../main/updater.js';
 import { tr, uiLanguage, type UiLanguage } from '../../core/i18n.js';
@@ -108,10 +108,13 @@ function UiLanguageSwitch() {
 export function SettingsPanel({
   onClose,
   minDropFe,
+  children,
 }: {
   onClose: () => void;
   /** Порог «мелочи» живёт в срезе: меняется кнопкой и сразу видна в списках. */
   minDropFe: number;
+  /** Низ панели — самодиагностика: она для тех, кто настраивает. */
+  children?: ReactNode;
 }) {
   const [prefs, setPrefs] = useState({
     popups: true,
@@ -579,6 +582,7 @@ export function SettingsPanel({
             </span>
           </div>
         </section>
+        {children}
       </aside>
     </>
   );

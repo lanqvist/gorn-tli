@@ -18,11 +18,49 @@ import { SettingsPanel } from './components/SettingsPanel.js';
 import { Sidebar } from './components/Sidebar.js';
 import { Strategies } from './components/Strategies.js';
 import { UpdateBanner } from './components/UpdateBanner.js';
+import { TiersContext, useTiers } from './tiers.js';
+
+/**
+ * Вкладки под сводкой. Раньше окно было лентой из 11 блоков — до карт
+ * и истории приходилось листать. Сводка остаётся на виду, остальное —
+ * в одном щелчке. Скрытая вкладка не рисуется вовсе.
+ */
+type Tab = 'session' | 'runs' | 'maps' | 'prices' | 'history';
+
+const TABS: Array<[Tab, () => string]> = [
+  ['session', () => tr('Сессия', 'Session')],
+  ['runs', () => tr('Забеги', 'Runs')],
+  ['maps', () => tr('Карты и стратегии', 'Maps & strategies')],
+  ['prices', () => tr('Цены', 'Prices')],
+  ['history', () => tr('История', 'History')],
+];
+
+const TAB_KEY = 'gorn.tab';
+
+function savedTab(): Tab {
+  try {
+    const t = localStorage.getItem(TAB_KEY);
+    return TABS.some(([k]) => k === t) ? (t as Tab) : 'session';
+  } catch {
+    return 'session';
+  }
+}
 
 export function App() {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [scanProgress, setScanProgress] = useState<RetroScanProgress | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [tab, setTabState] = useState<Tab>(savedTab);
+  const tiers = useTiers(snapshot?.jackpotAutoFe ?? 0);
+
+  const setTab = (t: Tab) => {
+    setTabState(t);
+    try {
+      localStorage.setItem(TAB_KEY, t);
+    } catch {
+      // Без хранилища вкладка просто не запомнится.
+    }
+  };
 
   useEffect(() => {
     // В браузере main-процесса нет — показываем демо-данные, чтобы вёрстку
@@ -71,25 +109,62 @@ export function App() {
   }
 
   return (
-    <div className="app">
-      <UpdateBanner />
-      <Header snapshot={snapshot} onOpenSettings={() => setSettingsOpen(true)} />
-      {settingsOpen && (
-        <SettingsPanel minDropFe={snapshot.minDropFe} onClose={() => setSettingsOpen(false)} />
-      )}
-      <Hero snapshot={snapshot} />
-      <SessionRecords snapshot={snapshot} />
-      <div className="columns">
-        <CurrentRun snapshot={snapshot} />
-        <Sidebar snapshot={snapshot} />
+    <TiersContext.Provider value={tiers}>
+      <div className="app">
+        <UpdateBanner />
+        <Header snapshot={snapshot} onOpenSettings={() => setSettingsOpen(true)} />
+        {settingsOpen && (
+          <SettingsPanel minDropFe={snapshot.minDropFe} onClose={() => setSettingsOpen(false)}>
+            {/* Диагностика — для тех, кто настраивает, а не для каждого взгляда. */}
+            <Diagnostics snapshot={snapshot} />
+          </SettingsPanel>
+        )}
+        <Hero snapshot={snapshot} />
+        <SessionRecords snapshot={snapshot} />
+
+        <nav className="tabs" role="tablist" aria-label={tr('Разделы', 'Sections')}>
+          {TABS.map(([key, label]) => (
+            <button
+              key={key}
+              role="tab"
+              aria-selected={tab === key}
+              className={tab === key ? 'tab on' : 'tab'}
+              onClick={() => setTab(key)}
+            >
+              {label()}
+              {key === 'prices' && snapshot.missing.length > 0 && (
+                <span
+                  className="tab-badge"
+                  title={tr('Предметы без цены — оценка занижена', 'Items without a price — the estimate is low')}
+                >
+                  {snapshot.missing.length}
+                </span>
+              )}
+            </button>
+          ))}
+        </nav>
+
+        {tab === 'session' && (
+          <div className="columns">
+            <CurrentRun snapshot={snapshot} />
+            <Sidebar snapshot={snapshot} />
+          </div>
+        )}
+        {tab === 'runs' && <RecentRuns snapshot={snapshot} />}
+        {tab === 'maps' && (
+          <>
+            <Strategies snapshot={snapshot} />
+            <Maps snapshot={snapshot} />
+          </>
+        )}
+        {tab === 'prices' && (
+          <>
+            <MissingPrices snapshot={snapshot} />
+            <Prices snapshot={snapshot} />
+          </>
+        )}
+        {tab === 'history' && <History snapshot={snapshot} />}
       </div>
-      <Strategies snapshot={snapshot} />
-      <Maps snapshot={snapshot} />
-      <RecentRuns snapshot={snapshot} />
-      <History snapshot={snapshot} />
-      <MissingPrices snapshot={snapshot} />
-      <Prices snapshot={snapshot} />
-      <Diagnostics snapshot={snapshot} />
-    </div>
+    </TiersContext.Provider>
   );
 }

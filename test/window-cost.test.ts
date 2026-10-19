@@ -149,3 +149,12 @@ describe('«к норме» — от нормы, а не от медианы с�
     expect(src('toasts.css')).not.toMatch(/\binfinite\b/);
   });
 });
+
+describe('вкладки главного окна', () => {
+  it('скрытая вкладка не рисуется: блоки — только под своей вкладкой', () => {
+    const app = src('App.tsx');
+    expect(app).toMatch(/\{tab === 'runs' && <RecentRuns/);
+    expect(app).toMatch(/\{tab === 'history' && <History/);
+    expect(app).toMatch(/\{tab === 'session' && \(/);
+  });
+});

@@ -2,6 +2,7 @@ import { tr } from '../../core/i18n.js';
 import { ITEM, pluralize } from '../../core/plural.js';
 import type { RunView } from '../../main/engine.js';
 import { num } from '../format.js';
+import { tierOf, useTierContext } from '../tiers.js';
 import { Fe } from './Fe.js';
 import { CopyName, ItemIcon } from './ui.js';
 
@@ -34,11 +35,13 @@ export function DropList({
   );
   const shown = drops.filter((d) => !excluded.includes(d) && !small.includes(d));
   const smallFe = small.reduce((a, d) => a + (d.totalFe ?? 0), 0);
+  // Ступени — те же, что в оверлее и всплывашках: дорогое видно сразу.
+  const tiers = useTierContext();
 
   return (
     <ul className="drops">
       {shown.slice(0, 12).map((d) => (
-        <li key={d.configBaseId}>
+        <li key={d.configBaseId} className={`t-${tierOf(d.totalFe, tiers) ?? 'none'}`}>
           <ItemIcon src={d.icon} />
           <CopyName name={d.name} />
           <span className="drop-qty">×{num(d.qty)}</span>
