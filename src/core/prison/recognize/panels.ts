@@ -55,13 +55,20 @@ export function readChromatic(frame: Frame, geo: Geometry, t: ScreensTemplate): 
   normalize(headBuf);
   let head = -1;
   for (const h of t.chromaticHeader) head = Math.max(head, dot(headBuf, h));
-  let n = 0;
+  const filled: boolean[] = [];
   for (let i = 0; i < 10; i++) {
     sample(frame, geo, chromaticSlot(i), 12, 16, 3, slotBuf);
     normalize(slotBuf);
     const s = scoresByLabel(slotBuf, t.chromatic);
-    if ((s.get('filled') ?? -2) > (s.get('empty') ?? -2)) n++;
+    filled.push((s.get('filled') ?? -2) > (s.get('empty') ?? -2));
   }
+  // Хранилище заполняется по порядку. В режиме «Посмотреть состояние
+  // тюрьмы» серый портрет первого места под надписью «Назад к выбору»
+  // читается на грани (0,54 против 0,55, кадр 2026-10-20 00:32:54 — было
+  // 4, стало 3). Пустое место, за которым два занятых подряд, — занято:
+  // вспышка нового узника даёт только одиночное ложное место в хвосте.
+  for (let i = filled.length - 3; i >= 0; i--) if (filled[i + 1] && filled[i + 2]) filled[i] = true;
+  const n = filled.filter(Boolean).length;
   return n === 0 && head < HEADER_MIN ? -1 : n;
 }
 

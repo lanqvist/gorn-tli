@@ -437,3 +437,22 @@ describe.skipIf(!['193251-271-board.png', '193131-795-board.png', '191645-322-bo
     expect(prey('184201-534-board.png')).toEqual([]);
   });
 });
+
+/**
+ * Хранилище в режиме «Посмотреть состояние тюрьмы» (забеги 2026-10-20 00:12 и 00:31):
+ * серый портрет на первом месте читался пустым — 3 вместо 4.
+ */
+const VAULT_VIEW: Record<string, number> = {
+  '001201-129-board.png': 4,
+  '003253-132-board.png': 4,
+  '003254-446-board.png': 4,
+  '003302-404-board.png': 6,
+};
+
+describe.skipIf(!Object.keys(VAULT_VIEW).every((n) => gornShot('2026-10-20', n)))('хранилище при осмотре тюрьмы из окна подарка (забег 2026-10-20 00:31)', () => {
+  it('серый портрет на первом месте — занято', () => {
+    for (const [name, n] of Object.entries(VAULT_VIEW)) {
+      expect(board(read(frame(gornShot('2026-10-20', name)!), null).view).chromatic, name).toBe(n);
+    }
+  });
+});
