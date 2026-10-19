@@ -442,7 +442,9 @@ app.whenReady().then(async () => {
   ipcMain.on('overlay:cycleMode', () => overlay?.cycleMode());
   ipcMain.on('overlay:toggleLock', () => overlay?.toggleLocked());
   ipcMain.on('overlay:setOpacity', (_e, value: number) => overlay?.setOpacity(value));
-  ipcMain.on('overlay:height', (_e, height: number) => overlay?.setContentHeight(height));
+  ipcMain.on('overlay:height', (_e, height: number, width?: number) =>
+    overlay?.setContentHeight(Number(height), width === undefined ? undefined : Number(width)),
+  );
   ipcMain.on(
     'overlay:setPrefs',
     (

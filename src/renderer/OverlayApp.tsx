@@ -2,7 +2,7 @@ import { memo, useEffect, useRef, useState } from 'react';
 
 import { tr } from '../core/i18n.js';
 import { RUN, pluralize } from '../core/plural.js';
-import type { DropView, SessionDropView, Snapshot } from '../main/engine.js';
+import type { DropView, RunView, SessionDropView, Snapshot } from '../main/engine.js';
 import type { OverlayMode } from '../main/settings.js';
 import { Fe, FeIcon } from './components/Fe.js';
 import { ago, clock, NBSP, num } from './format.js';
@@ -36,7 +36,7 @@ const WARMUP_MS = 60_000;
 const SILENT_MS = 120_000;
 
 /** Строк находок по режимам: в компактном — только то, что решает. */
-const DROP_ROWS: Record<Mode, number> = { minimal: 0, compact: 4, full: 8 };
+const DROP_ROWS: Record<Mode, number> = { minimal: 0, compact: 4, full: 8, strip: 0 };
 
 function placeOf(snapshot: Snapshot | null, now: number): Place {
   if (!snapshot || snapshot.status === 'searching') return 'offline';
@@ -88,7 +88,9 @@ export function OverlayApp() {
     const el = root.current;
     if (!el || !window.gorn) return;
     const observer = new ResizeObserver(() => {
-      window.gorn.overlay.reportHeight(el.getBoundingClientRect().height);
+      // Ширину main берёт только у ленты: у колонки она задана режимом.
+      const r = el.getBoundingClientRect();
+      window.gorn.overlay.reportHeight(r.height, r.width);
     });
     observer.observe(el);
     return () => observer.disconnect();
@@ -105,7 +107,12 @@ export function OverlayApp() {
         const params = new URLSearchParams(location.search);
         const place = params.get('place');
         const demoMode = params.get('mode');
-        if (demoMode === 'minimal' || demoMode === 'compact' || demoMode === 'full') {
+        if (
+          demoMode === 'minimal' ||
+          demoMode === 'compact' ||
+          demoMode === 'full' ||
+          demoMode === 'strip'
+        ) {
           setMode(demoMode);
         }
         setPrefs({
@@ -274,8 +281,9 @@ export function OverlayApp() {
         </div>
       )}
 
-      {/* Шпаргалка видна ровно тогда, когда оверлей настраивают. */}
-      {!locked && (
+      {/* Шпаргалка видна ровно тогда, когда оверлей настраивают. У ленты
+          её нет: строка растянулась бы под текст. */}
+      {!locked && mode !== 'strip' && (
         <div className="ov-hint">
           {tr(
             'Тяните за полоску. Закрепить — замок или Ctrl+Alt+L, режим — Ctrl+Alt+M.',
@@ -284,6 +292,21 @@ export function OverlayApp() {
         </div>
       )}
 
+      {mode === 'strip' && snapshot && (
+        <StripLine
+          place={place}
+          run={run}
+          elapsed={elapsed}
+          delta={delta}
+          sessionNet={sessionNet}
+          previous={previous}
+          snapshot={snapshot}
+          prefs={prefs}
+        />
+      )}
+
+      {mode !== 'strip' && (
+      <>
       {/* Шапка: где игрок. На карте — таймер и название зоны. */}
       <div className="ov-head">
         {place === 'map' && run && (
@@ -395,6 +418,8 @@ export function OverlayApp() {
       {prefs.goalFe > 0 && snapshot && place !== 'offline' && (
         <GoalProgress goalFe={prefs.goalFe} snapshot={snapshot} brief={mode === 'minimal'} />
       )}
+      </>
+      )}
     </div>
   );
 }
@@ -410,6 +435,184 @@ function Delta({ value }: { value: number }) {
     </span>
   );
 }
+
+/**
+ * «Лента» — оверлей в одну строку у края экрана, как HUD в гонках:
+ * таймер и карта, доход забега с отклонением, темп и итог сессии, цель,
+ * находки чипами по ступеням ценности и крупное за сессию. Подробности
+ * не разворачиваются в самой ленте — их открывает пульт (Ctrl+Alt+T).
+ */
+function StripLine({
+  place,
+  run,
+  elapsed,
+  delta,
+  sessionNet,
+  previous,
+  snapshot,
+  prefs,
+}: {
+  place: Place;
+  run: RunView | null;
+  elapsed: number;
+  delta: number | null;
+  sessionNet: number;
+  previous: RunView | null;
+  snapshot: Snapshot;
+  prefs: GornOverlayPrefs;
+}) {
+  const goldFe = goldOf(prefs, snapshot);
+  const goal =
+    prefs.goalFe > 0 && place !== 'offline' ? Math.max(0, Math.min(1, sessionNet / prefs.goalFe)) : null;
+
+  return (
+    <div className="ov-line">
+      {place === 'map' && run && (
+        <>
+          <span className="ov-chip">
+            <Icon name="timer" />
+            {clock(elapsed)}
+          </span>
+          <span className="ov-mapname">{run.name}</span>
+          <i className="ov-sep" />
+          <span className="ov-line-hero">
+            <Fe value={run.netFe} signed />
+          </span>
+          {delta !== null && <Delta value={delta} />}
+        </>
+      )}
+      {place === 'town' && (
+        <>
+          <span className="ov-chip ov-chip-town">
+            <Icon name="town" />
+            {tr('в городе', 'in town')}
+          </span>
+          <i className="ov-sep" />
+          <span className="ov-line-hero">
+            <Fe value={sessionNet} signed />
+          </span>
+          <span className="ov-kv">{tr('за сессию', 'this session')}</span>
+        </>
+      )}
+      {place === 'offline' && (
+        <>
+          <span className="ov-chip ov-chip-off">
+            <Icon name="offline" />
+            {snapshot.status === 'searching'
+              ? tr('игра не найдена', 'game not found')
+              : tr('нет игры', 'no game')}
+          </span>
+          <span className="ov-kv">
+            {tr('медиана', 'median')} <b>{num(snapshot.rate.median)}</b>
+            {tr('/ч', '/h')}
+          </span>
+        </>
+      )}
+
+      {place !== 'offline' && (
+        <>
+          <i className="ov-sep" />
+          <span className="ov-kv" title={tr('Темп сессии вместе с этим забегом', 'Session pace including this run')}>
+            {tr('в час', 'per hour')} <b>{num(snapshot.liveRate)}</b>
+          </span>
+          {place === 'map' && (
+            <span className="ov-kv">
+              {tr('сессия', 'session')}{' '}
+              <b>
+                {sessionNet > 0 ? '+' : ''}
+                {num(sessionNet)}
+              </b>
+            </span>
+          )}
+          {place === 'town' && previous && (
+            <span className="ov-kv">
+              <span className="ov-mapname">{previous.name}</span>
+              <b>
+                {previous.netFe > 0 ? '+' : ''}
+                {num(previous.netFe)}
+              </b>
+            </span>
+          )}
+          {goal !== null && (
+            <span
+              className={`ov-mgoal ${goal >= 1 ? 'ov-mgoal-done' : ''}`}
+              title={tr(`Цель сессии: ${num(sessionNet)}/${num(prefs.goalFe)}`, `Session goal: ${num(sessionNet)}/${num(prefs.goalFe)}`)}
+            >
+              <i style={{ width: `${goal * 100}%` }} />
+            </span>
+          )}
+        </>
+      )}
+
+      {place === 'map' && run && <StripDrops drops={run.drops} snapshot={snapshot} prefs={prefs} />}
+      {place !== 'offline' && <StripFind top={snapshot.sessionTop[0] ?? null} goldFe={goldFe} />}
+    </div>
+  );
+}
+
+/** Находки забега чипами: иконка и цена, кромка — ступень ценности. Самые дорогие первыми. */
+const StripDrops = memo(function StripDrops({
+  drops,
+  snapshot,
+  prefs,
+}: {
+  drops: DropView[];
+  snapshot: Snapshot;
+  prefs: GornOverlayPrefs;
+}) {
+  const goldFe = goldOf(prefs, snapshot);
+  const orangeFe = prefs.exaltedFe > 0 ? prefs.exaltedFe : goldFe / 5;
+  const shown = drops
+    .filter((d) => d.priceSource !== 'excluded' && d.totalFe !== null && d.totalFe >= snapshot.minDropFe)
+    .slice(0, 4);
+  if (shown.length === 0) return null;
+  return (
+    <>
+      <i className="ov-sep" />
+      <span className="ov-dchips">
+        {shown.map((d) => {
+          const fe = d.totalFe ?? 0;
+          const tier = fe >= goldFe ? 'gold' : fe >= orangeFe ? 'orange' : 'plain';
+          return (
+            <span key={d.configBaseId} className={`ov-dchip t-${tier}`} title={`${d.name}${d.qty > 1 ? ` ×${num(d.qty)}` : ''}`}>
+              <span className="ov-drop-icon">
+                <ItemIcon drop={d} />
+              </span>
+              <Fe value={fe} />
+            </span>
+          );
+        })}
+      </span>
+    </>
+  );
+});
+
+/** Крупное за сессию в ленте — звезда с ценой, название во всплывающей подсказке. */
+const StripFind = memo(function StripFind({
+  top,
+  goldFe,
+}: {
+  top: SessionDropView | null;
+  goldFe: number;
+}) {
+  if (!top || goldFe <= 0 || top.totalFe < goldFe) return null;
+  return (
+    <span
+      className="ov-dchip ov-sfind"
+      title={tr(
+        `Крупное за сессию: ${top.name}${top.qty > 1 ? ` ×${num(top.qty)}` : ''} · ${top.runName}`,
+        `Top drop this session: ${top.name}${top.qty > 1 ? ` ×${num(top.qty)}` : ''} · ${top.runName}`,
+      )}
+    >
+      <Icon name="star" />
+      <span className="ov-drop-icon">
+        <ItemIcon drop={top} />
+      </span>
+      <Fe value={top.totalFe} />
+    </span>
+  );
+});
+
 
 /** Порог «золота» тот же, что у плашек: явный из настроек либо авто (P95 цен). */
 function goldOf(prefs: GornOverlayPrefs, snapshot: Snapshot): number {

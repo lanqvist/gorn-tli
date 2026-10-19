@@ -2,7 +2,7 @@ import { BrowserWindow, screen } from 'electron';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-import type { OverlayMode, Settings, SettingsStore } from './settings.js';
+import { OVERLAY_MODES, type OverlayMode, type Settings, type SettingsStore } from './settings.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -15,7 +15,13 @@ const WIDTHS: Record<OverlayMode, number> = {
   minimal: 250,
   compact: 290,
   full: 330,
+  // Ленте ширину задаёт содержимое (setContentSize); это — до первого замера.
+  strip: 640,
 };
+
+/** Пределы ширины ленты: длинное название карты не должно растянуть её на весь экран. */
+const STRIP_MIN = 320;
+const STRIP_MAX = 1200;
 
 /** Стартовая высота до первого замера — окно не должно мигать большим. */
 const INITIAL_HEIGHT = 64;
@@ -197,12 +203,23 @@ export class Overlay {
    * Прозрачное окно стоит композитору дорого, поэтому лишней прозрачной
    * площади быть не должно: держим окно ровно по тому, что нарисовано.
    */
-  setContentHeight(height: number): void {
+  setContentHeight(height: number, width?: number): void {
     if (!this.isOpen) return;
-    const target = Math.max(INITIAL_HEIGHT, Math.min(MAX_HEIGHT, Math.ceil(height)));
     const bounds = this.window!.getBounds();
-    if (Math.abs(bounds.height - target) < 2) return;
-    this.window!.setBounds(this.keepOnScreen({ ...bounds, height: target }));
+    // Колонка выше 64px; лента — одна строка, ей столько не нужно.
+    const minHeight = this.settings.overlay.mode === 'strip' ? 24 : INITIAL_HEIGHT;
+    const targetHeight = Math.max(minHeight, Math.min(MAX_HEIGHT, Math.ceil(height)));
+    // Ширину по содержимому берёт только лента: у колонки она фиксирована режимом.
+    const targetWidth =
+      this.settings.overlay.mode === 'strip' && width !== undefined && width > 0
+        ? Math.max(STRIP_MIN, Math.min(STRIP_MAX, Math.ceil(width)))
+        : bounds.width;
+    if (Math.abs(bounds.height - targetHeight) < 2 && Math.abs(bounds.width - targetWidth) < 2) {
+      return;
+    }
+    this.window!.setBounds(
+      this.keepOnScreen({ ...bounds, width: targetWidth, height: targetHeight }),
+    );
   }
 
   /**
@@ -225,7 +242,7 @@ export class Overlay {
   }
 
   cycleMode(): OverlayMode {
-    const order: OverlayMode[] = ['minimal', 'compact', 'full'];
+    const order = OVERLAY_MODES;
     const next = order[(order.indexOf(this.settings.overlay.mode) + 1) % order.length]!;
     this.setMode(next);
     return next;

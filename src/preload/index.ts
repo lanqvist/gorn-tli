@@ -168,7 +168,8 @@ contextBridge.exposeInMainWorld('gorn', {
     toggleLock: () => ipcRenderer.send('overlay:toggleLock'),
     setOpacity: (value: number) => ipcRenderer.send('overlay:setOpacity', value),
     /** Интерфейс сообщает свою высоту, чтобы окно было ровно по содержимому. */
-    reportHeight: (height: number) => ipcRenderer.send('overlay:height', height),
+    reportHeight: (height: number, width?: number) =>
+      ipcRenderer.send('overlay:height', height, width),
 
     onMode: (callback: (mode: string) => void) => {
       const handler = (_e: unknown, mode: string) => callback(mode);

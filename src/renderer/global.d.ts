@@ -42,7 +42,8 @@ declare global {
     cycleMode: () => void;
     toggleLock: () => void;
     setOpacity: (value: number) => void;
-    reportHeight: (height: number) => void;
+    /** Высота по содержимому; ширина — только у ленты. */
+    reportHeight: (height: number, width?: number) => void;
     setPrefs: (prefs: Partial<GornOverlayPrefs>) => void;
     onMode: (cb: (mode: OverlayMode) => void) => () => void;
     onLocked: (cb: (locked: boolean) => void) => () => void;

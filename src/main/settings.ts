@@ -3,8 +3,13 @@ import { dirname, join } from 'node:path';
 
 import { isUiLanguage, languageForLocale, type UiLanguage } from '../core/i18n.js';
 
-/** Режимы оверлея — от самого компактного к подробному. */
-export type OverlayMode = 'minimal' | 'compact' | 'full';
+/**
+ * Режимы оверлея: колонка от самой компактной к подробной и «лента» —
+ * одна строка у края экрана, подробности в ней открываются пультом.
+ */
+export type OverlayMode = 'minimal' | 'compact' | 'full' | 'strip';
+
+export const OVERLAY_MODES: readonly OverlayMode[] = ['minimal', 'compact', 'full', 'strip'];
 
 export interface OverlayPlacement {
   x: number;
@@ -182,7 +187,14 @@ export class SettingsStore {
             : DEFAULTS.minDropFe,
         closeToTray: raw.settings.closeToTray ?? DEFAULTS.closeToTray,
         autoStart: raw.settings.autoStart ?? DEFAULTS.autoStart,
-        overlay: { ...DEFAULTS.overlay, ...raw.settings.overlay },
+        overlay: {
+          ...DEFAULTS.overlay,
+          ...raw.settings.overlay,
+          // Незнакомый режим (из более новой версии) — компактный, а не окно без ширины.
+          mode: OVERLAY_MODES.includes(raw.settings.overlay?.mode as OverlayMode)
+            ? (raw.settings.overlay!.mode as OverlayMode)
+            : DEFAULTS.overlay.mode,
+        },
       };
     } catch {
       // Битый файл не должен мешать запуску.

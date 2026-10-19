@@ -509,3 +509,105 @@ body {
   object-fit: contain;
   color: #ff9d3c;
 }
+
+/* ── лента: оверлей в одну строку ────────────────────────────── */
+
+/* Ширина — по содержимому: main подгоняет окно под неё (setContentHeight). */
+.ov.ov-strip {
+  display: inline-flex;
+  width: max-content;
+  padding: 5px 10px 5px 7px;
+  gap: 5px;
+  border-radius: 9px;
+}
+
+.ov-line {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  height: 28px;
+  white-space: nowrap;
+}
+
+.ov-line .ov-mapname {
+  max-width: 190px;
+}
+
+.ov-sep {
+  width: 1px;
+  height: 18px;
+  background: rgb(255 255 255 / 14%);
+}
+
+.ov-line-hero {
+  font-size: 20px;
+  font-weight: 750;
+  color: #a6f3c1;
+}
+
+.ov-kv {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  font-size: 13px;
+  color: #b9b0a5;
+}
+
+.ov-kv b {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: #ffc27a;
+  font-variant-numeric: tabular-nums;
+}
+
+.ov-mgoal {
+  width: 60px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 12%);
+  overflow: hidden;
+}
+
+.ov-mgoal i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #c7631b, #ffb45c);
+}
+
+.ov-mgoal-done i {
+  background: linear-gradient(90deg, #3c9a63, #7be3a1);
+}
+
+.ov-dchips {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.ov-dchip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 26px;
+  padding: 0 7px 0 2px;
+  border-radius: 6px;
+  border: 1px solid color-mix(in srgb, var(--tier) 70%, transparent);
+  background: color-mix(in srgb, var(--tier) 22%, transparent);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.ov-dchip .ov-drop-icon {
+  width: 20px;
+  height: 20px;
+}
+
+/* Крупное за сессию: статичная золотая рамка, как у строки в колонке. */
+.ov-sfind {
+  --tier: #ffc94d;
+  padding-left: 5px;
+  color: #ffe08a;
+}
+
+.ov-sfind > .ico {
+  color: #ffc94d;
+}

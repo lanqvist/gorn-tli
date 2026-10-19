@@ -117,3 +117,15 @@ describe('пульт по клавише', () => {
     expect(main).toMatch(/transparent: false/);
   });
 });
+
+describe('лента', () => {
+  it('чипы находок и крупное не перерисовываются от тика часов', () => {
+    const ov = src('OverlayApp.tsx');
+    expect(ov).toMatch(/const StripDrops = memo\(/);
+    expect(ov).toMatch(/const StripFind = memo\(/);
+  });
+
+  it('в оверлее нет бесконечных анимаций', () => {
+    expect(src('overlay.css')).not.toMatch(/\binfinite\b/);
+  });
+});

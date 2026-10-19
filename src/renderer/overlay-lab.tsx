@@ -14,10 +14,10 @@ import './overlay-lab.css';
  */
 
 type Place = 'map' | 'town' | 'offline';
-type Mode = 'minimal' | 'compact' | 'full';
+type Mode = 'minimal' | 'compact' | 'full' | 'strip';
 
 /** Ширины окна по режимам — копия WIDTHS из main/overlay.ts (там electron). */
-const WIDTHS: Record<Mode, number> = { minimal: 250, compact: 290, full: 330 };
+const WIDTHS: Record<Mode, number> = { minimal: 250, compact: 290, full: 330, strip: 640 };
 
 const BGS = ['dungeon', 'desert', 'battle'] as const;
 
@@ -36,6 +36,8 @@ function Frame({
 }) {
   const ref = useRef<HTMLIFrameElement>(null);
   const [height, setHeight] = useState(64);
+  // Ленте ширину, как и в приложении, задаёт содержимое.
+  const [stripWidth, setStripWidth] = useState(0);
   const src = `overlay.html?lang=${uiLanguage()}&place=${place}&mode=${mode}&scale=${scale}${
     goal ? '&goal=1000' : ''
   }${free ? '' : '&locked=1'}`;
@@ -47,16 +49,21 @@ function Frame({
     const t = setInterval(() => {
       const body = ref.current?.contentDocument?.body;
       if (body) setHeight(Math.ceil(body.getBoundingClientRect().height) || 64);
+      const ov = ref.current?.contentDocument?.querySelector('.ov');
+      if (ov && mode === 'strip') setStripWidth(Math.ceil(ov.getBoundingClientRect().width));
     }, 300);
     return () => clearInterval(t);
-  }, []);
+  }, [mode]);
 
   return (
     <iframe
       ref={ref}
       src={src}
       title={`${place}-${mode}`}
-      style={{ width: Math.round(WIDTHS[mode] * scale), height }}
+      style={{
+        width: mode === 'strip' && stripWidth > 0 ? stripWidth : Math.round(WIDTHS[mode] * scale),
+        height,
+      }}
     />
   );
 }
@@ -80,6 +87,7 @@ function Lab() {
     ['minimal', tr('минимум', 'minimal')],
     ['compact', tr('компакт', 'compact')],
     ['full', tr('полный', 'full')],
+    ['strip', tr('лента', 'strip')],
   ];
   const bgLabel = (b: string) =>
     b === 'dungeon'
