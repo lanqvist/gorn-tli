@@ -3,12 +3,19 @@ import { useEffect, useState } from 'react';
 import { tr } from '../../core/i18n.js';
 import type { Snapshot } from '../../main/engine.js';
 import { ago, cacheDate, copyText, num } from '../format.js';
+import { useNow } from '../useNow.js';
 
 /**
  * Самодиагностика. Формат лога меняется каждый сезон, и трекер должен
  * говорить, что ослеп, а не показывать нули как ни в чём не бывало.
  */
-export function Diagnostics({ snapshot, now }: { snapshot: Snapshot; now: number }) {
+/** «обновлены N назад»: тикает сама, раз в 30 с — чаще слово не меняется. */
+function UpdatedAgo({ at }: { at: number }) {
+  const now = useNow(30_000);
+  return <>{tr(` · обновлены ${ago(Math.max(0, now - at))}`, ` · updated ${ago(Math.max(0, now - at))}`)}</>;
+}
+
+export function Diagnostics({ snapshot }: { snapshot: Snapshot }) {
   const {
     unknownProtos,
     pricedItems,
@@ -28,10 +35,7 @@ export function Diagnostics({ snapshot, now }: { snapshot: Snapshot; now: number
           ` · offline — cache${communityFetchedAt ? ` from ${cacheDate(communityFetchedAt)}` : ''}`,
         )
       : communityFetchedAt
-        ? tr(
-            ` · обновлены ${ago(Math.max(0, now - communityFetchedAt))}`,
-            ` · updated ${ago(Math.max(0, now - communityFetchedAt))}`,
-          )
+        ? <UpdatedAgo at={communityFetchedAt} />
         : null;
 
   return (

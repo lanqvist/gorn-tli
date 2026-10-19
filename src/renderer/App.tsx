@@ -23,7 +23,6 @@ export function App() {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [scanProgress, setScanProgress] = useState<RetroScanProgress | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
     // В браузере main-процесса нет — показываем демо-данные, чтобы вёрстку
@@ -43,11 +42,8 @@ export function App() {
     };
   }, []);
 
-  // Таймер текущего забега должен идти, даже когда в лог ничего не падает.
-  useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(t);
-  }, []);
+  // Секундного таймера здесь нет: время спрашивают сами часы забега и
+  // возраст лога (useNow), иначе каждую секунду перерисовывалось бы всё окно.
 
   if (!snapshot) {
     return (
@@ -77,14 +73,14 @@ export function App() {
   return (
     <div className="app">
       <UpdateBanner />
-      <Header snapshot={snapshot} now={now} onOpenSettings={() => setSettingsOpen(true)} />
+      <Header snapshot={snapshot} onOpenSettings={() => setSettingsOpen(true)} />
       {settingsOpen && (
         <SettingsPanel minDropFe={snapshot.minDropFe} onClose={() => setSettingsOpen(false)} />
       )}
       <Hero snapshot={snapshot} />
       <SessionRecords snapshot={snapshot} />
       <div className="columns">
-        <CurrentRun snapshot={snapshot} now={now} />
+        <CurrentRun snapshot={snapshot} />
         <Sidebar snapshot={snapshot} />
       </div>
       <Strategies snapshot={snapshot} />
@@ -93,7 +89,7 @@ export function App() {
       <History snapshot={snapshot} />
       <MissingPrices snapshot={snapshot} />
       <Prices snapshot={snapshot} />
-      <Diagnostics snapshot={snapshot} now={now} />
+      <Diagnostics snapshot={snapshot} />
     </div>
   );
 }

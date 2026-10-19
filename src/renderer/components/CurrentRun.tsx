@@ -5,6 +5,7 @@ import type { RunView, Snapshot } from '../../main/engine.js';
 import { clock, duration, num } from '../format.js';
 import { DropList } from './DropList.js';
 import { Fe } from './Fe.js';
+import { useNow } from '../useNow.js';
 
 /**
  * Сколько карта должна идти, прежде чем показывать сравнение темпа
@@ -13,7 +14,35 @@ import { Fe } from './Fe.js';
  */
 const WARMUP_MS = 60_000;
 
-export function CurrentRun({ snapshot, now }: { snapshot: Snapshot; now: number }) {
+/** Часы забега: тикают сами, остальная карточка (дроп) от таймера не перерисовывается. */
+function RunTimer({ startedAt }: { startedAt: number }) {
+  const now = useNow(1000);
+  return <span className="timer">{clock(now - startedAt)}</span>;
+}
+
+/** Темп к обычному: зависит от времени, поэтому тоже тикает сам. */
+function RunPace({ startedAt, netFe, median }: { startedAt: number; netFe: number; median: number }) {
+  const now = useNow(1000);
+  if (median <= 0) return null;
+  const elapsed = now - startedAt;
+  // Пока карта только началась, темп считается по крошечному знаменателю
+  // и скачет на сотни процентов от одной находки. Показывать такое число —
+  // значит врать: сравнение появляется только после разогрева.
+  if (elapsed < WARMUP_MS) {
+    return <span className="delta muted">{tr('темп считается…', 'calculating pace…')}</span>;
+  }
+  const pace = (netFe / elapsed) * 3_600_000;
+  const delta = pace - median;
+  const pct = Math.round((delta / median) * 100);
+  return (
+    <span className={`delta ${delta >= 0 ? 'up' : 'down'}`}>
+      {delta >= 0 ? '↑' : '↓'}{' '}
+      {tr(`${Math.abs(pct)}% к обычному темпу`, `${Math.abs(pct)}% vs usual pace`)}
+    </span>
+  );
+}
+
+export function CurrentRun({ snapshot }: { snapshot: Snapshot }) {
   const run = snapshot.current;
 
   // Карта закончилась — показываем прошлый забег, а не пустую карточку.
@@ -30,35 +59,16 @@ export function CurrentRun({ snapshot, now }: { snapshot: Snapshot; now: number 
     return <FinishedRun run={previous} minFe={snapshot.minDropFe} />;
   }
 
-  const elapsed = now - run.startedAt;
-  const median = snapshot.rate.median;
-
-  // Пока карта только началась, темп считается по крошечному знаменателю
-  // и скачет на сотни процентов от одной находки. Показывать такое число —
-  // значит врать: сравнение появляется только после разогрева.
-  const warm = elapsed >= WARMUP_MS;
-  const pace = warm ? (run.netFe / elapsed) * 3_600_000 : 0;
-  const delta = pace - median;
-  const pct = median > 0 ? Math.round((delta / median) * 100) : 0;
-
   return (
     <section className="card current">
       <div className="current-head">
         <h2>{run.name}</h2>
-        <span className="timer">{clock(elapsed)}</span>
+        <RunTimer startedAt={run.startedAt} />
       </div>
 
       <div className="current-value">
         <Fe value={run.netFe} />
-        {median > 0 &&
-          (warm ? (
-            <span className={`delta ${delta >= 0 ? 'up' : 'down'}`}>
-              {delta >= 0 ? '↑' : '↓'}{' '}
-              {tr(`${Math.abs(pct)}% к обычному темпу`, `${Math.abs(pct)}% vs usual pace`)}
-            </span>
-          ) : (
-            <span className="delta muted">{tr('темп считается…', 'calculating pace…')}</span>
-          ))}
+        <RunPace startedAt={run.startedAt} netFe={run.netFe} median={snapshot.rate.median} />
       </div>
 
       <DropList drops={run.drops} minFe={snapshot.minDropFe} />

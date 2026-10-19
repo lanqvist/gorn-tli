@@ -23,6 +23,7 @@ import { IconCache, registerIconScheme } from './icons.js';
 import { Overlay, prefsPayload } from './overlay.js';
 import { PrisonAssist } from './prison/assist.js';
 import { SettingsStore, type NameLanguage, type OverlayMode } from './settings.js';
+import { SnapshotGate } from './snapshotGate.js';
 import { ToastLayer } from './toastLayer.js';
 import { Updater, type UpdateState } from './updater.js';
 
@@ -49,6 +50,14 @@ const isDev = !app.isPackaged;
 let window: BrowserWindow | null = null;
 let engine: Engine | null = null;
 let latest: Snapshot | null = null;
+const windowSnapshots = new SnapshotGate<Snapshot>(() =>
+  window && !window.isDestroyed()
+    ? {
+        visible: () => window!.isVisible() && !window!.isMinimized(),
+        send: (s) => window!.webContents.send('snapshot', s),
+      }
+    : null,
+);
 let overlay: Overlay | null = null;
 let toastLayer: ToastLayer | null = null;
 let settings: SettingsStore | null = null;
@@ -117,6 +126,9 @@ function createWindow(): void {
   });
 
   window.once('ready-to-show', () => window?.show());
+  // Пока окно было скрыто или свёрнуто, снимки не слались — догнать.
+  window.on('show', () => windowSnapshots.shown());
+  window.on('restore', () => windowSnapshots.shown());
 
   // «Закрывать в трей»: окно прячется, трекер и оверлей живут дальше.
   // Настройка выключена по умолчанию — неожиданно живущий фоном процесс
@@ -260,9 +272,8 @@ app.whenReady().then(async () => {
 
   engine.on('snapshot', (snapshot: Snapshot) => {
     latest = snapshot;
-    if (window && !window.isDestroyed()) {
-      window.webContents.send('snapshot', snapshot);
-    }
+    // Свёрнутому или спрятанному в трей окну — не слать: последний уйдёт при показе.
+    windowSnapshots.push(snapshot);
     overlay?.send('snapshot', snapshot);
     toastLayer?.send('snapshot', snapshot);
     debugSink?.record(snapshot);

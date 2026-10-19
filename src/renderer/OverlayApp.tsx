@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 
 import { tr } from '../core/i18n.js';
 import { RUN, pluralize } from '../core/plural.js';
@@ -411,7 +411,9 @@ function Delta({ value }: { value: number }) {
  * и золотой плашки). Мелочь и исключённое не показываются — как в списке
  * добычи главного окна.
  */
-function DropBars({
+// memo: секундный тик часов перерисовывает оверлей, но не полосы дропа и цель —
+// они меняются только с новым снимком.
+const DropBars = memo(function DropBars({
   drops,
   rows,
   snapshot,
@@ -454,7 +456,7 @@ function DropBars({
       ))}
     </ul>
   );
-}
+});
 
 /** Иконка предмета; без неё или при ошибке загрузки — первая буква на плашке. */
 function ItemIcon({ drop }: { drop: DropView }) {
@@ -463,7 +465,7 @@ function ItemIcon({ drop }: { drop: DropView }) {
   return <img src={drop.icon} alt="" draggable={false} onError={() => setFailed(true)} />;
 }
 
-function GoalProgress({
+const GoalProgress = memo(function GoalProgress({
   goalFe,
   snapshot,
   brief,
@@ -498,7 +500,7 @@ function GoalProgress({
       </span>
     </div>
   );
-}
+});
 
 function confidence(snapshot: Snapshot): string {
   switch (snapshot.rate.confidence) {

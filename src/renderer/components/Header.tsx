@@ -5,18 +5,16 @@ import { RUN, pluralize } from '../../core/plural.js';
 import { seasonShort } from '../../core/seasons.js';
 import type { Snapshot } from '../../main/engine.js';
 import { ago } from '../format.js';
+import { useNow } from '../useNow.js';
 import { FeIcon } from './Fe.js';
 import { Tip } from './ui.js';
 
-export function Header({
-  snapshot,
-  now,
-  onOpenSettings,
-}: {
-  snapshot: Snapshot;
-  now: number;
-  onOpenSettings: () => void;
-}) {
+/**
+ * Статус трекера: точка, «на карте / ожидание», возраст лога. Тикает сам
+ * (useNow) — остальная шапка от секундного таймера не перерисовывается.
+ */
+function LogStatus({ snapshot }: { snapshot: Snapshot }) {
+  const now = useNow(1000);
   const dot =
     snapshot.status === 'running' ? 'live' : snapshot.status === 'idle' ? 'idle' : 'lost';
 
@@ -28,27 +26,39 @@ export function Header({
     age === null ? '' : age < 15_000 ? 'fresh' : age < 60_000 ? 'ok' : 'stale';
 
   return (
+    <div
+      className={`status status-${dot} ${age !== null && age < 3_000 ? 'status-pulse' : ''}`}
+    >
+      <i />
+      {snapshot.status === 'running'
+        ? tr('На карте', 'On a map')
+        : snapshot.status === 'idle'
+          ? tr('Ожидание', 'Waiting')
+          : tr('Игра не найдена', 'Game not found')}
+      {showAge && (
+        <span className={`log-age log-age-${ageTone}`}>
+          {tr('лог', 'log')} {ago(age)}
+        </span>
+      )}
+      {snapshot.hint && <span className="hint">{snapshot.hint}</span>}
+    </div>
+  );
+}
+
+export function Header({
+  snapshot,
+  onOpenSettings,
+}: {
+  snapshot: Snapshot;
+  onOpenSettings: () => void;
+}) {
+  return (
     <header className="header">
       <div className="brand">
         <FeIcon />
         <span>{tr('Горн', 'Gorn')}</span>
       </div>
-      <div
-        className={`status status-${dot} ${age !== null && age < 3_000 ? 'status-pulse' : ''}`}
-      >
-        <i />
-        {snapshot.status === 'running'
-          ? tr('На карте', 'On a map')
-          : snapshot.status === 'idle'
-            ? tr('Ожидание', 'Waiting')
-            : tr('Игра не найдена', 'Game not found')}
-        {showAge && (
-          <span className={`log-age log-age-${ageTone}`}>
-            {tr('лог', 'log')} {ago(age)}
-          </span>
-        )}
-        {snapshot.hint && <span className="hint">{snapshot.hint}</span>}
-      </div>
+      <LogStatus snapshot={snapshot} />
       <PlayerChip player={snapshot.player} />
       <PlayerFilter snapshot={snapshot} />
       <div className="header-right">

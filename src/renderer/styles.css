@@ -138,9 +138,13 @@ button {
   color: var(--down);
 }
 
-/* Пульс точки, пока лог сыплет событиями прямо сейчас. */
+/*
+ * Пульс точки: лог ожил после паузы — две волны, и точка горит ровно.
+ * Бесконечная волна тенью шла весь фарм (лог свежий всегда) и
+ * перерисовывала шапку 60 раз в секунду.
+ */
 .status-pulse i {
-  animation: status-pulse 1.4s ease-out infinite;
+  animation: status-pulse 1.4s ease-out 2;
 }
 
 @keyframes status-pulse {
