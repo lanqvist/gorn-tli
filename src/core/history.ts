@@ -119,19 +119,25 @@ export function dailyTotals(
   days: number,
   now: number,
 ): DayTotals[] {
+  const cursor = new Date(dayStart(now));
+  // Шаг через setDate, а не вычитанием суток: при переводе часов
+  // в сутках бывает 23 и 25 часов.
+  cursor.setDate(cursor.getDate() - (days - 1));
+
+  // Забеги раньше окна отсекаются до разбора даты: ряду нужны две недели,
+  // а история — это весь сезон.
+  const from = cursor.getTime();
   const byDay = new Map<number, Run[]>();
   for (const run of runs) {
-    const day = dayStart(runEnd(run));
+    const end = runEnd(run);
+    if (end < from) continue;
+    const day = dayStart(end);
     const list = byDay.get(day);
     if (list) list.push(run);
     else byDay.set(day, [run]);
   }
 
   const out: DayTotals[] = [];
-  const cursor = new Date(dayStart(now));
-  // Шаг через setDate, а не вычитанием суток: при переводе часов
-  // в сутках бывает 23 и 25 часов.
-  cursor.setDate(cursor.getDate() - (days - 1));
   for (let i = 0; i < days; i++) {
     const day = cursor.getTime();
     out.push({ day, ...totalsOf(byDay.get(day) ?? [], pricing) });
@@ -152,21 +158,24 @@ export interface SessionTotals extends PeriodTotals, SessionBounds {}
  * Итоги каждой сессии. Забег относится к сессии, в которой закончился —
  * то же правило, что у счётчиков на экране, иначе суммы бы не сошлись.
  * Сессии без забегов отбрасываются: сброс дважды подряд — не событие.
- * Свежие сверху.
+ * Свежие сверху, не больше `limit`: показываются последние, а каждая
+ * сессия — проход по всей истории.
  */
 export function sessionTotals(
   sessions: SessionBounds[],
   runs: Run[],
   pricing: RunPricing,
+  limit = Infinity,
 ): SessionTotals[] {
-  return sessions
-    .map((s) => {
-      const inside = runs.filter((r) => {
-        const end = runEnd(r);
-        return end >= s.startedAt && (s.endedAt === null || end < s.endedAt);
-      });
-      return { ...s, ...totalsOf(inside, pricing) };
-    })
-    .filter((s) => s.runs + s.prisonRuns > 0)
-    .sort((a, b) => b.startedAt - a.startedAt);
+  const out: SessionTotals[] = [];
+  for (const s of [...sessions].sort((a, b) => b.startedAt - a.startedAt)) {
+    if (out.length >= limit) break;
+    const inside = runs.filter((r) => {
+      const end = runEnd(r);
+      return end >= s.startedAt && (s.endedAt === null || end < s.endedAt);
+    });
+    const totals = { ...s, ...totalsOf(inside, pricing) };
+    if (totals.runs + totals.prisonRuns > 0) out.push(totals);
+  }
+  return out;
 }

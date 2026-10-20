@@ -9,6 +9,9 @@
  */
 const video = document.getElementById('screen') as HTMLVideoElement;
 let stream: MediaStream | null = null;
+let track: MediaStreamTrack | null = null;
+/** Размер потока: applyConstraints без него сбросил бы разрешение. */
+let size = { width: 0, height: 0 };
 let latest: VideoFrame | null = null;
 let latestAt = 0;
 /** Когда картинка последний раз заметно менялась. */
@@ -28,17 +31,60 @@ const MAX_WIDTH = 2600;
  * позже, чем при 15, а захват 4K дешевле на треть (замер 19.10).
  */
 const FPS = 10;
+/**
+ * Кадров в секунду, пока Горн ничего не ждёт. Игра перерисовывает экран
+ * всё время (факелы, свечение), и на 10 к/с поток всю тюрьму тянул 4K и
+ * отпечаток каждого кадра. Ход игрока (main шлёт boost) и запрос кадра
+ * поднимают частоту до FPS; обратно — через BOOST_MS. Возврат до первого
+ * кадра на 10 к/с — ~0,26 с (замер 20.10).
+ */
+const IDLE_FPS = 2;
+const BOOST_MS = 5000;
+let rate = 0;
+let boostTimer: ReturnType<typeof setTimeout> | null = null;
+let idleLogged = false;
+
+/** Частота дорожки: Chrome прореживает кадры и реже снимает сам экран. */
+function setRate(fps: number): void {
+  const t = track;
+  if (!t || rate === fps) return;
+  rate = fps;
+  t.applyConstraints({ width: { exact: size.width }, height: { exact: size.height }, frameRate: { max: fps } }).then(
+    () => {
+      if (fps !== IDLE_FPS || idleLogged || track !== t) return;
+      idleLogged = true;
+      const st = t.getSettings();
+      console.log(`[поток] в простое ${st.frameRate} к/с (${st.width}×${st.height}), при ходе — ${FPS}`);
+    },
+    (err: unknown) => {
+      // Не вышло — частота осталась прежней; следующий вызов попробует снова.
+      if (track === t && rate === fps) rate = 0;
+      console.warn(`[поток] частота ${fps} к/с не применилась:`, err instanceof Error ? err.message : String(err));
+    },
+  );
+}
+
+/** Полная частота на BOOST_MS: экран вот-вот сменится или нужен кадр. */
+function boost(): void {
+  setRate(FPS);
+  if (boostTimer) clearTimeout(boostTimer);
+  boostTimer = setTimeout(() => {
+    boostTimer = null;
+    setRate(IDLE_FPS);
+  }, BOOST_MS);
+}
 
 // ---------- Отпечаток кадра: заметил ли глаз изменение ----------
 
 const SIG_W = 64;
 const SIG_H = 36;
 const sigCanvas = new OffscreenCanvas(SIG_W, SIG_H);
-// Холст на видеокарте (без willReadFrequently): кадр 4K уменьшается там, а
-// читается только 64×36. Холст в памяти процессора тянул каждый кадр 4K
-// целиком — 14,7 мс на кадр, ~20% ядра на окно захвата и GPU (замер 19.10);
-// на видеокарте — 4,3 мс.
-const sigCtx = sigCanvas.getContext('2d');
+// Холст на видеокарте: кадр 4K уменьшается там, а читается только 64×36.
+// Холст в памяти процессора тянул каждый кадр 4K целиком — 14,7 мс на кадр,
+// ~20% ядра на окно захвата и GPU (замер 19.10); на видеокарте — 4,3 мс.
+// willReadFrequently: false — явно: без него Chrome после нескольких чтений
+// может сам перевести холст в память процессора.
+const sigCtx = sigCanvas.getContext('2d', { willReadFrequently: false });
 let lastSig: Uint8ClampedArray | null = null;
 /**
  * Средняя разница отпечатков (0–255), выше которой картинка «изменилась».
@@ -83,9 +129,14 @@ async function start(sourceId: string, width: number, height: number): Promise<v
   } as unknown as MediaStreamConstraints;
   const s = await navigator.mediaDevices.getUserMedia(constraints);
   stream = s;
-  const track = s.getVideoTracks()[0];
-  if (!track) throw new Error('в потоке нет видео');
-  void keepLatest(s, track);
+  const t = s.getVideoTracks()[0];
+  if (!t) throw new Error('в потоке нет видео');
+  track = t;
+  size = { width, height };
+  rate = FPS;
+  // Только что открыли — значит, кадр скоро понадобится; потом простой.
+  boost();
+  void keepLatest(s, t);
 }
 
 /** Держать последний кадр дорожки; старые сразу освобождать. */
@@ -109,6 +160,11 @@ async function keepLatest(s: MediaStream, track: MediaStreamTrack): Promise<void
 function stop(): void {
   stream?.getTracks().forEach((t) => t.stop());
   stream = null;
+  track = null;
+  rate = 0;
+  idleLogged = false;
+  if (boostTimer) clearTimeout(boostTimer);
+  boostTimer = null;
   latest?.close();
   latest = null;
   lastSig = null;
@@ -122,7 +178,11 @@ function pixels(frame: VideoFrame): { width: number; height: number; buffer: Arr
   const width = Math.floor(srcWidth / f);
   const height = Math.floor(srcHeight / f);
   if (!canvas || canvas.width !== width || canvas.height !== height) canvas = new OffscreenCanvas(width, height);
-  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  // Холст на видеокарте: 4K уменьшается там, с видеокарты читается уже
+  // 1920×1080. Холст в памяти процессора тянул 4K целиком и уменьшал сам —
+  // 40 мс против 9,5; разница пикселей — не больше 2 из 255, в среднем 0,12
+  // (замер 20.10 на кадрах экрана 3840×2160).
+  const ctx = canvas.getContext('2d', { willReadFrequently: false });
   if (!ctx) throw new Error('нет 2d-контекста');
   ctx.imageSmoothingQuality = 'high';
   ctx.drawImage(frame, 0, 0, width, height);
@@ -140,6 +200,7 @@ const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
  */
 async function grab(stableMs: number, maxMs: number, okAgeMs = 0): Promise<{ width: number; height: number; buffer: ArrayBuffer }> {
   if (!stream) throw new Error('поток не открыт');
+  boost();
   const asked = performance.now();
   for (;;) {
     const now = performance.now();
@@ -164,6 +225,7 @@ api?.onStart((req) => {
   );
 });
 api?.onStop(() => stop());
+api?.onBoost(() => boost());
 api?.onGrab((id, stableMs, maxMs, okAgeMs) => {
   grab(stableMs, maxMs, okAgeMs).then(
     (frame) => api.frame(id, frame, null),

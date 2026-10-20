@@ -192,8 +192,12 @@ export class PrisonAssist {
       // В тюрьме — поток экрана открыт заранее, к первому нужному кадру.
       this.stream.warm(display);
       // Игрок сходил: прежняя стрелка уже неверна — убрать сразу, а не
-      // когда придёт новая, и показать, что Горн смотрит.
-      if (lines.some((l) => PLAYER_ACTION.test(l))) this.layer.thinking(display);
+      // когда придёт новая, и показать, что Горн смотрит. Поток — на полную
+      // частоту: в простое он реже, а «экран успокоился» меряется по кадрам.
+      if (lines.some((l) => PLAYER_ACTION.test(l))) {
+        this.stream.boost();
+        this.layer.thinking(display);
+      }
     }
     this.triggers.feed(lines);
     if (change === 'leave') this.leavePrison();
@@ -427,7 +431,10 @@ export class PrisonAssist {
       return null;
     }
     const { width, height } = game.thumbnail.getSize();
-    const buffer = new Uint8Array(game.thumbnail.toBitmap()).buffer as ArrayBuffer;
+    // toBitmap — уже свой буфер на весь кадр (4K — 33 МБ): без второй копии.
+    const bmp = game.thumbnail.toBitmap();
+    const own = bmp.byteOffset === 0 && bmp.byteLength === bmp.buffer.byteLength;
+    const buffer = (own ? bmp.buffer : new Uint8Array(bmp).buffer) as ArrayBuffer;
     return { width, height, buffer, format: 'bgra' };
   }
 

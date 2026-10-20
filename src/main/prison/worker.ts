@@ -9,9 +9,10 @@
  * (utilityProcess) с пониженным приоритетом: не тормозит ни интерфейс и
  * разбор лога Горна, ни саму игру.
  */
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
-import { deflateSync } from 'node:zlib';
+import { promisify } from 'node:util';
+import { deflate as deflateCb } from 'node:zlib';
 import { constants, setPriority } from 'node:os';
 
 import type { Frame } from '../../core/prison/recognize/types.js';
@@ -67,8 +68,10 @@ function chunk(type: string, data: Uint8Array): Buffer {
   return out;
 }
 
-/** Кадр BGRA/RGBA → PNG (RGB, без прозрачности). */
-function encodePng(width: number, height: number, bgra: Uint8Array, rgba: boolean): Buffer {
+const deflate = promisify(deflateCb);
+
+/** Кадр BGRA/RGBA → PNG (RGB, без прозрачности). Сжатие — в пуле libuv: не держит поток с разбором следующего кадра. */
+async function encodePng(width: number, height: number, bgra: Uint8Array, rgba: boolean): Promise<Buffer> {
   const R = rgba ? 0 : 2;
   const B = rgba ? 2 : 0;
   const raw = Buffer.alloc((width * 3 + 1) * height);
@@ -89,7 +92,7 @@ function encodePng(width: number, height: number, bgra: Uint8Array, rgba: boolea
   head[8] = 8;
   head[9] = 2;
   const sig = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
-  return Buffer.concat([sig, chunk('IHDR', head), chunk('IDAT', deflateSync(raw, { level: 3 })), chunk('IEND', new Uint8Array(0))]);
+  return Buffer.concat([sig, chunk('IHDR', head), chunk('IDAT', await deflate(raw, { level: 3 })), chunk('IEND', new Uint8Array(0))]);
 }
 
 function reply(msg: PrisonWorkerReply): void {
@@ -108,21 +111,21 @@ port.on('message', (e) => {
     own.reset();
     return;
   }
-  // Пиксели нужны и для PNG: копия до того, как разбор их отдаст.
-  const keep = msg.savePath ? new Uint8Array(msg.buffer.slice(0)) : null;
+  // Пиксели нужны и для PNG. Без копии: разбор их только читает.
+  const keep = msg.savePath ? new Uint8Array(msg.buffer) : null;
   const frame = msg.buffer.byteLength ? toFrame(msg.width, msg.height, new Uint8Array(msg.buffer), msg.format === 'rgba') : null;
   void own
     .handle(msg, frame)
     .catch((err: unknown) => reply({ type: 'error', id: msg.id, message: err instanceof Error ? err.message : String(err) }))
-    .finally(() => savePng(msg, keep));
+    .finally(() => void savePng(msg, keep));
 });
 
 /** PNG — после совета: игроку важнее подсказка, чем файл. */
-function savePng(msg: PrisonShotMessage, keep: Uint8Array | null): void {
+async function savePng(msg: PrisonShotMessage, keep: Uint8Array | null): Promise<void> {
   if (!keep || !msg.savePath) return;
   try {
-    mkdirSync(dirname(msg.savePath), { recursive: true });
-    writeFileSync(msg.savePath, encodePng(msg.width, msg.height, keep, msg.format === 'rgba'));
+    await mkdir(dirname(msg.savePath), { recursive: true });
+    await writeFile(msg.savePath, await encodePng(msg.width, msg.height, keep, msg.format === 'rgba'));
   } catch (err) {
     console.warn('[тюрьма] кадр не сохранён:', err instanceof Error ? err.message : err);
   }
