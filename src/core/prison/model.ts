@@ -94,6 +94,13 @@ export const GIFT = Object.fromEntries(GIFT_IDS.map((id, i) => [id, i])) as { re
 
 /** ID подарка в клиенте (таблица colored_reward). */
 export const GIFT_CLIENT_ID: Record<GiftId, number> = { ring: 1, horn: 2, wine: 3, brand: 4 };
+/** Названия подарков в клиенте — одни для подсказки и подписи стратегии. */
+export const GIFT_NAMES: Readonly<Record<GiftId, string>> = {
+  ring: 'Трёхглавое кольцо',
+  horn: 'Медный боевой рог',
+  wine: 'Багряное вино',
+  brand: 'Клеймо первородного греха',
+};
 
 // ── события (§8) ────────────────────────────────────────────────────────────
 

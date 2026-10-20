@@ -28,11 +28,22 @@ function boardTemplates(): BoardTemplates {
   return templates;
 }
 
+export interface ReadOptions {
+  /**
+   * Здесь ждём доску (по логу — кадр доски, или хоткей), либо прежняя
+   * геометрия уже не раз не нашла её: при том же размере кадра подписей на
+   * месте нет — искать доску заново. Масштаб интерфейса и режим окна
+   * меняются без смены разрешения, и прежняя геометрия иначе держалась бы
+   * вечно (она ещё и сохраняется между запусками).
+   */
+  recalibrate?: boolean;
+}
+
 /**
  * Что на кадре. geo — геометрия с прошлых кадров (или null). Возвращает
  * экран и геометрию для следующих кадров: найденную доску или прежнюю.
  */
-export function read(frame: Frame, geo: Geometry | null): { view: ScreenView; geo: Geometry | null } {
+export function read(frame: Frame, geo: Geometry | null, opts: ReadOptions = {}): { view: ScreenView; geo: Geometry | null } {
   const t = boardTemplates();
   const bt = boardTemplate();
   const known = geo && geo.width === frame.width && geo.height === frame.height ? geo : null;
@@ -49,12 +60,13 @@ export function read(frame: Frame, geo: Geometry | null): { view: ScreenView; ge
   const kind = pickHeader(frame, plain, t.screens);
   if (kind) return { view: { screen: 'pick', pick: readPick(frame, plain, t.screens, kind) }, geo: known };
 
-  // При том же размере кадра доска стоит на месте: раз подписей нет, это
-  // другой экран (событие, бунт). Калибровка — только без геометрии.
-  if (known) return { view: { screen: 'other' }, geo: known };
+  // При том же размере кадра доска обычно стоит на месте: раз подписей нет,
+  // это другой экран (событие, бунт). Калибровка — без геометрии или когда
+  // доску здесь ждём (opts.recalibrate): найдена — геометрия новая.
+  if (known && !opts.recalibrate) return { view: { screen: 'other' }, geo: known };
   const found = calibrate(frame, bt);
   if (found && found.score >= BOARD_MIN) {
     return { view: { screen: 'board', board: readBoard(frame, found, t) }, geo: found };
   }
-  return { view: { screen: 'other' }, geo: null };
+  return { view: { screen: 'other' }, geo: known };
 }

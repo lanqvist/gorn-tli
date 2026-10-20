@@ -138,7 +138,7 @@ function arg(name: string, def: string): string {
 function step(i: number, w: Float64Array, scale: number): number {
   if (i < W_GIFT) return Math.max(0.01, Math.abs(w[i]!) * 0.3) * scale;
   if (i >= W_TOOL) return 0.2 * scale;
-  const base = [0.1, 0.02, 0.03, 0.02, 0.03, 0.02, 0.1, 0.03, 0.1, 0.005, 0.03, 0.05, 0.05, 0.05][i - W_GIFT]!;
+  const base = [0.1, 0.02, 0.03, 0.03, 0.02, 0.1, 0.03, 0.005, 0.03, 0.05, 0.05, 0.05][i - W_GIFT]!;
   return base * scale;
 }
 

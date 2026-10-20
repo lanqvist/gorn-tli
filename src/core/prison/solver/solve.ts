@@ -25,13 +25,14 @@
  * накопленный поиск, а не начинаем заново.
  */
 
-import { CELLS, DEFAULT_PARAMS, EVENT, EVENT_POOL, type Action, type Params } from '../model.js';
+import { CELLS, DEFAULT_PARAMS, type Action, type Params } from '../model.js';
 import { applyCode, decode, legalCodes } from '../engine/actions.js';
 import { instantCode } from '../policy/instant.js';
 import { Rng } from '../engine/rng.js';
+import { randomEvent } from '../engine/rules.js';
 import {
   DAY, EVT, FLAGS, F_VIS_BEAST, F_VIS_TIER, LOCK, OBJ_DONE, OBJ_PROGRESS, PHASE, PRE_BEAST, PRE_TIER, P_END, P_EVENT,
-  STORAGE, State, USURP, WARDEN, copy,
+  STORAGE, State, WARDEN, copy,
 } from '../engine/state.js';
 import { DEFAULT_WEIGHTS } from '../policy/weights.js';
 
@@ -91,8 +92,6 @@ export function clearlyBetter(search: Search, a: number, b: number): boolean {
   return d >= SWITCH.gap && d >= SWITCH.se * se;
 }
 
-const POOL = EVENT_POOL.map((id) => EVENT[id]);
-
 /** ГСЧ раунда: каждое утро перезаправляется от (зерно раунда, день). */
 class DayRng extends Rng {
   round = 0;
@@ -117,14 +116,12 @@ function mix(a: number, b: number): number {
  * Перебросить то, чего игрок не видит: закреплённых без показа узников за
  * дверями, зверя при показанной только редкости, виды событий. Событие в
  * окне (фаза события, камера надзирателя) игрок видит — оно остаётся.
- * Пул переброса — как у движка: постоянные события и текущая ступень
- * Узурпации.
+ * Вид события — как у движка: по весам (eventWeight) среди допустимых для
+ * камеры, из постоянных и текущей ступени Узурпации.
  */
-export function redeterminize(s: State, r: Rng, knownEvents: boolean): void {
+export function redeterminize(s: State, r: Rng, knownEvents: boolean, p: Readonly<Params> = DEFAULT_PARAMS): void {
   const m = s.m;
   const shown = m[PHASE] === P_EVENT ? m[WARDEN]! : -1;
-  const usurp = m[USURP]!;
-  const n = POOL.length + (usurp >= 0 ? 1 : 0);
   for (let c = 1; c < CELLS; c++) {
     if (m[LOCK + c] === 1 && m[PRE_TIER + c]! >= 0) {
       const fl = m[FLAGS + c]!;
@@ -136,8 +133,8 @@ export function redeterminize(s: State, r: Rng, knownEvents: boolean): void {
       }
     }
     if (!knownEvents && c !== shown && m[EVT + c] !== 0) {
-      const k = r.int(n);
-      m[EVT + c] = (k < POOL.length ? POOL[k]! : usurp) + 1;
+      const ev = randomEvent(s, r, p, c);
+      if (ev >= 0) m[EVT + c] = ev + 1;
     }
   }
 }
@@ -192,7 +189,7 @@ class MonteCarlo implements Search {
       if (!active[i]) continue;
       copy(this.root, work);
       det.seed(seed);
-      redeterminize(work, det, this.opts.knownEvents ?? false);
+      redeterminize(work, det, this.opts.knownEvents ?? false, this.p);
       xs[i] = this.playout(seed, this.codes[i]!);
     }
     for (let i = 0; i < k; i++) {

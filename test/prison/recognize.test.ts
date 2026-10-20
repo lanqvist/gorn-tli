@@ -456,3 +456,21 @@ describe.skipIf(!Object.keys(VAULT_VIEW).every((n) => gornShot('2026-10-20', n))
     }
   });
 });
+
+describe.skipIf(!existsSync(join(DATA, 'images', 'gorn', '2026-10-17', '221226-546-board.png')))('устаревшая геометрия доски', () => {
+  it('сдвиг или другой масштаб интерфейса при том же разрешении: доска ищется заново, когда её ждут', () => {
+    const fr = frame('gorn/2026-10-17/221226-546-board.png');
+    const fresh = read(fr, null);
+    expect(fresh.view.screen).toBe('board');
+    const g = fresh.geo!;
+    for (const stale of [{ ...g, tx: g.tx + 40 }, { ...g, s: g.s * 0.9, tx: g.tx + 96, ty: g.ty + 54 }]) {
+      // Без подсказки — «другой экран» с прежней геометрией (событие, бунт).
+      expect(read(fr, stale).view.screen).toBe('other');
+      const r = read(fr, stale, { recalibrate: true });
+      expect(r.view.screen).toBe('board');
+      expect(Math.abs(r.geo!.s - g.s)).toBeLessThan(0.01);
+      expect(Math.abs(r.geo!.tx - g.tx)).toBeLessThan(4);
+      expect(Math.abs(r.geo!.ty - g.ty)).toBeLessThan(4);
+    }
+  });
+});

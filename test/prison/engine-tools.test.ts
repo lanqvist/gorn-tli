@@ -74,13 +74,13 @@ describe('орудия обхода и дверей', () => {
     expect([beast(s, 1), tier(s, 1)]).toEqual([WOLF, 2]);
   });
 
-  it('Крюк отбора: Обычные больше не появляются (двери и замена)', () => {
+  it('Крюк отбора: Обычные больше не появляются за дверями; замену он не трогает', () => {
     const s = withTools('hook');
     openCell(s, YES, P, 5);
     expect(tier(s, 5)).toBe(1);
     manageAt(s, 5, YES);
     act(s, { type: 'swap' }, YES);
-    expect(tier(s, 5)).toBe(1);
+    expect(tier(s, 5)).toBe(0);
   });
 
   it('Кандалы с короткой цепью: ход не длиннее 3 шагов, 50 % — открывается запертая камера', () => {
@@ -379,6 +379,23 @@ describe('орудия замены', () => {
     act(t, { type: 'swap' }, YES);
     expect(tier(t, 1)).toBe(0);
     expect(tier(t, 2)).toBe(0);
+  });
+
+  it('Козёл отпущения вместе с Петлёй: новый не ниже max(прежняя + 1, Редкая)', () => {
+    const s = withTools('scapegoat', 'rope');
+    put(s, 1, LION, 0);
+    put(s, 2, WOLF, 0);
+    put(s, 3, RAT, 0);
+    manageAt(s, 1, YES);
+    act(s, { type: 'swap' }, YES);
+    expect(tier(s, 1)).toBe(2);
+    const t = withTools('scapegoat', 'rope');
+    put(t, 1, LION, 2);
+    put(t, 2, WOLF, 0);
+    put(t, 3, RAT, 0);
+    manageAt(t, 1, YES);
+    act(t, { type: 'swap' }, YES);
+    expect(tier(t, 1)).toBe(3);
   });
 });
 

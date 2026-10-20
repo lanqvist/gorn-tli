@@ -23,9 +23,10 @@ import {
 } from './engine/actions.js';
 import { Rng } from './engine/rng.js';
 import { newRun, officeRounds, targets } from './engine/rules.js';
+import { panelToolIds } from './recognize/panels.js';
 import {
   BEAST, CHAIN_EATER, DAY, DAY_LIMIT, DOORS, DOORS_N, EVT, FLAGS, F_SCRATCH, F_VIS_TIER, LOCK, PREY_LEFT, PREY_LION,
-  NEST, NEXT, OBJECTIVE_ID, OFFER, OFFER_GIFT, OFFER_KIND, OFFER_N, OFFER_TOOL, OFFICE_LEFT, PHASE, PICK_GIFTS,
+  NEST, NEXT, OBJECTIVE_ID, OBJ_DONE, OFFER, OFFER_GIFT, OFFER_KIND, OFFER_N, OFFER_TOOL, OFFICE_LEFT, PHASE, PICK_GIFTS,
   PICK_TOOLS, PRE_BEAST, PRE_TIER, P_CHAIN, P_DAYEND, P_MANAGE, P_OFFICE, P_PATROL, P_PICK, P_RATWAY, REROLLS, START,
   STORAGE, State, TIER, TOOLS, USED, USED_DEVOUR, USURP, WARDEN,
 } from './engine/state.js';
@@ -48,6 +49,11 @@ export interface CellMemory {
   nestDay?: number;
   /** Показанная редкость за дверью. */
   shown?: number;
+  /**
+   * Метка «Царапины» («Грязные когти»): редкость показана утренней меткой, а
+   * не Весами или «Поиском сокровищ» — волк той же редкости ест сквозь дверь.
+   */
+  scratch?: boolean;
 }
 
 export interface RunMemory {
@@ -59,6 +65,11 @@ export interface RunMemory {
   dayLimit: number;
   tools: ToolId[];
   objective: ObjectiveId | null;
+  /**
+   * Цель забега выполнена (был выбор орудия в награду): целей на забег одна,
+   * панель может показывать прежнюю — движку она больше не нужна.
+   */
+  objectiveDone: boolean;
   start: StartEventId;
   storage: number;
   step: Step;
@@ -130,6 +141,7 @@ export function blankMemory(): RunMemory {
     dayLimit: DEFAULT_PARAMS.days,
     tools: [],
     objective: null,
+    objectiveDone: false,
     start: 'none',
     storage: 0,
     step: 'patrol',
@@ -173,6 +185,7 @@ export function loadMemory(x: unknown): RunMemory {
     if (c.nest) out.nest = true;
     if (c.nest && isInt(c.nestDay, 0, 29)) out.nestDay = c.nestDay;
     if (isInt(c.shown, 0, SUPREME)) out.shown = c.shown;
+    if (out.shown !== undefined && c.scratch) out.scratch = true;
     return out;
   });
   const steps: Step[] = ['patrol', 'manage', 'office', 'ratway', 'hunt', 'chain', 'pick', 'gift', 'wait'];
@@ -186,6 +199,7 @@ export function loadMemory(x: unknown): RunMemory {
     day: isInt(m.day, 0, 29) ? m.day : 0,
     tools: Array.isArray(m.tools) ? (m.tools.filter((t) => tools.includes(t)) as ToolId[]) : [],
     objective: m.objective && m.objective in OBJECTIVE ? m.objective : null,
+    objectiveDone: !!m.objectiveDone,
     start: m.start && m.start in START_EVENT ? m.start : 'none',
     storage: isInt(m.storage, 0, 99) ? m.storage : 0,
     step: m.step && steps.includes(m.step) ? m.step : 'patrol',
@@ -262,17 +276,22 @@ export class PrisonAdapter {
   /** Сколько кадров подряд целиком узнанная панель не показывает орудие из памяти. */
   private toolMisses = new Map<ToolId, number>();
 
-  constructor(saved?: unknown, private readonly p: Readonly<Params> = DEFAULT_PARAMS) {
+  /**
+   * panelKnown — орудия, у которых есть эталон иконки на панели: остальные
+   * панель показывает неузнанной иконкой (null), подтвердить их нельзя.
+   */
+  constructor(
+    saved?: unknown,
+    private readonly p: Readonly<Params> = DEFAULT_PARAMS,
+    private readonly panelKnown: ReadonlySet<ToolId> = panelToolIds(),
+  ) {
     this.mem = loadMemory(saved);
-  }
-
-  reset(): void {
-    this.mem = blankMemory();
   }
 
   /** Доска со строкой дней, панелями и рядом карточек (или экран цепочки). */
   board(v: BoardView): void {
     const m = this.mem;
+    const dayBefore = m.day;
     // День — по логу, если он есть (экран на последнем дне «осталось 0» не читается).
     if (v.daysLeft !== null && !this.dayFromLog) {
       if (v.daysLeft > m.dayLimit) {
@@ -290,6 +309,8 @@ export class PrisonAdapter {
     m.runStart = false;
     m.themeFresh = false;
     m.offer = [];
+    // Утренняя доска: день только начался, на ней ещё ничего не нажато.
+    const morning = this.freshDay || m.day > dayBefore;
 
     if (v.doors.length || v.chain || (v.decision && v.decision.kind !== 'ratway')) this.freshDay = false;
     if (v.chain) {
@@ -320,7 +341,14 @@ export class PrisonAdapter {
           cell.nestDay = was.k === 'locked' && was.nest && was.nestDay !== undefined ? was.nestDay : m.day;
         }
         const shown = c.shownTier ?? (was.k === 'locked' ? was.shown : undefined);
-        if (shown !== undefined) cell.shown = Math.min(shown, SUPREME);
+        if (shown !== undefined) {
+          cell.shown = Math.min(shown, SUPREME);
+          // «Царапины» Когти ставят утром: редкость, впервые показанная на
+          // утренней доске. Показанная днём (Весы, «Поиск сокровищ») — не метка.
+          const first = was.k !== 'locked' || was.shown === undefined;
+          if (was.k === 'locked' && was.scratch) cell.scratch = true;
+          else if (first && morning && m.tools.includes('claws')) cell.scratch = true;
+        }
         m.cells[n] = cell;
       } else {
         m.cells[n] = { k: 'empty' };
@@ -424,7 +452,9 @@ export class PrisonAdapter {
     m.step = 'chain';
     m.chainTargets = [...v.chain!.targets];
     m.doors = [];
-    m.decision = null;
+    // До первого укуса это ещё выбор Пожирания: «Отменить» вернёт к ряду
+    // решений — какие на нём карточки (есть ли «Замена»), помним.
+    if (!m.firstBite) m.decision = null;
     // Портрет едока на тёмном экране читается и другим зверем: берём того,
     // кто ест все подсвеченные цели (прочитанный, прежний, любой).
     if (m.chainTargets.length) {
@@ -505,6 +535,9 @@ export class PrisonAdapter {
     m.pickOffer = [];
     m.pickAdvised = null;
     if (v.tools.some((t) => offer.includes(t))) return;
+    // В выборе было орудие без эталона панели: неузнанная иконка может быть
+    // им, а не посоветованным — не выдумываем.
+    if (offer.some((t) => !this.panelKnown.has(t))) return;
     if (advised && !m.tools.includes(advised)) {
       m.tools.push(advised);
       m.assumed.push({ tool: advised, offer });
@@ -512,19 +545,27 @@ export class PrisonAdapter {
   }
 
   /**
-   * Панель видна и каждая её иконка узнана — значит, на ней все орудия забега.
-   * Орудие из памяти, которого на такой панели нет три кадра подряд, —
+   * Панель видна и каждая её иконка объяснена — значит, на ней все орудия
+   * забега. Орудие из памяти, которого на такой панели нет три кадра подряд, —
    * осколок другого забега (перезапуск Горна посреди партии, пропущенное
    * начало забега): оно меняет правила (Молот разрешает есть зверя выше
    * редкостью) и уводит советы в ходы, которых игра не даёт. Пара кадров —
    * не повод: панель бывает частично перекрыта.
+   *
+   * Неузнанная иконка объяснена, если в памяти есть орудие без эталона
+   * панели: иначе одно такое орудие навсегда выключало бы проверку. Орудия
+   * без эталона на панели не различить: они «на месте», пока есть хоть одна
+   * неузнанная иконка.
    */
   private forgetMissingTools(v: BoardView): void {
     const m = this.mem;
     const slots = v.toolSlots;
-    if (!slots || slots.length === 0 || slots.some((t) => t === null)) return;
+    if (!slots || slots.length === 0) return;
+    const unknown = slots.filter((t) => t === null).length;
+    const blind = m.tools.filter((t) => !this.panelKnown.has(t)).length;
+    if (unknown > blind) return;
     for (const t of [...m.tools]) {
-      if (v.tools.includes(t)) {
+      if (this.panelKnown.has(t) ? v.tools.includes(t) : unknown > 0) {
         this.toolMisses.delete(t);
         continue;
       }
@@ -589,11 +630,22 @@ export class PrisonAdapter {
       }
     }
     if (fresh && !v.reward) this.startRun();
+    // Выбор в награду — цель выполнена (одна на забег).
+    if (v.reward) this.mem.objectiveDone = true;
     this.mem.step = 'pick';
     this.mem.offer = v.cards.filter((c): c is ToolId => c !== null && !this.mem.tools.includes(c));
     this.mem.pickOffer = [...this.mem.offer];
     this.mem.pickAdvised = null;
     this.mem.rerolls = v.reroll && !rerolled ? 1 : 0;
+  }
+
+  /**
+   * Подарок взят (окно сокровищницы закрылось не просмотром доски): при
+   * «Расточительности» выборов за призматического несколько — осталось на
+   * один меньше.
+   */
+  giftTaken(): void {
+    if (this.mem.gifts > 0) this.mem.gifts--;
   }
 
   /**
@@ -627,7 +679,9 @@ export class PrisonAdapter {
       m.cells[m.warden] = lockedCell();
       m.storage++;
     }
-    m.gifts = m.start === 'abundance' ? this.p.abundanceGifts : 1;
+    // Окно снова открылось, а выборы за прошлого призматического не кончились
+    // («Расточительность»: 3 подряд) — счёт не сбрасывать.
+    if (m.gifts <= 0) m.gifts = m.start === 'abundance' ? this.p.abundanceGifts : 1;
     m.step = 'wait';
   }
 
@@ -656,7 +710,7 @@ export class PrisonAdapter {
       }
     }
     const state = this.build();
-    const d = m.step === 'manage' ? m.decision : null;
+    const d = m.step === 'manage' || (m.step === 'chain' && m.firstBite) ? m.decision : null;
     const hunting = m.step === 'hunt';
     const targetsShown = m.step === 'chain' && m.firstBite ? m.chainTargets : null;
     const allowed = (code: number): boolean => {
@@ -686,7 +740,8 @@ export class PrisonAdapter {
     const x = s.m;
     let tools = 0;
     for (const t of m.tools) tools |= 1 << TOOL[t];
-    const objective = m.objective ? OBJECTIVE[m.objective] : -1;
+    // Выполненная цель (был выбор в награду): цели больше нет, как у движка.
+    const objective = m.objective && !m.objectiveDone ? OBJECTIVE[m.objective] : -1;
 
     if (m.step === 'pick' && m.runStart) {
       // Начало забега: доска за выбором ещё не открыта — как в движке.
@@ -709,7 +764,7 @@ export class PrisonAdapter {
         if (cell.shown !== undefined) {
           x[PRE_TIER + c] = cell.shown;
           x[PRE_BEAST + c] = 0;
-          x[FLAGS + c] = F_VIS_TIER | ((tools >>> TOOL.claws) & 1 ? F_SCRATCH : 0);
+          x[FLAGS + c] = F_VIS_TIER | (cell.scratch && (tools >>> TOOL.claws) & 1 ? F_SCRATCH : 0);
         }
       } else if (cell.k === 'inmate') {
         x[BEAST + c] = cell.b!;
@@ -725,6 +780,7 @@ export class PrisonAdapter {
     x[TOOLS] = tools;
     x[STORAGE] = Math.min(m.storage, p.storage);
     x[OBJECTIVE_ID] = objective;
+    x[OBJ_DONE] = m.objectiveDone ? 1 : 0;
     x[USURP] = EVENT.usurp1;
     x[CHAIN_EATER] = -1;
     // Метки «Добыча»: поставлена в день d — к утру дня d+k осталось trapMornings − k (прицел виден — хотя бы 1).

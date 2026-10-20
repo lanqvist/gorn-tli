@@ -99,6 +99,32 @@ describe('мгновенная стратегия: явные позиции', (
     expect(instant(s, P)).toEqual({ type: 'choose', id: 'horn' });
   });
 
+  it('подарок: Рог считает укус Молота по второй еде и ниже Легендарной', () => {
+    // Магический мамонт с Молотом съест Легендарного волка (вторая еда) и
+    // станет на 2 выше съеденного — Призматическим.
+    const s = blank({ tools: ['maul'] });
+    put(s, 1, MAMMOTH, 1);
+    put(s, 2, WOLF, 3);
+    s.m[PICK_GIFTS] = 1;
+    settle(s, new Rng(1), P);
+    expect(s.m[PHASE]).toBe(P_PICK);
+    expect(instant(s, P)).toEqual({ type: 'choose', id: 'horn' });
+  });
+
+  it('Замена с Козлом и Петлёй: стратегия ждёт не ниже Редкой, как движок', () => {
+    // Обычный лев, двое других: Козёл даёт +1 (Магическую) без Петли, с Петлёй — Редкую.
+    const withRope = blank({ tools: ['scapegoat', 'rope'] });
+    const without = blank({ tools: ['scapegoat'] });
+    for (const s of [withRope, without]) {
+      put(s, 1, LION, 0);
+      put(s, 6, RAT, 0);
+      put(s, 11, RAT, 0);
+      manageAt(s, 1);
+    }
+    expect(instant(withRope, P)).toEqual({ type: 'swap' });
+    expect(instant(without, P)).not.toEqual({ type: 'swap' });
+  });
+
   it('событие «Вкус свободы» принимается', () => {
     const s = blank();
     put(s, 4, WOLF, 1);

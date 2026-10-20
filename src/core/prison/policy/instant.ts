@@ -13,7 +13,7 @@
  */
 
 import {
-  CELLS, DEFAULT_PARAMS, LEGENDARY, LION, MAMMOTH, OFFICE, RAT, START_EVENT, TOOL, TOOL_IDS,
+  CELLS, DEFAULT_PARAMS, GIFT_IDS, GIFT_NAMES, LEGENDARY, LION, MAMMOTH, OFFICE, RAT, START_EVENT, TOOL, TOOL_IDS,
   TOOL_NAMES, WOLF, type Action, type Params,
 } from '../model.js';
 import {
@@ -31,8 +31,8 @@ import {
   WARDEN, dist,
 } from '../engine/state.js';
 import {
-  DEFAULT_WEIGHTS, W_AHEAD, W_BRAND, W_CHAIN, W_RING, W_SKIP, W_DOOR, W_EVENT, W_FAR, W_FED, W_GIFT, W_INSTIGATE, W_REROLL, W_SWAP, W_TOOL,
-  W_TOOLPICK, W_VAL0, W_VAL1,
+  DEFAULT_WEIGHTS, W_AHEAD, W_BRAND, W_CHAIN, W_RING, W_SKIP, W_DOOR, W_EVENT, W_FAR, W_GIFT, W_INSTIGATE, W_REROLL, W_SWAP, W_TOOL,
+  W_VAL0, W_VAL1,
 } from './weights.js';
 
 // ── рабочие таблицы (модульные, переиспользуются) ───────────────────────────
@@ -47,7 +47,7 @@ const F = new Float64Array(6 * 4 * 2);
 const A = new Float64Array(6 * 2);
 /** Кто выйдет из двери, по редкости (с учётом «Крюка»). */
 const pDoor = new Float64Array(6);
-/** Кто выйдет при замене. */
+/** Кто выйдет при замене (с учётом «Петли»). */
 const pRep = new Float64Array(6);
 /** Выгода Замены гипотетического узника по редкости. */
 const swapNew = new Float64Array(5);
@@ -144,7 +144,8 @@ function ensureChain(): void {
   if (chainReady) return;
   chainReady = true;
   normalize(pDoor, P.doorOdds, has(TOOL.hook) ? 1 : 0);
-  normalize(pRep, P.replaceOdds, has(TOOL.rope) ? 2 : has(TOOL.hook) ? 1 : 0);
+  // Крюк — только двери; замену ограничивает Петля.
+  normalize(pRep, P.replaceOdds, has(TOOL.rope) ? 2 : 0);
   doorNew = 0;
   for (let t = 0; t < 6; t++) doorNew += pDoor[t]! * val[t]!;
   openV = doorNew - W[W_DOOR]! * frac;
@@ -252,8 +253,10 @@ function swapGain(t: number, c: number): number {
   let pUp = 0;
   const others = inmateCount - (c >= 0 ? 1 : 0);
   if (has(TOOL.scapegoat) && others >= P.scapegoatRemoves) {
+    // Бросок не ниже прежней + 1 и не ниже порога Петли — как в движке.
     const avgOther = others > 0 ? (valSum - (c >= 0 ? val[t]! : 0)) / others : 0;
-    v = riseV(t, 1) - P.scapegoatRemoves * avgOther;
+    const floor = Math.max(t + 1, has(TOOL.rope) ? 2 : 0);
+    v = riseV(t, floor - t) - P.scapegoatRemoves * avgOther;
     pUp = 1;
   } else {
     v = 0;
@@ -382,41 +385,6 @@ function doorValue(from: number, c: number): number {
   return v;
 }
 
-// ── оценка доски ────────────────────────────────────────────────────────────
-
-const cnt2 = new Int32Array(24);
-
-/**
- * Сколько узников доски x может кого-то съесть. Считается по составу
- * «редкость × зверь», а не через targets() для каждого: это горячая часть
- * пробных применений. Когти и гильотина не учитываются.
- */
-function fedCount(x: Int32Array): number {
-  cnt2.fill(0);
-  for (let c = 1; c < CELLS; c++) {
-    const t = x[TIER + c]!;
-    if (t >= 0) cnt2[t * 4 + x[BEAST + c]!] = cnt2[t * 4 + x[BEAST + c]!]! + 1;
-  }
-  let fed = 0;
-  for (let c = 1; c < CELLS; c++) {
-    const t = x[TIER + c]!;
-    if (t < 0) continue;
-    const b = x[BEAST + c]!;
-    let ok = false;
-    if (anyTier) {
-      for (let u = 0; u <= t && !ok; u++) ok = cnt2[u * 4 + FIRST_FOOD[b]!]! > 0 || (SECOND_FOOD[b]! >= 0 && cnt2[u * 4 + SECOND_FOOD[b]!]! > 0);
-    } else {
-      const row = t * 4;
-      ok = cnt2[row + FIRST_FOOD[b]!]! > 0 || (SECOND_FOOD[b]! >= 0 && cnt2[row + SECOND_FOOD[b]!]! > 0);
-      if (!ok && b === LION && crown) ok = cnt2[row]! + cnt2[row + 1]! + cnt2[row + 2]! + cnt2[row + 3]! > 1;
-      if (!ok && b === RAT && skewer) ok = cnt2[row + RAT]! > 1;
-      if (!ok && b === MAMMOTH && maul) for (let u = t + 1; u < 5 && !ok; u++) ok = cnt2[u * 4 + LION]! + cnt2[u * 4 + WOLF]! > 0;
-    }
-    if (ok) fed++;
-  }
-  return fed;
-}
-
 // ── решения ─────────────────────────────────────────────────────────────────
 
 /** Почему выбран ход: для подписи. */
@@ -453,7 +421,7 @@ function hornBite(e: number, j: number): number {
   if (m[LOCK + j] === 1) return riseV(te, P.clawsGain) - val[te]!;
   const tt = m[TIER + j]!;
   const bt = m[BEAST + j]!;
-  const food = bt === FIRST_FOOD[be] || (te >= LEGENDARY && bt === SECOND_FOOD[be]);
+  const food = bt === FIRST_FOOD[be] || bt === SECOND_FOOD[be];
   return -val[tt]! + riseV(te, baseGain(be, te, food, tt, bt === RAT)) - val[te]!;
 }
 
@@ -679,7 +647,6 @@ export function policyPlayout(s: State, r: Rng, p: Params = DEFAULT_PARAMS, w: F
 // ── подпись ─────────────────────────────────────────────────────────────────
 
 const SHORT_TOOL = TOOL_IDS.map((id) => TOOL_NAMES[id].split(':')[0]!);
-const GIFT_NAMES = ['Трёхглавое кольцо', 'Медный боевой рог', 'Багряное вино', 'Клеймо греха'];
 
 function fit(text: string): string {
   return text.length <= 40 ? text : `${text.slice(0, 39)}…`;
@@ -694,7 +661,7 @@ export function advise(s: State, p: Params = DEFAULT_PARAMS, w: Float64Array = D
   switch (why) {
     case R_TOOL: text = `Взять «${SHORT_TOOL[arg]}»`; break;
     case R_REROLL: text = 'Обновить: все три карты слабые'; break;
-    case R_GIFT: text = `Подарок: ${GIFT_NAMES[arg]}`; break;
+    case R_GIFT: text = `Подарок: ${GIFT_NAMES[GIFT_IDS[arg]!]}`; break;
     case R_HUNT: text = `Выслеживание: узник в камере ${n}`; break;
     case R_DOOR_PRISM: text = `Камера ${n}: цепочка к призматическому`; break;
     case R_DOOR_EAT: text = `Камера ${n}: узник съест соседа`; break;

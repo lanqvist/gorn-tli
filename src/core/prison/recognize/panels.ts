@@ -6,7 +6,7 @@ import { TOOL_IDS } from '../view.js';
 import { CHROMATIC_HEADER, OBJECTIVE, TOOL_SLOTS, chromaticSlot, toolSlot } from './layout.js';
 import { dot, normalize, sample } from './sample.js';
 import type { ScreensTemplate } from './templates.js';
-import { nearest, scoresByLabel } from './templates.js';
+import { nearest, scoresByLabel, screensTemplate } from './templates.js';
 import type { Frame, Geometry } from './types.js';
 
 const TOOL_MIN = 0.75;
@@ -23,6 +23,14 @@ const toolBuf = new Float32Array(12 * 18 * 3);
 const slotBuf = new Float32Array(12 * 16 * 3);
 const objBuf = new Float32Array(80 * 15);
 const headBuf = new Float32Array(92 * 20);
+
+let panelIds: ReadonlySet<ToolId> | null = null;
+
+/** Орудия, у которых есть эталон иконки на панели (остальные панель читает как null). */
+export function panelToolIds(): ReadonlySet<ToolId> {
+  panelIds ??= new Set(screensTemplate().tools.map((p) => p.label).filter((l): l is ToolId => (TOOL_IDS as readonly string[]).includes(l)));
+  return panelIds;
+}
 
 /**
  * Места панели орудий слева направо: орудие или null — место занято
