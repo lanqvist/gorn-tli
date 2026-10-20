@@ -34,3 +34,6 @@ docs/prison/client-texts.*.md
 # (пути и контрольные суммы, без текстов).
 docs/prison/client-data/*
 !docs/prison/client-data/manifest.json
+# Хвост цепочки извлечения (читает out/tartarus-client) — без первых шагов
+# невоспроизводим, держится локально.
+scripts/tli-*
