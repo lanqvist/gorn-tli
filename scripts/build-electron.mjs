@@ -46,6 +46,13 @@ const configs = [
     outfile: 'dist/main/prisonWorker.cjs',
     format: 'cjs',
   },
+  // Потоки решателя внутри процесса подсказок (worker_threads).
+  {
+    ...common,
+    entryPoints: ['src/core/prison/solver/poolWorker.ts'],
+    outfile: 'dist/main/prisonSolver.cjs',
+    format: 'cjs',
+  },
 ];
 
 if (watch) {

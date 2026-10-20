@@ -23,6 +23,10 @@
  *
  * Тот же кадр снова (та же позиция, те же зерно и настройки) — продолжаем
  * накопленный поиск, а не начинаем заново.
+ *
+ * Запущен пул потоков (pool.ts) — раунды делятся между потоками, слияние
+ * по порядку номеров: при том же числе раундов оценки те же, что в одном
+ * потоке, а раундов за то же время — в разы больше.
  */
 
 import { CELLS, DEFAULT_PARAMS, type Action, type Params } from '../model.js';
@@ -35,6 +39,7 @@ import {
   STORAGE, State, WARDEN, copy,
 } from '../engine/state.js';
 import { DEFAULT_WEIGHTS } from '../policy/weights.js';
+import { RING, RoundRing, solvePool, type JobDef, type SolvePool } from './pool.js';
 
 export interface SolveOptions {
   seed: number;
@@ -139,11 +144,66 @@ export function redeterminize(s: State, r: Rng, knownEvents: boolean, p: Readonl
   }
 }
 
-class MonteCarlo implements Search {
-  private readonly root = new State();
+/**
+ * Раунд Монте-Карло: счёт каждого живого кандидата при костях раунда n.
+ * Чистая функция (позиция, зерно, n, ход) — поэтому раунды можно играть в
+ * любом потоке и в любом порядке (pool.ts).
+ */
+export class Rounds {
   private readonly work = new State();
   private readonly rng = new DayRng(1);
   private readonly det = new Rng(1);
+
+  constructor(
+    private readonly root: State,
+    private readonly codes: Int32Array,
+    private readonly seed: number,
+    private readonly knownEvents: boolean,
+    private readonly p: Readonly<Params>,
+    private readonly w: Float64Array,
+  ) {}
+
+  /** Сыграть раунд n за живых кандидатов (active[i] ≠ 0), счёт — в xs[i]. */
+  play(n: number, active: ArrayLike<number>, xs: Float64Array): void {
+    const { work, det } = this;
+    const seed = mix(this.seed, n);
+    for (let i = 0; i < this.codes.length; i++) {
+      if (!active[i]) continue;
+      copy(this.root, work);
+      det.seed(seed);
+      redeterminize(work, det, this.knownEvents, this.p);
+      xs[i] = this.playout(seed, this.codes[i]!);
+    }
+  }
+
+  /** Ход-кандидат и доигрывание с костями, общими по дням. */
+  private playout(seed: number, first: number): number {
+    const { work, rng, p, w } = this;
+    const m = work.m;
+    rng.round = seed;
+    rng.seed(mix(seed, 0x5bd1e995));
+    applyCode(work, first, rng, p);
+    // Кости решения зависят от (день, фаза, номер решения за день): у
+    // кандидатов, которые дошли до того же решения, исход совпадёт.
+    let day = -1;
+    let k = 0;
+    while (m[PHASE] !== P_END) {
+      if (m[DAY] !== day) {
+        day = m[DAY]!;
+        k = 0;
+      }
+      const c = instantCode(work, p, w);
+      rng.seed(mix(seed, (day << 12) | (m[PHASE]! << 8) | k++));
+      applyCode(work, c, rng, p, false);
+    }
+    return m[STORAGE]! + TIE * m[OBJ_DONE]! + TIE * TIE * m[OBJ_PROGRESS]!;
+  }
+}
+
+let nextJob = 1;
+
+class MonteCarlo implements Search {
+  private readonly root = new State();
   private readonly codes: Int32Array;
   private readonly k: number;
   private readonly sum: Float64Array;
@@ -153,6 +213,10 @@ class MonteCarlo implements Search {
   private readonly xs: Float64Array;
   private readonly p: Readonly<Params>;
   private readonly w: Float64Array;
+  private readonly rounds: Rounds;
+  /** Общая память для пула (создаётся при первом шаге в пуле). */
+  private ring: RoundRing | null = null;
+  private readonly job = nextJob++;
   private n = 0;
   private done = false;
   private leader = 0;
@@ -179,19 +243,13 @@ class MonteCarlo implements Search {
     this.count = new Float64Array(this.k);
     this.active = new Uint8Array(this.k).fill(1);
     this.xs = new Float64Array(this.k);
+    this.rounds = new Rounds(this.root, this.codes, opts.seed, opts.knownEvents ?? false, this.p, this.w);
     if (this.k <= 1) this.done = true;
   }
 
-  private round(): void {
-    const { k, active, xs, work, det } = this;
-    const seed = mix(this.opts.seed, this.n);
-    for (let i = 0; i < k; i++) {
-      if (!active[i]) continue;
-      copy(this.root, work);
-      det.seed(seed);
-      redeterminize(work, det, this.opts.knownEvents ?? false, this.p);
-      xs[i] = this.playout(seed, this.codes[i]!);
-    }
+  /** Слить раунд: счёт живых кандидатов xs (раунды — строго по порядку номеров). */
+  private add(xs: Float64Array): void {
+    const { k, active } = this;
     for (let i = 0; i < k; i++) {
       if (!active[i]) continue;
       const x = xs[i]!;
@@ -200,29 +258,6 @@ class MonteCarlo implements Search {
       for (let j = 0; j < k; j++) if (active[j]) this.cross[i * k + j] = this.cross[i * k + j]! + x * xs[j]!;
     }
     this.n++;
-  }
-
-  /** Ход-кандидат и доигрывание с костями, общими по дням. */
-  private playout(seed: number, first: number): number {
-    const { work, rng, p, w } = this;
-    const m = work.m;
-    rng.round = seed;
-    rng.seed(mix(seed, 0x5bd1e995));
-    applyCode(work, first, rng, p);
-    // Кости решения зависят от (день, фаза, номер решения за день): у
-    // кандидатов, которые дошли до того же решения, исход совпадёт.
-    let day = -1;
-    let k = 0;
-    while (m[PHASE] !== P_END) {
-      if (m[DAY] !== day) {
-        day = m[DAY]!;
-        k = 0;
-      }
-      const c = instantCode(work, p, w);
-      rng.seed(mix(seed, (day << 12) | (m[PHASE]! << 8) | k++));
-      applyCode(work, c, rng, p, false);
-    }
-    return m[STORAGE]! + TIE * m[OBJ_DONE]! + TIE * TIE * m[OBJ_PROGRESS]!;
   }
 
   private mean(i: number): number {
@@ -274,12 +309,65 @@ class MonteCarlo implements Search {
 
   step(ms: number): SolveStep {
     const deadline = performance.now() + ms;
+    const pool = this.done ? null : solvePool();
+    if (pool) {
+      this.stepPool(pool, deadline);
+      return this.result();
+    }
     while (!this.done) {
-      this.round();
+      this.rounds.play(this.n, this.active, this.xs);
+      this.add(this.xs);
       this.check();
       if (performance.now() >= deadline) break;
     }
     return this.result();
+  }
+
+  /**
+   * Шаг в пуле: главный играет наравне с потоками и сливает готовые раунды
+   * по порядку номеров — с проверкой после каждого, как в одном потоке.
+   */
+  private stepPool(pool: SolvePool, deadline: number): void {
+    const ring = (this.ring ??= new RoundRing(this.k));
+    ring.reset(this.n, this.active, this.stop.maxRounds);
+    pool.begin(this.job, () => this.def(ring));
+    try {
+      while (!this.done) {
+        const r = ring.claim();
+        if (r >= this.stop.maxRounds) break;
+        // Кольцо полно — слить, что готово (главный ждёт только чужой раунд).
+        while (r - this.n >= RING) {
+          this.drain(ring);
+          if (this.done) return;
+          if (r - this.n >= RING) Atomics.wait(ring.ready, this.n % RING, Atomics.load(ring.ready, this.n % RING), 1);
+        }
+        this.rounds.play(r, this.active, ring.slot(r));
+        ring.publish(r);
+        this.drain(ring);
+        if (performance.now() >= deadline) break;
+      }
+    } finally {
+      pool.end(() => this.drain(ring));
+      this.drain(ring);
+    }
+  }
+
+  /** Слить готовые раунды подряд с первого неслитого. */
+  private drain(ring: RoundRing): void {
+    const before = this.n;
+    while (!this.done && ring.isReady(this.n)) {
+      this.add(ring.slot(this.n));
+      this.check();
+      for (let i = 0; i < this.k; i++) if (!this.active[i] && ring.active[i]) Atomics.store(ring.active, i, 0);
+    }
+    if (this.n !== before) ring.setMerged(this.n);
+  }
+
+  private def(ring: RoundRing): JobDef {
+    return {
+      type: 'job', id: this.job, sab: ring.sab, k: this.k, root: this.root.m.slice(), codes: this.codes, seed: this.opts.seed,
+      knownEvents: this.opts.knownEvents ?? false, params: this.p as Params, weights: this.w,
+    };
   }
 
   private result(): SolveStep {
