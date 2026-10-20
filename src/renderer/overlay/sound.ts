@@ -17,22 +17,26 @@
  * Файлы встроены в бандл как data-URL: страницы грузятся с file://,
  * и так звук работает одинаково в деве и в собранном приложении.
  * AudioContext и декодирование — лениво: слой почти всё время молчит.
+ * Сами файлы — тоже: каждый в своём чанке, грузится при первом проигрывании.
+ * Иначе 2,3 МБ base64 разбирались при старте каждого окна, где есть звук
+ * (главное — ради кнопок прослушивания, слой плашек — даже без звука).
  */
 import type { Sound } from '../../sfx/sounds.js';
 
 const FILES = import.meta.glob<string>('../assets/sfx/*.wav', {
   query: '?inline',
   import: 'default',
-  eager: true,
 });
 
-/** Звук → его варианты (data-URL), по порядку номеров в имени файла. */
-const BANK = new Map<Sound, string[]>();
+type Variant = { path: string; url: () => Promise<string> };
+
+/** Звук → его варианты (загрузчик data-URL), по порядку номеров в имени файла. */
+const BANK = new Map<Sound, Variant[]>();
 for (const [path, url] of Object.entries(FILES).sort(([a], [b]) => a.localeCompare(b))) {
   const match = /\/([A-Za-z]+)-\d+\.wav$/.exec(path);
   if (!match) continue;
   const sound = match[1] as Sound;
-  BANK.set(sound, [...(BANK.get(sound) ?? []), url]);
+  BANK.set(sound, [...(BANK.get(sound) ?? []), { path, url }]);
 }
 
 let ctx: AudioContext | null = null;
@@ -69,14 +73,18 @@ const decoded = new Map<string, Promise<AudioBuffer>>();
  * data-URL → AudioBuffer. Base64 разбираем сами, а не через fetch:
  * CSP страниц (connect-src) не пускает fetch даже к data:.
  */
-function load(url: string): Promise<AudioBuffer> {
-  let buffer = decoded.get(url);
+function load(variant: Variant): Promise<AudioBuffer> {
+  let buffer = decoded.get(variant.path);
   if (!buffer) {
-    const binary = atob(url.slice(url.indexOf(',') + 1));
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-    buffer = context().decodeAudioData(bytes.buffer);
-    decoded.set(url, buffer);
+    buffer = variant.url().then((url) => {
+      const binary = atob(url.slice(url.indexOf(',') + 1));
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      return context().decodeAudioData(bytes.buffer);
+    });
+    // Не загрузился — следующая попытка начнёт заново.
+    buffer.catch(() => decoded.delete(variant.path));
+    decoded.set(variant.path, buffer);
   }
   return buffer;
 }
@@ -89,11 +97,11 @@ function play(sound: Sound, volume: number): void {
   if (!variants || variants.length === 0 || volume <= 0) return;
   const n = turn.get(sound) ?? 0;
   turn.set(sound, n + 1);
-  const url = variants[n % variants.length]!;
+  const variant = variants[n % variants.length]!;
   try {
     const audio = context();
     void audio.resume();
-    load(url)
+    load(variant)
       .then((buffer) => {
         const src = audio.createBufferSource();
         src.buffer = buffer;

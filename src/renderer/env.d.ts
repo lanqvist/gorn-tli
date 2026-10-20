@@ -10,6 +10,11 @@ interface ImportMeta {
     pattern: string,
     options: { query?: string; import?: string; eager: true },
   ): Record<string, T>;
+  /** Без eager — каждый файл в своём чанке, загрузка по требованию. */
+  glob<T>(
+    pattern: string,
+    options: { query?: string; import?: string; eager?: false },
+  ): Record<string, () => Promise<T>>;
 }
 
 declare module '*.css' {

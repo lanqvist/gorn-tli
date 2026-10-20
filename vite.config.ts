@@ -17,9 +17,9 @@ export default defineConfig({
     outDir: resolve(import.meta.dirname, 'dist/renderer'),
     emptyOutDir: true,
     target: 'chrome130',
-    // Звуки встроены в бандл как data-URL (~2.7 МБ): страницы грузятся
-    // с диска, размер чанка здесь не про скорость сети.
-    chunkSizeWarningLimit: 3200,
+    // Звуки встроены как data-URL, каждый в своём чанке (до ~0,8 МБ):
+    // страницы грузятся с диска, размер чанка здесь не про скорость сети.
+    chunkSizeWarningLimit: 1000,
     rollupOptions: {
       // Три окна — три страницы: дашборд, оверлей и слой всплывающего дохода.
       input: {
