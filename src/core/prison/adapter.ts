@@ -387,8 +387,10 @@ export class PrisonAdapter {
       const prev = m.cells[n]!;
       if (known) {
         // Съеденный за этот укус — заперт; остальные — как до укуса.
+        // «!» события остаётся на запертой камере (кадр 20.10 01:25:53: съеденный
+        // №7 с «!» — без него ожидание цепочки 6,4 → 4,1; на следующий день там событие).
         if (c.kind === 'locked' && prev.k === 'inmate') {
-          m.cells[n] = lockedCell();
+          m.cells[n] = { ...lockedCell(), ...(prev.ev || c.event ? { ev: true } : {}) };
           eaten++;
         }
         else if (c.kind === 'inmate' && prev.k !== 'inmate') m.cells[n] = { k: 'inmate', b: beastNo(c.beast), t: Math.min(c.tier ?? 0, SUPREME) };

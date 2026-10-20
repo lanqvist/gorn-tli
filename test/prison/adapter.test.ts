@@ -234,6 +234,17 @@ describe('адаптер: цепочка', () => {
     expect(legal(s).map(decode)).toEqual([{ type: 'chain', to: C(12) }, { type: 'stopchain' }]);
   });
 
+  it('съеденный с «!» — событие остаётся на запертой камере', () => {
+    // Кадр 20.10 01:25:50: едок №2, съедает №7 с «!»; на тёмном экране цепочки «!» не читается.
+    const a = new PrisonAdapter();
+    a.board(board({ inmates: { 2: 'mammoth2', 4: 'rat3', 7: 'wolf2', 9: 'mammoth4' }, events: [7], warden: 2, decision: MANAGE_ALL, kinds: ['consume', 'end'] }));
+    a.board(board({ inmates: { 2: 'wolf3', 4: 'rat3', 9: 'mammoth4' }, warden: 2, daysLeft: null, chain: [4] }));
+    expect(a.mem.cells[C(7)]).toMatchObject({ k: 'locked', ev: true });
+    const s = ok(a).state;
+    expect(s.m[PHASE]).toBe(P_CHAIN);
+    expect(s.m[EVT + C(7)]).toBeGreaterThan(0);
+  });
+
   it('портрет едока прочитан не тем зверем — берётся тот, кто ест подсвеченных', () => {
     const a = manageThenChain();
     // Экран прочитал льва, но подсвечен лев №6 (лев льва не ест) — едок мамонт.
