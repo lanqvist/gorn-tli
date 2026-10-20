@@ -246,4 +246,81 @@ describe('миграция базы прежних версий', () => {
       db.close();
     }
   });
+
+  it('пробивка без сезона не вытесняет ту же пробивку с сезоном', () => {
+    const path = join(dir, 'gorn.db');
+    const first = new Storage(path);
+    first.saveRuns([run(SEASON_START, SS14)], SS14);
+    first.close();
+
+    const raw = new DatabaseSync(path);
+    const insert = raw.prepare(
+      `INSERT INTO price (config_base_id, season_id, fe, median, min_price, sample_size, observed_at)
+       VALUES (?, ?, ?, ?, ?, 1, ?)`,
+    );
+    // Та же пробивка дважды: с сезоном и без. Раньше UPDATE OR REPLACE
+    // удалял строку с сезоном, оставляя переехавшую бессезонную.
+    insert.run(5028, SS14, 0.07, 0.07, 0.07, SEASON_START + DAY);
+    insert.run(5028, 0, 0.5, 0.5, 0.5, SEASON_START + DAY);
+    insert.run(10330, 0, 3, 3, 3, SEASON_START + 2 * DAY);
+    raw.close();
+
+    const db = new Storage(path);
+    try {
+      expect(db.counts().priceRows).toBe(2);
+      expect(db.loadPrices(SS14).map((p) => [p.configBaseId, p.fe])).toEqual([
+        [5028, 0.07],
+        [10330, 3],
+      ]);
+    } finally {
+      db.close();
+    }
+  });
+
+  it('миграции выполняются один раз и помечаются в user_version', () => {
+    const path = join(dir, 'gorn.db');
+    // База версии до user_version: выплаты без seq, забеги без player_id,
+    // таблица позиций чтения логов.
+    const raw = new DatabaseSync(path);
+    raw.exec(`
+      CREATE TABLE run (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, season_id INTEGER, area_id INTEGER NOT NULL,
+        asset TEXT, level_type INTEGER, started_at INTEGER NOT NULL, ended_at INTEGER,
+        duration_ms INTEGER, is_hub INTEGER NOT NULL, UNIQUE (started_at, area_id));
+      CREATE TABLE receipt (ts INTEGER NOT NULL, fe INTEGER NOT NULL, UNIQUE (ts, fe));
+      CREATE TABLE log_cursor (path TEXT PRIMARY KEY, position INTEGER NOT NULL,
+        size INTEGER NOT NULL, updated_at INTEGER NOT NULL);
+      INSERT INTO receipt (ts, fe) VALUES (1000, 50);
+    `);
+    raw.close();
+
+    const db = new Storage(path);
+    db.saveRuns([run(SEASON_START, SS14, '979862815672193024')], SS14);
+    expect(db.loadRuns()[0]!.playerId).toBe('979862815672193024');
+    expect(db.realizedFe()).toBe(50);
+    // Две одинаковые выплаты в одну миллисекунду — две строки (seq).
+    db.saveTrade([], [
+      { ts: 2000, fe: 7 },
+      { ts: 2000, fe: 7 },
+    ]);
+    expect(db.realizedFe()).toBe(64);
+    db.close();
+
+    const check = new DatabaseSync(path);
+    const version = (check.prepare('PRAGMA user_version').get() as { user_version: number })
+      .user_version;
+    const tables = (
+      check.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all() as Array<{
+        name: string;
+      }>
+    ).map((t) => t.name);
+    check.close();
+    expect(version).toBeGreaterThan(0);
+    expect(tables).not.toContain('log_cursor');
+
+    // Повторное открытие не трогает уже приведённую базу.
+    const again = new Storage(path);
+    expect(again.realizedFe()).toBe(64);
+    again.close();
+  });
 });

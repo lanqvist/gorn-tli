@@ -2,7 +2,9 @@ import { BrowserWindow, screen } from 'electron';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
+import type { Snapshot } from './engine.js';
 import type { SettingsStore } from './settings.js';
+import { ToastFeed } from './toastFeed.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -31,6 +33,8 @@ export class ToastLayer {
   private hideTimer: NodeJS.Timeout | null = null;
   /** Экранная координата нижней кромки — от неё стек растёт вверх. */
   private anchorBottom = 0;
+  /** Урезанный срез и отсев неизменившихся. */
+  private readonly feed = new ToastFeed();
 
   constructor(private readonly settings: SettingsStore) {}
 
@@ -52,6 +56,7 @@ export class ToastLayer {
 
   open(): void {
     if (this.isOpen) return;
+    this.feed.reset();
 
     this.window = new BrowserWindow({
       width: WIDTH,
@@ -124,6 +129,13 @@ export class ToastLayer {
     if (Math.abs(bounds.height - target) < 2) return;
     // Нижняя кромка зафиксирована: окно растёт вверх, от персонажа.
     this.window!.setBounds({ ...bounds, y: this.anchorBottom - target, height: target });
+  }
+
+  /** Срез движка — урезанным и только если для плашек что-то изменилось. */
+  sendSnapshot(snapshot: Snapshot): void {
+    if (!this.isOpen) return;
+    const slim = this.feed.next(snapshot);
+    if (slim) this.window?.webContents.send('snapshot', slim);
   }
 
   send(channel: string, payload: unknown): void {

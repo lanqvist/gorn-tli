@@ -320,7 +320,6 @@ export class Engine extends EventEmitter {
     linesTotal: 0,
     linesMatched: 0,
     unknownProtos: new Map(),
-    unknownItemIds: new Map(),
     slotRebases: 0,
   };
 
@@ -1023,6 +1022,7 @@ export class Engine extends EventEmitter {
     let netFe = 0;
     let inMapMs = 0;
     const rates: number[] = [];
+    const nets: number[] = [];
     const pricing = this.runPricing();
     for (const run of matched) {
       const net = runNet(run, pricing);
@@ -1032,13 +1032,14 @@ export class Engine extends EventEmitter {
       const active = activeDuration(run);
       inMapMs += active;
       rates.push(perHour(net, active));
+      nets.push(net);
     }
 
     return {
       total: matched.length,
       netFe,
       inMapMs,
-      rate: summarize(rates),
+      rate: summarize(rates, nets),
       runs: matched
         .slice(-RUN_QUERY_LIMIT)
         .reverse()
@@ -1464,7 +1465,8 @@ export class Engine extends EventEmitter {
     // раздувает знаменатель и тихо занижает любую цифру «в час».
     // Темп, медианы, рекорды, карты и стратегии — без тюрьмы (isPrisonRun).
     const rated = farming.filter((r) => !isPrisonRun(r));
-    const netRates = rated.map((r) => perHour(runNet(r, pricing), activeDuration(r)));
+    const nets = rated.map((r) => runNet(r, pricing));
+    const netRates = rated.map((r, i) => perHour(nets[i]!, activeDuration(r)));
     const feRates = rated.map((r) => perHour(runFe(r), activeDuration(r)));
 
     let unpricedDrops = 0;
@@ -1495,8 +1497,8 @@ export class Engine extends EventEmitter {
     const aggregates: HistoryAggregates = {
       version: this.version,
       validUntil: this.aggregatesExpireAt(now),
-      rate: summarize(netRates),
-      feRate: summarize(feRates),
+      rate: summarize(netRates, nets),
+      feRate: summarize(feRates, rated.map(runFe)),
       norm: rollingNorm(netRates),
       recent: rated
         .slice(-25)

@@ -22,8 +22,9 @@ export interface RateSummary {
   /** Сколько забегов легло в расчёт. */
   sampleSize: number;
   confidence: Confidence;
-  /** Доля общего дохода, принесённая самым удачным забегом.
-   *  Если она велика — цифра держится на одной находке. */
+  /** Доля всей добычи (сумма положительных чистых ФЕ забегов), принесённая
+   *  самым удачным забегом, в [0, 1]. Если она велика — цифра держится
+   *  на одной находке. */
   topShare: number;
 }
 
@@ -54,9 +55,30 @@ export function median(values: number[]): number {
 }
 
 /**
- * Сводка по набору значений (например, ФЕ/час по каждому забегу).
+ * Доля лучшего в сумме положительных значений, в [0, 1].
+ *
+ * Убыточные забеги в знаменатель не идут: «вся добыча» — это то, что
+ * принесли, а не итог с вычетом трат. С ними знаменатель проседал ниже
+ * лучшего забега, и выходило «один забег дал 120% всей добычи».
  */
-export function summarize(values: number[]): RateSummary {
+export function topShareOf(amounts: number[]): number {
+  let total = 0;
+  let max = 0;
+  for (const v of amounts) {
+    if (!(v > 0)) continue;
+    total += v;
+    if (v > max) max = v;
+  }
+  return total > 0 ? Math.min(1, max / total) : 0;
+}
+
+/**
+ * Сводка по набору значений (например, ФЕ/час по каждому забегу).
+ * amounts — чистые ФЕ тех же забегов: доля лучшего считается по добыче,
+ * а не по темпам (короткий забег с высоким темпом — не «половина добычи»).
+ * Без них доля считается по самим значениям.
+ */
+export function summarize(values: number[], amounts: number[] = values): RateSummary {
   const n = values.length;
   if (n === 0) {
     return {
@@ -71,7 +93,6 @@ export function summarize(values: number[]): RateSummary {
   }
   const sorted = [...values].sort((a, b) => a - b);
   const total = values.reduce((a, b) => a + b, 0);
-  const max = sorted[sorted.length - 1]!;
 
   return {
     median: percentile(sorted, 0.5),
@@ -80,7 +101,7 @@ export function summarize(values: number[]): RateSummary {
     p75: percentile(sorted, 0.75),
     sampleSize: n,
     confidence: confidenceOf(n),
-    topShare: total > 0 ? max / total : 0,
+    topShare: topShareOf(amounts),
   };
 }
 

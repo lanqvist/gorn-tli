@@ -23,6 +23,7 @@ import { IconCache, registerIconScheme } from './icons.js';
 import { Overlay, prefsPayload } from './overlay.js';
 import { Panel, type PanelTab } from './panel.js';
 import { PrisonAssist } from './prison/assist.js';
+import { guardIpc, guardWebContents, isAppUrl } from './security.js';
 import { SettingsStore, type NameLanguage, type OverlayMode } from './settings.js';
 import { SnapshotGate } from './snapshotGate.js';
 import { ToastLayer } from './toastLayer.js';
@@ -47,6 +48,12 @@ app.on('second-instance', () => {
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const isDev = !app.isPackaged;
+
+// Окна не уходят со страниц приложения, а IPC слушает только их.
+const appUrl = (url: string) =>
+  isAppUrl(url, join(__dirname, '../renderer'), isDev ? process.env['VITE_DEV_SERVER_URL'] : undefined);
+guardWebContents(app, appUrl);
+guardIpc(ipcMain, appUrl);
 
 let window: BrowserWindow | null = null;
 let engine: Engine | null = null;
@@ -279,7 +286,7 @@ app.whenReady().then(async () => {
     // Свёрнутому или спрятанному в трей окну — не слать: последний уйдёт при показе.
     windowSnapshots.push(snapshot);
     overlay?.send('snapshot', snapshot);
-    toastLayer?.send('snapshot', snapshot);
+    toastLayer?.sendSnapshot(snapshot);
     // Спрятанному пульту — не слать: последний уйдёт при открытии.
     panel?.pushSnapshot(snapshot);
     debugSink?.record(snapshot);

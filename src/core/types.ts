@@ -223,7 +223,6 @@ export interface Diagnostics {
   linesTotal: number;
   linesMatched: number;
   unknownProtos: Map<string, number>;
-  unknownItemIds: Map<ConfigBaseId, number>;
   /** Дельты, отброшенные из-за смены предмета в слоте. */
   slotRebases: number;
 }

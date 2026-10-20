@@ -243,10 +243,6 @@ export class PriceStore {
     return [...this.history];
   }
 
-  historyOf(configBaseId: ConfigBaseId): PriceRecord[] {
-    return this.history.filter((r) => r.configBaseId === configBaseId);
-  }
-
   get size(): number {
     return this.prices.size;
   }

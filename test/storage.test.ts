@@ -120,7 +120,7 @@ describe('хранилище', () => {
     db.savePrices([record]);
     db.savePrices([record]);
     expect(db.counts().priceRows).toBe(1);
-    expect(db.latestPrice(10042)).toBe(5);
+    expect(db.loadPrices().map((p) => p.fe)).toEqual([5]);
   });
 
   it('история цен хранит наблюдения, а последняя цена берётся по времени', () => {
@@ -144,7 +144,8 @@ describe('хранилище', () => {
         seasonId: 1501,
       },
     ]);
-    expect(db.latestPrice(10042)).toBe(9);
+    expect(db.loadPrices(1501).map((p) => p.fe)).toEqual([9]);
+    expect(db.counts().priceRows).toBe(2);
     expect(db.counts().prices).toBe(1);
   });
 
@@ -182,11 +183,5 @@ describe('хранилище', () => {
     db.resetSession(5000);
     expect(db.counts().runs).toBe(1);
     expect(db.loadRuns()).toHaveLength(1);
-  });
-
-  it('позиция чтения лога переживает перезапуск', () => {
-    db.setCursor('C:/logs/UE_game.log', 12_345, 99_999);
-    expect(db.getCursor('C:/logs/UE_game.log')).toEqual({ position: 12_345, size: 99_999 });
-    expect(db.getCursor('C:/logs/other.log')).toBeNull();
   });
 });

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 
-import type { Snapshot } from '../main/engine.js';
+import type { ToastSnapshot } from '../main/toastFeed.js';
 import { ToastList, useIncomeToasts, type Toast } from './overlay/toasts.js';
 
 const CDN = 'https://cdn.tlidb.com/UI/Textures/Common/Icon';
@@ -75,7 +75,7 @@ const preview =
  * окно стоит композитору дорого, а этот слой большую часть времени пуст.
  */
 export function ToastLayerApp() {
-  const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
+  const [snapshot, setSnapshot] = useState<ToastSnapshot | null>(null);
   const [prefs, setPrefs] = useState<GornOverlayPrefs>({
     popups: true,
     sound: true,

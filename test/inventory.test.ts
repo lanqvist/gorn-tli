@@ -9,7 +9,6 @@ function diag(): Diagnostics {
     linesTotal: 0,
     linesMatched: 0,
     unknownProtos: new Map(),
-    unknownItemIds: new Map(),
     slotRebases: 0,
   };
 }

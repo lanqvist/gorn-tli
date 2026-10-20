@@ -21,6 +21,22 @@ describe('честная статистика', () => {
     expect(s.topShare).toBeCloseTo(0.97, 2);
   });
 
+  it('доля лучшего не выходит за 100% при убыточных забегах', () => {
+    // Сумма с убытками (1200 − 800 − 300 = 100) меньше лучшего забега:
+    // раньше выходило «один забег дал 1200% всей добычи».
+    const s = summarize([1200, -800, -300]);
+    expect(s.topShare).toBeCloseTo(1, 5);
+    expect(summarize([600, 300, 100, -500]).topShare).toBeCloseTo(0.6, 5);
+    expect(summarize([-100, -200]).topShare).toBe(0);
+  });
+
+  it('доля лучшего считается по ФЕ забегов, а не по темпам', () => {
+    // Короткий забег: темп высокий, а добычи немного.
+    const rates = [6000, 1000, 1000];
+    const nets = [100, 450, 450];
+    expect(summarize(rates, nets).topShare).toBeCloseTo(0.45, 5);
+  });
+
   it('бейдж достоверности меняется на осмысленных порогах', () => {
     expect(confidenceOf(1)).toBe('insufficient');
     expect(confidenceOf(14)).toBe('insufficient');

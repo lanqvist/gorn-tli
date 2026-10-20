@@ -78,6 +78,12 @@ export class CommunityPriceFeed {
   private fetchedAt: number | null = null;
   /** Последняя попытка провалилась — живём на кэше. */
   private refreshFailed = false;
+  /**
+   * Поколение сезона: растёт при каждой смене. refresh(), начатый в
+   * прошлом сезоне, после любого await видит чужое поколение и выходит —
+   * иначе он дописывал бы цены старого сезона в новый и двигал его курсор.
+   */
+  private generation = 0;
 
   /**
    * Файл кэша у каждой ленты свой: лента текущего сезона перезаписывает
@@ -152,6 +158,7 @@ export class CommunityPriceFeed {
   private switchSeason(seasonId: number): void {
     if (this.seasonId === seasonId) return;
     this.seasonId = seasonId;
+    this.generation++;
     this.prices.clear();
     this.cursor = null;
     this.fetchedAt = null;
@@ -200,12 +207,16 @@ export class CommunityPriceFeed {
   }
 
   /** Одна страница из PostgREST. Диапазон задаётся заголовком Range. */
-  private async fetchPage(offset: number, since: string | null): Promise<WireRow[]> {
+  private async fetchPage(
+    seasonId: number,
+    offset: number,
+    since: string | null,
+  ): Promise<WireRow[]> {
     // Вторичная сортировка по id: у пачки строк updated_at совпадает
     // (агрегат пересчитывается разом), и без неё порядок между страницами
     // нестабилен — строки терялись бы или приходили дважды.
     const filters = [
-      `season_id=eq.${this.seasonId}`,
+      `season_id=eq.${seasonId}`,
       'order=updated_at.asc,config_base_id.asc',
     ];
     if (since) filters.push(`updated_at=gt.${encodeURIComponent(since)}`);
@@ -233,14 +244,18 @@ export class CommunityPriceFeed {
    * Все ошибки глотаются: сеть может отсутствовать, сервер — переехать.
    */
   async refresh(): Promise<number> {
-    if (this.seasonId === null) return 0;
+    const seasonId = this.seasonId;
+    if (seasonId === null) return 0;
+    const generation = this.generation;
+    const current = () => generation === this.generation;
     try {
       const since = this.cursor;
       let offset = 0;
       let changed = 0;
 
       for (;;) {
-        const rows = await this.fetchPage(offset, since);
+        const rows = await this.fetchPage(seasonId, offset, since);
+        if (!current()) return 0;
         for (const row of rows) {
           if (
             typeof row.config_base_id !== 'number' ||
@@ -277,6 +292,8 @@ export class CommunityPriceFeed {
       this.notify();
       return changed;
     } catch {
+      // Ошибка запроса прошлого сезона к новому отношения не имеет.
+      if (!current()) return 0;
       // Живём на том, что есть: кэш или пусто. Это дополнение, а не база.
       this.refreshFailed = true;
       this.notify();

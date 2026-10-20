@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { tr } from '../../core/i18n.js';
-import type { DropView, RunView, Snapshot } from '../../main/engine.js';
+import type { DropView, RunView } from '../../main/engine.js';
+import type { ToastSnapshot } from '../../main/toastFeed.js';
 import { Fe, FeIcon } from '../components/Fe.js';
 import { clock } from '../format.js';
 import { playDrop, playRecord } from './sound.js';
@@ -145,7 +146,7 @@ export function mergePickup(
 
 let nextId = 1;
 
-export function useIncomeToasts(snapshot: Snapshot | null, opts: ToastOptions): Toast[] {
+export function useIncomeToasts(snapshot: ToastSnapshot | null, opts: ToastOptions): Toast[] {
   const [toasts, setToasts] = useState<Toast[]>([]);
   // Список дублируется в ref: ветке схлопывания нужно синхронно знать,
   // жива ли ещё плашка подбора, а state к этому моменту может отставать.

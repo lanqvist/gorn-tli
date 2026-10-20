@@ -110,15 +110,70 @@ CREATE TABLE IF NOT EXISTS session (
   started_at INTEGER NOT NULL,
   ended_at   INTEGER
 );
-
--- Позиция чтения каждого файла лога, чтобы не разбирать заново.
-CREATE TABLE IF NOT EXISTS log_cursor (
-  path        TEXT PRIMARY KEY,
-  position    INTEGER NOT NULL,
-  size        INTEGER NOT NULL,
-  updated_at  INTEGER NOT NULL
-);
 `;
+
+/**
+ * Миграции баз, созданных прошлыми версиями. Номер выполненной лежит
+ * в PRAGMA user_version, каждая выполняется один раз, в своей транзакции.
+ *
+ * До появления номера (user_version = 0) миграции гонялись на каждом
+ * запуске, поэтому каждая проверяет схему сама и на уже приведённой базе
+ * ничего не делает: так версия старой базы определяется по её схеме,
+ * а новая база, созданная SCHEMA, проходит их вхолостую.
+ *
+ * Добавлять — только в конец: номер миграции — её место в списке.
+ */
+const MIGRATIONS: Array<(db: DatabaseSyncType) => void> = [
+  // 1. Цены: season_id был NULL, а NULL в SQLite не равен NULL, поэтому
+  //    «PRIMARY KEY» не дедуплицировал и каждый запуск плодил дубли.
+  //    Убираем дубли (GROUP BY считает NULL-ы равными) и переводим
+  //    неизвестный сезон в 0.
+  (db) => {
+    db.exec(`
+      DELETE FROM price WHERE rowid NOT IN (
+        SELECT MAX(rowid) FROM price
+        GROUP BY config_base_id, season_id, observed_at
+      )`);
+    db.exec('UPDATE price SET season_id = 0 WHERE season_id IS NULL');
+  },
+
+  // 2. Забеги: добавилась колонка player_id. Старым забегам персонаж
+  //    неизвестен — они остаются NULL и показываются только в режиме
+  //    «все персонажи»; ретро-скан уцелевших логов проставит их заново.
+  (db) => {
+    if (!hasColumn(db, 'run', 'player_id')) {
+      db.exec('ALTER TABLE run ADD COLUMN player_id TEXT');
+    }
+  },
+
+  // 3. Выплаты: добавилась колонка seq. UNIQUE-ограничение старой таблицы
+  //    снять нельзя, поэтому таблица пересоздаётся.
+  (db) => {
+    if (hasColumn(db, 'receipt', 'seq')) return;
+    db.exec(`
+      CREATE TABLE receipt_migrated (
+        ts   INTEGER NOT NULL,
+        fe   INTEGER NOT NULL,
+        seq  INTEGER NOT NULL DEFAULT 0,
+        UNIQUE (ts, fe, seq)
+      );
+      INSERT INTO receipt_migrated (ts, fe, seq) SELECT ts, fe, 0 FROM receipt;
+      DROP TABLE receipt;
+      ALTER TABLE receipt_migrated RENAME TO receipt;
+    `);
+  },
+
+  // 4. Позиции чтения логов (log_cursor) так и не понадобились: хвост
+  //    читается от конца файла, история — ретро-сканом.
+  (db) => {
+    db.exec('DROP TABLE IF EXISTS log_cursor');
+  },
+];
+
+function hasColumn(db: DatabaseSyncType, table: string, column: string): boolean {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>;
+  return cols.some((c) => c.name === column);
+}
 
 /**
  * node:sqlite грузим через createRequire: сборщики (Vite под vitest) не знают
@@ -142,74 +197,72 @@ export class Storage {
 
   /** Приведение баз, созданных прошлыми версиями, к текущей схеме. */
   private migrate(): void {
-    // 1. Цены: season_id был NULL, а NULL в SQLite не равен NULL, поэтому
-    //    «PRIMARY KEY» не дедуплицировал и каждый запуск плодил дубли.
-    //    Убираем дубли (GROUP BY считает NULL-ы равными) и переводим
-    //    неизвестный сезон в 0.
-    try {
-      this.db.exec(`
-        DELETE FROM price WHERE rowid NOT IN (
-          SELECT MAX(rowid) FROM price
-          GROUP BY config_base_id, season_id, observed_at
-        )`);
-      this.db.exec('UPDATE price SET season_id = 0 WHERE season_id IS NULL');
-    } catch {
-      // Старой таблицы может не быть вовсе — тогда мигрировать нечего.
+    const { user_version: version } = this.db.prepare('PRAGMA user_version').get() as {
+      user_version: number;
+    };
+    for (let v = version; v < MIGRATIONS.length; v++) {
+      this.db.exec('BEGIN');
+      try {
+        MIGRATIONS[v]!(this.db);
+        this.db.exec(`PRAGMA user_version = ${v + 1}`);
+        this.db.exec('COMMIT');
+      } catch (err) {
+        this.db.exec('ROLLBACK');
+        throw err;
+      }
     }
+    this.repairSeasons();
+  }
 
-    // 2. Забеги: добавилась колонка player_id. Старым забегам персонаж
-    //    неизвестен — они остаются NULL и показываются только в режиме
-    //    «все персонажи»; ретро-скан уцелевших логов проставит их заново.
-    const runCols = this.db.prepare('PRAGMA table_info(run)').all() as Array<{
-      name: string;
-    }>;
-    if (!runCols.some((c) => c.name === 'player_id')) {
-      this.db.exec('ALTER TABLE run ADD COLUMN player_id TEXT');
-    }
-
-    // 3. Сезон забега: старые версии писали NULL, если в файле не было
-    //    профиля. Персонаж живёт ровно в одном сезоне — сезон берём у него.
-    //    Только для NULL: уже проставленный сезон не трогаем.
+  /**
+   * Досведение сезонов — не миграция, а ремонт данных: на каждом запуске.
+   * Строки без сезона пишет и нынешний код — ретро-скан файла без строки
+   * профиля, забег до первой строки с сезоном, — и чинятся они, когда
+   * сезон становится известен по соседним данным. Без подходящих строк
+   * оба запроса ничего не меняют.
+   */
+  private repairSeasons(): void {
+    // Сезон забега: если в файле не было профиля, сезон NULL. Персонаж
+    // живёт ровно в одном сезоне — сезон берём у него. Только для NULL:
+    // уже проставленный сезон не трогаем.
     this.db.exec(`
       UPDATE run SET season_id = (
         SELECT p.season_id FROM player p WHERE p.player_id = run.player_id
       )
       WHERE season_id IS NULL AND player_id IS NOT NULL`);
 
-    // 4. Свои пробивки цен писались без сезона (0), и цена прошлого сезона
-    //    тихо подставлялась в новом. Сезон пробивки — сезон последнего
-    //    забега, начатого до неё; пробивки старше всех забегов остаются 0
-    //    и в оценку текущего сезона не попадают.
-    this.db.exec(`
-      UPDATE OR REPLACE price SET season_id = (
-        SELECT r.season_id FROM run r
-        WHERE r.season_id IS NOT NULL AND r.started_at <= price.observed_at
-        ORDER BY r.started_at DESC LIMIT 1
-      )
-      WHERE season_id = 0 AND EXISTS (
-        SELECT 1 FROM run r
-        WHERE r.season_id IS NOT NULL AND r.started_at <= price.observed_at
-      )`);
-
-    // 5. Выплаты: добавилась колонка seq. UNIQUE-ограничение старой таблицы
-    //    снять нельзя, поэтому таблица пересоздаётся.
-    const cols = this.db.prepare('PRAGMA table_info(receipt)').all() as Array<{
-      name: string;
-    }>;
-    if (!cols.some((c) => c.name === 'seq')) {
+    // Свои пробивки без сезона (0): иначе цена прошлого сезона тихо
+    // подставлялась бы в новом. Сезон пробивки — сезон последнего забега,
+    // начатого до неё; пробивки старше всех забегов остаются 0 и в оценку
+    // текущего сезона не попадают.
+    //
+    // OR IGNORE, а не OR REPLACE: при конфликте REPLACE молча удалял уже
+    // лежащую строку с сезоном. Конфликт значит, что та же пробивка
+    // (предмет, время) уже записана с сезоном, — удаляем явно бессезонный
+    // двойник, а строка с сезоном остаётся.
+    this.db.exec('BEGIN');
+    try {
       this.db.exec(`
-        BEGIN;
-        CREATE TABLE receipt_migrated (
-          ts   INTEGER NOT NULL,
-          fe   INTEGER NOT NULL,
-          seq  INTEGER NOT NULL DEFAULT 0,
-          UNIQUE (ts, fe, seq)
-        );
-        INSERT INTO receipt_migrated (ts, fe, seq) SELECT ts, fe, 0 FROM receipt;
-        DROP TABLE receipt;
-        ALTER TABLE receipt_migrated RENAME TO receipt;
-        COMMIT;
-      `);
+        UPDATE OR IGNORE price SET season_id = (
+          SELECT r.season_id FROM run r
+          WHERE r.season_id IS NOT NULL AND r.started_at <= price.observed_at
+          ORDER BY r.started_at DESC LIMIT 1
+        )
+        WHERE season_id = 0 AND EXISTS (
+          SELECT 1 FROM run r
+          WHERE r.season_id IS NOT NULL AND r.started_at <= price.observed_at
+        )`);
+      this.db.exec(`
+        DELETE FROM price WHERE season_id = 0 AND EXISTS (
+          SELECT 1 FROM price p
+          WHERE p.config_base_id = price.config_base_id
+            AND p.observed_at = price.observed_at
+            AND p.season_id <> 0
+        )`);
+      this.db.exec('COMMIT');
+    } catch (err) {
+      this.db.exec('ROLLBACK');
+      throw err;
     }
   }
 
@@ -581,14 +634,6 @@ export class Storage {
       .reverse();
   }
 
-  /** Последняя известная цена предмета. */
-  latestPrice(configBaseId: ConfigBaseId): number | null {
-    const row = this.db
-      .prepare('SELECT fe FROM price WHERE config_base_id = ? ORDER BY observed_at DESC LIMIT 1')
-      .get(configBaseId) as { fe: number } | undefined;
-    return row?.fe ?? null;
-  }
-
   counts(): Record<string, number> {
     const one = (sql: string) => (this.db.prepare(sql).get() as { n: number }).n;
     return {
@@ -658,22 +703,6 @@ export class Storage {
       )
       .get() as { started_at: number; ended_at: number } | undefined;
     return row ? { startedAt: row.started_at, endedAt: row.ended_at } : null;
-  }
-
-  setCursor(path: string, position: number, size: number): void {
-    this.db
-      .prepare(
-        `INSERT OR REPLACE INTO log_cursor (path, position, size, updated_at)
-         VALUES (?, ?, ?, ?)`,
-      )
-      .run(path, position, size, Date.now());
-  }
-
-  getCursor(path: string): { position: number; size: number } | null {
-    const row = this.db
-      .prepare('SELECT position, size FROM log_cursor WHERE path = ?')
-      .get(path) as { position: number; size: number } | undefined;
-    return row ?? null;
   }
 
   close(): void {

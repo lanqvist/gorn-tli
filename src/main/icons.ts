@@ -1,8 +1,9 @@
 import { net, protocol } from 'electron';
-import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { mkdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 import type { ConfigBaseId } from '../core/types.js';
+import { isWebp, readCachedIcon, writeFileAtomic } from './iconFile.js';
 
 /**
  * Локальный кэш иконок предметов.
@@ -70,13 +71,11 @@ export class IconCache {
 
   private async get(id: ConfigBaseId): Promise<Buffer | null> {
     const file = join(this.dir, `${id}.webp`);
-    if (existsSync(file)) {
-      try {
-        return readFileSync(file);
-      } catch {
-        // Битый файл в кэше — перекачаем.
-      }
-    }
+    // Чтение асинхронное: обработчик схемы живёт в главном потоке main,
+    // и синхронный диск на десятках иконок списка подвешивал бы IPC.
+    // Нет файла или он битый — перекачаем.
+    const cached = await readCachedIcon(file);
+    if (cached) return cached;
     if (this.failed.has(id)) return null;
 
     const pending = this.inFlight.get(id);
@@ -106,7 +105,11 @@ export class IconCache {
         return null;
       }
       const data = Buffer.from(await response.arrayBuffer());
-      writeFileSync(file, data);
+      // Не картинка (страница-заглушка, обрыв) — не кэшируем и не отдаём;
+      // попробуем в следующий раз.
+      if (!isWebp(data)) return null;
+      // Не записалось — иконку всё равно отдаём, кэш просто не пополнится.
+      await writeFileAtomic(file, data).catch(() => {});
       return data;
     } catch {
       // Нет интернета — не помечаем как безнадёжную, попробуем в следующий раз.
