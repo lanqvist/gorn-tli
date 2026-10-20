@@ -149,6 +149,7 @@ beforeEach(async () => {
     ],
     lastPlayerId: 'p14',
     currentLog: null,
+    segmenter: null,
   } satisfies RetroScanResult;
 
   engine = new Engine(dir, [

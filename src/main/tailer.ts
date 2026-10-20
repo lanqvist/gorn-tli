@@ -1,4 +1,4 @@
-import { createReadStream, statSync, watch, type FSWatcher } from 'node:fs';
+import { closeSync, createReadStream, openSync, readSync, statSync, watch, type FSWatcher } from 'node:fs';
 import { StringDecoder } from 'node:string_decoder';
 
 /**
@@ -43,6 +43,12 @@ export class LogTailer {
   private stopped = false;
   /** Хвост неполной строки, дописанной игрой не до конца. */
   private carry = '';
+  /**
+   * Старт с конца файла пришёлся на середину строки: её начало осталось
+   * до стартовой позиции, и первый кусок до перевода строки — обрубок.
+   * «Num = 1» от «Num = 151» дал бы фантомный прирост.
+   */
+  private skipPartial = false;
 
   constructor(
     private readonly path: string,
@@ -56,6 +62,7 @@ export class LogTailer {
     } else {
       try {
         this.position = this.options.fromStart ? 0 : statSync(this.path).size;
+        this.skipPartial = this.position > 0 && !this.endsWithNewline(this.position);
       } catch {
         // Файла ещё нет или он мгновение заблокирован. Раньше здесь ставился
         // ноль, и при живом файле первый же pump скармливал движку ВЕСЬ лог —
@@ -68,6 +75,12 @@ export class LogTailer {
     try {
       this.watcher = watch(this.path, { persistent: false }, () => {
         void this.pump();
+      });
+      // Без обработчика ошибка наблюдателя (файл удалён при ротации,
+      // EPERM на Windows) роняла бы процесс. Опрос справится и один.
+      this.watcher.on('error', () => {
+        this.watcher?.close();
+        this.watcher = null;
       });
     } catch {
       // Файла может не быть, пока игра не запущена — работаем на опросе.
@@ -107,6 +120,7 @@ export class LogTailer {
       if (size < this.position) {
         this.position = 0;
         this.carry = '';
+        this.skipPartial = false;
         this.decoder = new StringDecoder('utf8');
         this.options.onRotate?.();
       }
@@ -144,6 +158,10 @@ export class LogTailer {
         // Последний элемент — это либо пустая строка после финального
         // перевода строки, либо недописанная строка. И то и другое ждёт.
         this.carry = parts.pop() ?? '';
+        if (this.skipPartial && parts.length > 0) {
+          parts.shift();
+          this.skipPartial = false;
+        }
         resolve(parts);
       });
       stream.on('error', reject);
@@ -151,6 +169,21 @@ export class LogTailer {
   }
 
   private decoder = new StringDecoder('utf8');
+
+  /** Байт перед позицией — перевод строки, то есть позиция на границе строк. */
+  private endsWithNewline(position: number): boolean {
+    let fd: number | null = null;
+    try {
+      fd = openSync(this.path, 'r');
+      const byte = Buffer.alloc(1);
+      readSync(fd, byte, 0, 1, position - 1);
+      return byte[0] === 0x0a;
+    } catch {
+      return true;
+    } finally {
+      if (fd !== null) closeSync(fd);
+    }
+  }
 
   get currentPosition(): number {
     return this.position;

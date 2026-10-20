@@ -226,7 +226,15 @@ function syncTray(): void {
  */
 async function tryStartEngine(): Promise<void> {
   if (!engine || engine.isBooted) return;
-  await engine.start(settings?.logDir);
+  try {
+    await engine.start(settings?.logDir);
+  } catch (err) {
+    // Движок уже показал «ищу игру» с причиной и снял флаг запуска —
+    // автоповтор поиска попробует снова. Исключение здесь оборвало бы
+    // whenReady до регистрации повтора и проверки обновлений.
+    console.error('[движок] не удалось разобрать логи', err);
+    return;
+  }
   if (engine.isBooted) {
     // Иконки виденных предметов подтягиваем фоном, чтобы они уже лежали
     // на диске к моменту, когда игрок войдёт в карту.

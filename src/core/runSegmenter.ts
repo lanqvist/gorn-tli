@@ -2,6 +2,29 @@ import { isChallengeLevel, isHubAsset } from './patterns.js';
 import type { EnterLevelEvent, ItemDelta, Run } from './types.js';
 
 /**
+ * Незакрытое состояние нарезки на конец разобранного лога. Передаётся
+ * живому дочитыванию того же файла: иначе запуск посреди карты терял
+ * добычу до выхода из неё, а запуск между заходами через портал резал
+ * одну карту на два забега.
+ */
+export interface SegmenterState {
+  /** Открытый забег — продолжается живым дочитыванием. */
+  current: Run | null;
+  /** Закрытые забеги, в которые ещё можно вернуться порталом. */
+  resumable: Run[];
+  pendingCosts: ItemDelta[];
+  pendingAsset: string | null;
+  pendingLevelType: number | null;
+  playerId: string | null;
+  seasonId: number | null;
+}
+
+/** Копия забега: живой сегментер дописывает свою, не трогая историю. */
+function cloneRun(run: Run): Run {
+  return { ...run, drops: [...run.drops], costs: [...run.costs] };
+}
+
+/**
  * Режет поток событий на забеги.
  *
  * Забег — отрезок между входом в зону и входом в следующую.
@@ -158,6 +181,40 @@ export class RunSegmenter {
     this.current.durationMs = ts - this.current.startedAt;
     this.runs.push(this.current);
     this.current = null;
+  }
+
+  /**
+   * Состояние на конец разобранного файла. Закрытые забеги отдаются
+   * только те, в которые на момент lastTs ещё можно вернуться порталом.
+   */
+  exportState(lastTs: number): SegmenterState {
+    return {
+      current: this.current ? cloneRun(this.current) : null,
+      resumable: this.runs
+        .filter((r) => r.endedAt !== null && lastTs - r.endedAt <= RunSegmenter.RESUME_TTL_MS)
+        .map(cloneRun),
+      pendingCosts: [...this.pendingCosts],
+      pendingAsset: this.pendingAsset,
+      pendingLevelType: this.pendingLevelType,
+      playerId: this.playerId,
+      seasonId: this.seasonId,
+    };
+  }
+
+  /** Продолжить нарезку с того места, где остановился разбор файла. */
+  importState(state: SegmenterState): void {
+    this.runs = state.resumable.map(cloneRun);
+    this.current = state.current ? cloneRun(state.current) : null;
+    this.pendingCosts = [...state.pendingCosts];
+    this.pendingAsset = state.pendingAsset;
+    this.pendingLevelType = state.pendingLevelType;
+    this.playerId = state.playerId;
+    this.seasonId = state.seasonId;
+  }
+
+  /** Закрытые забеги — без открытого. */
+  get closed(): Run[] {
+    return this.runs;
   }
 
   /** Завершает открытый забег. Вызывать в конце файла. */

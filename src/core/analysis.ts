@@ -60,7 +60,28 @@ export function runKey(run: Run): string {
 export function mergeRuns(...lists: Run[][]): Run[] {
   const byKey = new Map<string, Run>();
   for (const list of lists) for (const run of list) byKey.set(runKey(run), run);
-  return [...byKey.values()].sort((a, b) => a.startedAt - b.startedAt);
+  return dropNested([...byKey.values()].sort((a, b) => a.startedAt - b.startedAt));
+}
+
+/**
+ * Убирает забеги, целиком лежащие внутри другого забега той же зоны.
+ *
+ * Один разбор таких не даёт: внутри карты между уходом в город и возвратом
+ * бывают только хабы. Они остаются от прошлых версий: трекер, запущенный
+ * между заходами через портал, записывал вторую половину карты отдельным
+ * забегом, а следующий полный разбор склеивал карту целиком — и половина
+ * с другим ключом считалась второй раз. На входе — забеги по началу.
+ */
+function dropNested(sorted: Run[]): Run[] {
+  // Самый поздний конец закрытой карты зоны среди начатых раньше.
+  const reach = new Map<number, number>();
+  return sorted.filter((run) => {
+    if (run.isHub || run.endedAt === null) return true;
+    const end = reach.get(run.areaId);
+    if (end !== undefined && run.endedAt <= end) return false;
+    reach.set(run.areaId, run.endedAt);
+    return true;
+  });
 }
 
 /**

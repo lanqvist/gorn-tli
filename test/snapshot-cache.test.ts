@@ -216,6 +216,7 @@ beforeEach(async () => {
     players: [{ playerId: 'p1', name: null, heroId: null, level: 90, seasonId: SS14, lastSeenAt: NOW - HOUR }],
     lastPlayerId: 'p1',
     currentLog: null,
+    segmenter: null,
   } satisfies RetroScanResult;
 
   engine = new Engine(dir, [

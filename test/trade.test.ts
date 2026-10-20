@@ -168,7 +168,7 @@ describe('слияние торговых событий', () => {
       slotId: 3,
     });
     // Отозванный и выставленный заново лот не должен считаться дважды.
-    expect(ledger.listings).toHaveLength(0);
+    expect(ledger.activeListings()).toHaveLength(0);
   });
 });
 

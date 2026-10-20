@@ -5,10 +5,10 @@ import { dirname } from 'node:path';
 import type { DatabaseSync as DatabaseSyncType } from 'node:sqlite';
 
 import type { PriceRecord } from '../core/priceStore.js';
-import type { Listing, Receipt } from '../core/trade.js';
+import type { Listing, Recall, Receipt } from '../core/trade.js';
 import type { ConfigBaseId, PlayerProfile, Run } from '../core/types.js';
 
-export type { Listing, Receipt };
+export type { Listing, Recall, Receipt };
 
 /**
  * Хранилище разобранной истории.
@@ -91,6 +91,16 @@ CREATE TABLE IF NOT EXISTS listing (
   config_base_id  INTEGER NOT NULL,
   qty             INTEGER NOT NULL,
   UNIQUE (ts, config_base_id, qty)
+);
+
+-- Отзывы лотов — событиями, как в логе: действующие лоты получаются
+-- вычитанием при загрузке (applyRecalls). seq — как у выплат.
+CREATE TABLE IF NOT EXISTS listing_recall (
+  ts              INTEGER NOT NULL,
+  config_base_id  INTEGER NOT NULL,
+  qty             INTEGER NOT NULL,
+  seq             INTEGER NOT NULL DEFAULT 0,
+  UNIQUE (ts, config_base_id, qty, seq)
 );
 
 -- seq различает одинаковые выплаты в одну миллисекунду: выкуп двух
@@ -211,6 +221,40 @@ export class Storage {
         COMMIT;
       `);
     }
+
+    // 6. Половины карт, записанные отдельным забегом рядом с целой картой.
+    this.dropNestedRuns();
+
+    // 7. Частично отозванный лот прошлые версии уменьшали на месте, и
+    //    повторный разбор лога дописывал его второй строкой с меньшим
+    //    количеством. Одно выставление — одна строка лога: из строк
+    //    с тем же временем и предметом настоящая — с наибольшим количеством.
+    this.db.exec(`
+      DELETE FROM listing WHERE EXISTS (
+        SELECT 1 FROM listing o
+        WHERE o.ts = listing.ts AND o.config_base_id = listing.config_base_id
+          AND o.qty > listing.qty
+      )`);
+  }
+
+  /**
+   * Удаляет забеги, целиком лежащие внутри другого забега той же зоны
+   * (см. mergeRuns): прошлые версии писали вторую половину карты после
+   * захода через портал отдельно, а повторный разбор — карту целиком.
+   * Состав удаляется каскадом.
+   */
+  private dropNestedRuns(): void {
+    this.db.exec(`
+      DELETE FROM run WHERE id IN (
+        SELECT id FROM (
+          SELECT id, ended_at,
+                 MAX(ended_at) OVER (
+                   PARTITION BY area_id ORDER BY started_at
+                   ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
+                 ) AS reach
+          FROM run WHERE is_hub = 0 AND ended_at IS NOT NULL
+        ) WHERE reach IS NOT NULL AND ended_at <= reach
+      )`);
   }
 
   /**
@@ -318,6 +362,8 @@ export class Storage {
       this.db.exec('ROLLBACK');
       throw err;
     }
+    // Целая карта пришла после своей половины, записанной раньше отдельно.
+    if (saved > 0) this.dropNestedRuns();
     return saved;
   }
 
@@ -350,12 +396,15 @@ export class Storage {
     return records.length;
   }
 
-  saveTrade(listings: Listing[], receipts: Receipt[]): void {
+  saveTrade(listings: Listing[], receipts: Receipt[], recalls: Recall[] = []): void {
     const insertListing = this.db.prepare(
       'INSERT OR IGNORE INTO listing (ts, config_base_id, qty) VALUES (?, ?, ?)',
     );
     const insertReceipt = this.db.prepare(
       'INSERT OR IGNORE INTO receipt (ts, fe, seq) VALUES (?, ?, ?)',
+    );
+    const insertRecall = this.db.prepare(
+      'INSERT OR IGNORE INTO listing_recall (ts, config_base_id, qty, seq) VALUES (?, ?, ?, ?)',
     );
     this.db.exec('BEGIN');
     try {
@@ -368,6 +417,13 @@ export class Storage {
         const n = seq.get(key) ?? 0;
         seq.set(key, n + 1);
         insertReceipt.run(r.ts, r.fe, n);
+      }
+      const recallSeq = new Map<string, number>();
+      for (const r of recalls) {
+        const key = `${r.ts}:${r.configBaseId}:${r.qty}`;
+        const n = recallSeq.get(key) ?? 0;
+        recallSeq.set(key, n + 1);
+        insertRecall.run(r.ts, r.configBaseId, r.qty, n);
       }
       this.db.exec('COMMIT');
     } catch (err) {
@@ -501,7 +557,7 @@ export class Storage {
     }));
   }
 
-  loadTrade(): { listings: Listing[]; receipts: Receipt[] } {
+  loadTrade(): { listings: Listing[]; receipts: Receipt[]; recalls: Recall[] } {
     const listings = (
       this.db.prepare('SELECT ts, config_base_id, qty FROM listing').all() as Array<{
         ts: number;
@@ -514,7 +570,15 @@ export class Storage {
       this.db.prepare('SELECT ts, fe FROM receipt').all() as Array<{ ts: number; fe: number }>
     ).map((r) => ({ ts: r.ts, fe: r.fe }));
 
-    return { listings, receipts };
+    const recalls = (
+      this.db.prepare('SELECT ts, config_base_id, qty FROM listing_recall').all() as Array<{
+        ts: number;
+        config_base_id: number;
+        qty: number;
+      }>
+    ).map((r) => ({ ts: r.ts, configBaseId: r.config_base_id, qty: r.qty }));
+
+    return { listings, receipts, recalls };
   }
 
   /**

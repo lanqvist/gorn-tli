@@ -1,4 +1,5 @@
 import { EventEmitter } from 'node:events';
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 import {
@@ -55,7 +56,7 @@ import { tr, uiLanguage } from '../core/i18n.js';
 import { retroScan, runCost, runValue } from '../core/retroScan.js';
 import { RunSegmenter } from '../core/runSegmenter.js';
 import { percentile, perHour, summarize, type RateSummary } from '../core/stats.js';
-import { TradeLedger, mergeByKey } from '../core/trade.js';
+import { TradeLedger, mergeByKey, recallKey } from '../core/trade.js';
 import {
   FE_ID,
   mergePlayerInfo,
@@ -121,7 +122,14 @@ export interface RunView {
   areaId: number;
   name: string;
   startedAt: number;
+  /** Полная длительность — для таймера. У открытого забега null. */
   durationMs: number | null;
+  /**
+   * Активное время без простоя (activeDuration), у открытого — до сейчас.
+   * По нему считаются perHour, медиана, норма и поиск: иначе забег
+   * с перекуром сравнивался с нормой, из которой перекуры вычтены.
+   */
+  activeMs: number;
   feGained: number;
   valueFe: number;
   costFe: number;
@@ -507,13 +515,38 @@ export class Engine extends EventEmitter {
    */
   async start(logDirOverride?: string | null): Promise<void> {
     if (this.booted) return;
-    this.logDir = logDirOverride ?? findLogDirectory();
+    // Вручную указанная папка могла исчезнуть (игру переустановили или
+    // перенесли) — тогда ищем установку сами, а не падаем на ней.
+    const override = logDirOverride && existsSync(logDirOverride) ? logDirOverride : null;
+    this.logDir = override ?? findLogDirectory();
     if (!this.logDir) {
       this.emit('snapshot', this.snapshot('searching', tr('Не нашёл установленную игру', 'Game installation not found')));
       return;
     }
+    // Флаг ставится до первого await: повторный вызов, пока идёт разбор,
+    // не должен начать второй. При сбое он снимается — иначе «Разбираю
+    // логи…» висело бы навсегда, а автоповтор поиска считал бы движок
+    // запущенным.
     this.booted = true;
+    try {
+      await this.boot(this.logDir);
+    } catch (err) {
+      this.booted = false;
+      this.emit(
+        'snapshot',
+        this.snapshot(
+          'searching',
+          tr(
+            `Не удалось прочитать папку логов: ${(err as Error).message}. Укажите папку игры в настройках.`,
+            `Could not read the log folder: ${(err as Error).message}. Pick the game folder in settings.`,
+          ),
+        ),
+      );
+      throw err;
+    }
+  }
 
+  private async boot(logDir: string): Promise<void> {
     this.sessionStartedAt = this.storage.activeSessionStart();
     this.previousSession = this.storage.previousSession();
     this.sessions = this.storage.listSessions();
@@ -525,7 +558,7 @@ export class Engine extends EventEmitter {
 
     // Прогресс уходит наверх: на большой пачке логов статичная заглушка
     // неотличима от зависания.
-    const scan = await retroScan(this.logDir, (p) => this.emit('scanProgress', p), {
+    const scan = await retroScan(logDir, (p) => this.emit('scanProgress', p), {
       isMapKey: this.isMapKey,
     });
     // Сезон — из ПОСЛЕДНЕГО файла. Первый элемент seasonIds — самый старый:
@@ -549,6 +582,11 @@ export class Engine extends EventEmitter {
     this.trade.receipts.push(
       ...mergeByKey([storedTrade.receipts, scan.trade.receipts], (r) => `${r.ts}:${r.fe}`),
     );
+    // Отзывы — тоже из обоих источников: из базы они возвращаются после
+    // того, как лог с ними удалён игрой.
+    this.trade.recalls.push(
+      ...mergeByKey([storedTrade.recalls, scan.trade.recalls], recallKey),
+    );
     for (const [proto, n] of scan.unknownProtos) {
       this.diagnostics.unknownProtos.set(proto, n);
     }
@@ -557,12 +595,18 @@ export class Engine extends EventEmitter {
     this.storage.savePrices(scan.prices.observations());
     // Свои пробивки — только текущего сезона: база уже знает сезон каждой.
     this.loadSeasonPrices();
-    this.storage.saveTrade(scan.trade.listings, scan.trade.receipts);
+    this.storage.saveTrade(scan.trade.listings, scan.trade.receipts, scan.trade.recalls);
     // Торговля из базы и из логов теперь записана целиком.
     this.markTradePersisted();
     this.storage.savePlayers(scan.players);
     for (const p of this.storage.loadPlayers()) this.knownPlayers.set(p.playerId, p);
 
+    // Нарезка текущего лога продолжается с того места, где её оставил
+    // разбор: открытый забег, вложения в ожидании карты, забеги, куда
+    // можно вернуться порталом. Иначе запуск посреди карты терял добычу
+    // до выхода из неё, а запуск между заходами через портал резал карту
+    // на два забега.
+    if (scan.segmenter) this.segmenter.importState(scan.segmenter);
     // Кем зашли в последнем файле — с этим персонажем продолжает живое
     // дочитывание: перезахода может не быть ещё несколько часов.
     if (scan.lastPlayerId !== null) {
@@ -839,14 +883,20 @@ export class Engine extends EventEmitter {
       this.trade.receipts.filter((r) => !this.persistedTrade.has(r)).map((r) => r.ts),
     );
     const receipts = this.trade.receipts.filter((r) => freshTs.has(r.ts));
-    if (listings.length === 0 && receipts.length === 0) return;
-    this.storage.saveTrade(listings, receipts);
+    // Отзывы — так же, вместе с записанными соседями той же миллисекунды.
+    const freshRecalls = new Set(
+      this.trade.recalls.filter((r) => !this.persistedTrade.has(r)).map((r) => r.ts),
+    );
+    const recalls = this.trade.recalls.filter((r) => freshRecalls.has(r.ts));
+    if (listings.length === 0 && receipts.length === 0 && recalls.length === 0) return;
+    this.storage.saveTrade(listings, receipts, recalls);
     this.markTradePersisted();
   }
 
   private markTradePersisted(): void {
     for (const l of this.trade.listings) this.persistedTrade.add(l);
     for (const r of this.trade.receipts) this.persistedTrade.add(r);
+    for (const r of this.trade.recalls) this.persistedTrade.add(r);
   }
 
   /** Предметы, которые игроку уже падали или которые он выставлял. */
@@ -1233,7 +1283,7 @@ export class Engine extends EventEmitter {
     const costFe = runCost(run, priceOf);
     const netFe = valueFe - costFe;
 
-    const duration = run.durationMs ?? (run.endedAt === null ? Date.now() - run.startedAt : 0);
+    const active = activeDuration(run, undefined, run.endedAt === null ? Date.now() : undefined);
 
     return {
       key: runKey(run),
@@ -1241,11 +1291,12 @@ export class Engine extends EventEmitter {
       name: this.runName(run),
       startedAt: run.startedAt,
       durationMs: run.durationMs,
+      activeMs: active,
       feGained,
       valueFe,
       costFe,
       netFe,
-      perHour: perHour(netFe, duration),
+      perHour: perHour(netFe, active),
       drops: this.itemViews(run.drops, season),
       costs: this.itemViews(run.costs, season),
       ...(isPrisonRun(run) ? { prison: true } : {}),
@@ -1298,10 +1349,15 @@ export class Engine extends EventEmitter {
 
     // Дедупликация истории и живых забегов по ключу: перестраховка от
     // задвоения при повторном разборе того же лога. Живой разбор свежее.
+    // Забег, вновь открытый порталом, лежит в истории закрытой копией —
+    // пока он открыт, она не считается: его добыча уже в открытом.
+    const live = this.segmenter.all;
+    const open = live.find((r) => r.endedAt === null);
+    const openKey = open ? runKey(open) : null;
     const allRuns = mergeRuns(
       this.history,
-      this.segmenter.all.filter((r) => r.endedAt !== null),
-    );
+      live.filter((r) => r.endedAt !== null),
+    ).filter((r) => runKey(r) !== openKey);
 
     // Фильтр по персонажу и сезону режет всё, что построено на забегах.
     // Забеги без атрибуции (старые логи) видны только в режиме «все сезоны».

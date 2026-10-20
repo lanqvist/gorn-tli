@@ -25,6 +25,13 @@ export interface Listing {
   qty: number;
 }
 
+/** Отзыв лота: предмет вернулся с витрины в сумку, продажи не было. */
+export interface Recall {
+  ts: number;
+  configBaseId: ConfigBaseId;
+  qty: number;
+}
+
 export interface Receipt {
   ts: number;
   /** Сколько ФЕ пришло. Уже за вычетом комиссии биржи. */
@@ -77,10 +84,68 @@ export function mergeByKey<T>(sources: T[][], keyOf: (item: T) => string): T[] {
   return [...best.values()].flat();
 }
 
+/** Ключ отзыва для слияния источников (mergeByKey). */
+export function recallKey(r: Recall): string {
+  return `${r.ts}:${r.configBaseId}:${r.qty}`;
+}
+
+/**
+ * Действующие лоты: выставления минус отзывы, по порядку времени. Отзыв
+ * снимает сначала лот с тем же количеством, иначе уменьшает последний лот
+ * предмета, выставленный до него.
+ *
+ * Выставления и отзывы хранятся как есть, событиями. Раньше отзыв правил
+ * лот на месте, только в памяти: в базе строка оставалась, и при следующем
+ * запуске слияние с базой воскрешало отозванный лот, а частично отозванный
+ * (другое количество — другой ключ) задваивало.
+ */
+export function applyRecalls(listings: Listing[], recalls: Recall[]): Listing[] {
+  if (recalls.length === 0) return listings;
+  const active = [...listings].sort((a, b) => a.ts - b.ts).map((l) => ({ ...l }));
+  const ordered = [...recalls].sort((a, b) => a.ts - b.ts);
+  for (const recall of ordered) {
+    // Отзывать можно только то, что уже выставлено.
+    let upto = active.length;
+    while (upto > 0 && active[upto - 1]!.ts > recall.ts) upto--;
+    removeListing(active, upto, recall.configBaseId, recall.qty);
+  }
+  return active;
+}
+
+function removeListing(
+  listings: Listing[],
+  upto: number,
+  configBaseId: ConfigBaseId,
+  qty: number,
+): void {
+  for (let i = upto - 1; i >= 0; i--) {
+    const l = listings[i]!;
+    if (l.configBaseId !== configBaseId) continue;
+    if (l.qty === qty) {
+      listings.splice(i, 1);
+      return;
+    }
+  }
+  for (let i = upto - 1; i >= 0; i--) {
+    const l = listings[i]!;
+    if (l.configBaseId !== configBaseId) continue;
+    if (l.qty > qty) l.qty -= qty;
+    else listings.splice(i, 1);
+    return;
+  }
+}
+
 export class TradeLedger {
+  /** Все выставления как были — без учёта отзывов (см. activeListings). */
   readonly listings: Listing[] = [];
+  readonly recalls: Recall[] = [];
   readonly receipts: Receipt[] = [];
   readonly purchases: Purchase[] = [];
+
+  /** Действующие лоты: выставления за вычетом отзывов. */
+  activeListings(): Listing[] {
+    return applyRecalls(this.listings, this.recalls);
+  }
 
   /** Незакрытая покупка: сначала уходит ФЕ, потом приходит предмет. */
   private pendingSpend = 0;
@@ -127,31 +192,12 @@ export class TradeLedger {
         // и выставленный заново предмет считался бы дважды, занижая
         // коэффициент реализации.
         if (delta.qty > 0 && delta.configBaseId !== FE_ID) {
-          this.removeListing(delta.configBaseId, delta.qty);
+          this.recalls.push({ ts: delta.ts, configBaseId: delta.configBaseId, qty: delta.qty });
         }
         break;
 
       default:
         break;
-    }
-  }
-
-  /** Снимает отозванный лот: сначала точное совпадение, затем последний лот предмета. */
-  private removeListing(configBaseId: ConfigBaseId, qty: number): void {
-    for (let i = this.listings.length - 1; i >= 0; i--) {
-      const l = this.listings[i]!;
-      if (l.configBaseId !== configBaseId) continue;
-      if (l.qty === qty) {
-        this.listings.splice(i, 1);
-        return;
-      }
-    }
-    for (let i = this.listings.length - 1; i >= 0; i--) {
-      const l = this.listings[i]!;
-      if (l.configBaseId !== configBaseId) continue;
-      if (l.qty > qty) l.qty -= qty;
-      else this.listings.splice(i, 1);
-      return;
     }
   }
 
@@ -166,7 +212,7 @@ export class TradeLedger {
   ): RealizationSummary {
     const inRange = <T extends { ts: number }>(x: T) => x.ts >= from && x.ts <= to;
 
-    const listings = this.listings.filter(inRange);
+    const listings = this.activeListings().filter(inRange);
     const receipts = this.receipts.filter(inRange);
 
     let paperFe = 0;
