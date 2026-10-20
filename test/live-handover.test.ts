@@ -46,7 +46,7 @@ const pick = (ts: number, num: number) => [
 ];
 
 function diag(): Diagnostics {
-  return { linesTotal: 0, linesMatched: 0, unknownProtos: new Map(), unknownItemIds: new Map(), slotRebases: 0 };
+  return { linesTotal: 0, linesMatched: 0, unknownProtos: new Map(), slotRebases: 0 };
 }
 
 /** Живое дочитывание в миниатюре — как Engine.consume, только нарезка и сумка. */
@@ -183,7 +183,7 @@ describe('половина карты рядом с целой', () => {
     expect(mergeRuns([whole, half])).toEqual([whole]);
   });
 
-  it('уже записанные дубли удаляются из базы при открытии', () => {
+  it('уже записанные дубли удаляются миграцией старой базы', () => {
     const path = join(dir, 'gorn.db');
     const storage = new Storage(path);
     storage.saveRuns([run(T0 + 120_000, T0 + 200_000, 50)], null);
@@ -197,6 +197,8 @@ describe('половина карты рядом с целой', () => {
        VALUES (5348, '${MAP}', ${T0 + 120_000}, ${T0 + 200_000}, 80000, 0)`,
     );
     expect(storage.loadRuns()).toHaveLength(2);
+    // База прошлой версии: миграции до чистки половин (5-й) уже пройдены.
+    (storage as unknown as { db: { exec(sql: string): void } }).db.exec('PRAGMA user_version = 4');
     storage.close();
 
     const reopened = new Storage(path);

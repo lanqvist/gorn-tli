@@ -133,6 +133,24 @@ CREATE TABLE IF NOT EXISTS session (
  *
  * Добавлять — только в конец: номер миграции — её место в списке.
  */
+/**
+ * Удаляет забеги, целиком лежащие внутри другого забега той же зоны
+ * (см. mergeRuns): прошлые версии писали вторую половину карты после
+ * захода через портал отдельно, а повторный разбор — карту целиком.
+ * Состав удаляется каскадом. Миграция 5 и после каждой записи забегов.
+ */
+const DROP_NESTED_RUNS = `
+  DELETE FROM run WHERE id IN (
+    SELECT id FROM (
+      SELECT id, ended_at,
+             MAX(ended_at) OVER (
+               PARTITION BY area_id ORDER BY started_at
+               ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
+             ) AS reach
+      FROM run WHERE is_hub = 0 AND ended_at IS NOT NULL
+    ) WHERE reach IS NOT NULL AND ended_at <= reach
+  )`;
+
 const MIGRATIONS: Array<(db: DatabaseSyncType) => void> = [
   // 1. Цены: season_id был NULL, а NULL в SQLite не равен NULL, поэтому
   //    «PRIMARY KEY» не дедуплицировал и каждый запуск плодил дубли.
@@ -177,6 +195,24 @@ const MIGRATIONS: Array<(db: DatabaseSyncType) => void> = [
   //    читается от конца файла, история — ретро-сканом.
   (db) => {
     db.exec('DROP TABLE IF EXISTS log_cursor');
+  },
+
+  // 5. Половины карт, записанные отдельным забегом рядом с целой картой.
+  (db) => {
+    db.exec(DROP_NESTED_RUNS);
+  },
+
+  // 6. Частично отозванный лот прошлые версии уменьшали на месте, и
+  //    повторный разбор лога дописывал его второй строкой с меньшим
+  //    количеством. Одно выставление — одна строка лога: из строк
+  //    с тем же временем и предметом настоящая — с наибольшим количеством.
+  (db) => {
+    db.exec(`
+      DELETE FROM listing WHERE EXISTS (
+        SELECT 1 FROM listing o
+        WHERE o.ts = listing.ts AND o.config_base_id = listing.config_base_id
+          AND o.qty > listing.qty
+      )`);
   },
 ];
 
@@ -274,40 +310,11 @@ export class Storage {
       this.db.exec('ROLLBACK');
       throw err;
     }
-
-    // 6. Половины карт, записанные отдельным забегом рядом с целой картой.
-    this.dropNestedRuns();
-
-    // 7. Частично отозванный лот прошлые версии уменьшали на месте, и
-    //    повторный разбор лога дописывал его второй строкой с меньшим
-    //    количеством. Одно выставление — одна строка лога: из строк
-    //    с тем же временем и предметом настоящая — с наибольшим количеством.
-    this.db.exec(`
-      DELETE FROM listing WHERE EXISTS (
-        SELECT 1 FROM listing o
-        WHERE o.ts = listing.ts AND o.config_base_id = listing.config_base_id
-          AND o.qty > listing.qty
-      )`);
   }
 
-  /**
-   * Удаляет забеги, целиком лежащие внутри другого забега той же зоны
-   * (см. mergeRuns): прошлые версии писали вторую половину карты после
-   * захода через портал отдельно, а повторный разбор — карту целиком.
-   * Состав удаляется каскадом.
-   */
+  /** Целая карта пришла после своей половины, записанной раньше отдельно (см. DROP_NESTED_RUNS). */
   private dropNestedRuns(): void {
-    this.db.exec(`
-      DELETE FROM run WHERE id IN (
-        SELECT id FROM (
-          SELECT id, ended_at,
-                 MAX(ended_at) OVER (
-                   PARTITION BY area_id ORDER BY started_at
-                   ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
-                 ) AS reach
-          FROM run WHERE is_hub = 0 AND ended_at IS NOT NULL
-        ) WHERE reach IS NOT NULL AND ended_at <= reach
-      )`);
+    this.db.exec(DROP_NESTED_RUNS);
   }
 
   /**
