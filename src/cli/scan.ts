@@ -171,7 +171,7 @@ async function main(): Promise<void> {
   const seasonId = result.latestSeasonId ?? [...result.seasonIds].pop() ?? null;
   storage.saveRuns(result.runs, seasonId);
   storage.savePrices(result.prices.observations());
-  storage.saveTrade(result.trade.listings, result.trade.receipts);
+  storage.saveTrade(result.trade.listings, result.trade.receipts, result.trade.recalls);
   storage.savePlayers(result.players);
 
   const counts = storage.counts();

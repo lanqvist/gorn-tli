@@ -105,7 +105,7 @@ function localQuery(runs: RunView[], query: string): RunQueryResult {
   return {
     total: matched.length,
     netFe: matched.reduce((a, r) => a + r.netFe, 0),
-    inMapMs: matched.reduce((a, r) => a + (r.durationMs ?? 0), 0),
+    inMapMs: matched.reduce((a, r) => a + r.activeMs, 0),
     rate: {
       median,
       mean: median,

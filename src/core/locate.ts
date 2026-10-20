@@ -96,7 +96,14 @@ export function listLogFiles(dir: string): LogFile[] {
   for (const name of readdirSync(dir)) {
     if (!name.startsWith('UE_game') || !name.endsWith('.log')) continue;
     const path = join(dir, name);
-    const st = statSync(path);
+    let st: ReturnType<typeof statSync>;
+    try {
+      st = statSync(path);
+    } catch (err) {
+      // Игра удалила старый бэкап между чтением папки и stat.
+      if ((err as NodeJS.ErrnoException).code === 'ENOENT') continue;
+      throw err;
+    }
     if (st.size === 0) continue;
     files.push({
       path,

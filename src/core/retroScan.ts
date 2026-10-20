@@ -1,11 +1,10 @@
-import { statSync } from 'node:fs';
-
 import { pricesFor, type RunPricing } from './analysis.js';
 import type { SlotState } from './inventory.js';
 import { listLogFiles } from './locate.js';
 import { analyzeLogFile, type AnalyzeOptions } from './pipeline.js';
 import { PriceStore } from './priceStore.js';
-import { TradeLedger, mergeByKey } from './trade.js';
+import type { SegmenterState } from './runSegmenter.js';
+import { TradeLedger, mergeByKey, recallKey } from './trade.js';
 import { mergePlayerProfile, type PlayerProfile, type Run } from './types.js';
 
 /**
@@ -54,6 +53,12 @@ export interface RetroScanResult {
    * не достаются никому.
    */
   currentLog: { path: string; position: number } | null;
+  /**
+   * Незакрытая нарезка текущего лога: открытый забег, ожидающие вложения,
+   * забеги, куда ещё можно вернуться порталом. Живое дочитывание
+   * продолжает с неё, а не с пустого места.
+   */
+  segmenter: SegmenterState | null;
 }
 
 export interface RetroScanProgress {
@@ -80,6 +85,7 @@ export async function retroScan(
   let linesScanned = 0;
   let seasonId: number | null = null;
   let currentLog: RetroScanResult['currentLog'] = null;
+  let segmenter: SegmenterState | null = null;
   const players = new Map<string, PlayerProfile>();
   let lastPlayerId: string | null = null;
 
@@ -87,6 +93,7 @@ export async function retroScan(
   // события каждого файла копятся отдельно и сливаются с дедупликацией.
   const listingsByFile: Array<TradeLedger['listings']> = [];
   const receiptsByFile: Array<TradeLedger['receipts']> = [];
+  const recallsByFile: Array<TradeLedger['recalls']> = [];
   const purchasesByFile: Array<TradeLedger['purchases']> = [];
 
   // Цены складываем в один store; сезон у каждой пробивки свой.
@@ -101,7 +108,7 @@ export async function retroScan(
     // Один недочитанный файл не должен ронять разбор остальных.
     let result: Awaited<ReturnType<typeof analyzeLogFile>>;
     try {
-      result = await analyzeLogFile(file.path, options);
+      result = await analyzeLogFile(file.path, { ...options, current: file.isCurrent });
     } catch (err) {
       failed.push({ path: file.path, reason: (err as Error).message });
       continue;
@@ -122,6 +129,7 @@ export async function retroScan(
 
     listingsByFile.push(result.trade.listings);
     receiptsByFile.push(result.trade.receipts);
+    recallsByFile.push(result.trade.recalls);
     purchasesByFile.push(result.trade.purchases);
 
     for (const [proto, n] of result.diagnostics.unknownProtos) {
@@ -136,17 +144,17 @@ export async function retroScan(
     if (result.lastPlayerId !== null) lastPlayerId = result.lastPlayerId;
 
     if (file.isCurrent) {
-      // Размер файла на момент окончания разбора: с него продолжит tailer.
-      try {
-        currentLog = { path: file.path, position: statSync(file.path).size };
-      } catch {
-        currentLog = { path: file.path, position: file.size };
-      }
+      // Конец последней полной строки: с него продолжит tailer. Размер файла
+      // после разбора не годится — он мог вырасти уже после чтения, а хвост
+      // без перевода строки ещё дописывается.
+      currentLog = { path: file.path, position: result.position };
+      segmenter = result.segmenter;
     }
   }
 
   trade.listings.push(...mergeByKey(listingsByFile, (l) => `${l.ts}:${l.configBaseId}:${l.qty}`));
   trade.receipts.push(...mergeByKey(receiptsByFile, (r) => `${r.ts}:${r.fe}`));
+  trade.recalls.push(...mergeByKey(recallsByFile, recallKey));
   trade.purchases.push(
     ...mergeByKey(purchasesByFile, (p) => `${p.ts}:${p.configBaseId}:${p.qty}`),
   );
@@ -183,6 +191,7 @@ export async function retroScan(
     players: [...players.values()],
     lastPlayerId,
     currentLog,
+    segmenter,
   };
 }
 
