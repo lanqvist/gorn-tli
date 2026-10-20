@@ -26,7 +26,7 @@ import { decode, encode } from '../../core/prison/engine/actions.js';
 import { TOOL_IDS, type Action, type ToolId } from '../../core/prison/model.js';
 import { hint, type HintContext } from '../../core/prison/hint.js';
 import { defaultGeometry, read, rerollBox, treasureBoxes, type Frame, type Geometry } from '../../core/prison/recognize/index.js';
-import { clearSolveCache, clearlyBetter, solve, stateKey, type SolveOptions, type SolveStep } from '../../core/prison/solver/solve.js';
+import { clearlyBetter, solve, stateKey, type SolveOptions, type SolveStep } from '../../core/prison/solver/solve.js';
 import type { Step } from '../../core/prison/adapter.js';
 import { OFFER_KIND, OFFER_TOOL, PHASE, P_PICK, State } from '../../core/prison/engine/state.js';
 import type { PrisonShotMessage, PrisonWorkerReply } from './protocol.js';
@@ -42,6 +42,12 @@ export const PICK_BUDGET_MS = 4000;
 export const PICK_ROUNDS = 1500;
 
 const TREASURE_ASK = 'Подарок: нажми «Посмотреть состояние тюрьмы» и вернись — подскажу, какой взять';
+/**
+ * Столько кадров подряд прежняя геометрия не нашла доску (экран «другой») —
+ * искать доску заново, даже если лог её не обещал.
+ */
+export const GEO_MISSES = 3;
+
 /** Выбор орудий, где узнано меньше двух карт: совет не дать, но и не молчать. */
 const PICK_UNKNOWN = 'Не узнал карты выбора — выбери сам';
 
@@ -83,6 +89,8 @@ export interface OwnAdvisorOptions {
 export class OwnAdvisor {
   private adapter = new PrisonAdapter();
   private geo: Geometry | null = null;
+  /** Кадров подряд, где прежняя геометрия доски не нашла. */
+  private geoMisses = 0;
   private current = 0;
   /** Доска, увиденная сразу после окна сокровищницы: по ней советуется подарок. */
   private boardBehindTreasure = false;
@@ -107,12 +115,12 @@ export class OwnAdvisor {
     this.geo = isGeometry(near) ? near : null;
   }
 
-  reset(): void {
-    this.held = null;
-    this.adapter.reset();
-    this.boardBehindTreasure = false;
-    clearSolveCache();
-    this.saveState();
+  /**
+   * Игрок сходил: досчёт по прошлому кадру бросить — его «уточнено» пришло
+   * бы поверх «смотрю…» и показало ход, которого на экране уже нет.
+   */
+  cancel(): void {
+    this.current = -1;
   }
 
   /** Память забега (для сохранения и тестов). */
@@ -132,6 +140,8 @@ export class OwnAdvisor {
     // кадре не читаются (анимация появления): дальше выбор может идти по
     // хоткею без пометки начала, и память прошлой партии осталась бы.
     if (msg.kind === 'instruments' && msg.fresh) this.adapter.startRun();
+    // Окно сокровищницы закрылось после «Подтвердить» — подарок взят.
+    if (msg.treasureClosed && !msg.treasureView) this.adapter.giftTaken();
     // День — по логу (главный источник), экран — запасной.
     this.adapter.logDay(msg.day);
     const size = { w: msg.width, h: msg.height };
@@ -142,7 +152,8 @@ export class OwnAdvisor {
     let blindPick = false;
     const plainGeo = () => this.geo && this.geo.width === msg.width && this.geo.height === msg.height ? this.geo : defaultGeometry({ width: msg.width, height: msg.height, data: new Uint8ClampedArray(0) });
     let kind: string = msg.kind;
-    let seen = frame ? this.read(frame) : null;
+    // Доску ждём по логу или по хоткею — если её нет на прежнем месте, искать заново.
+    let seen = frame ? this.read(frame, msg.kind === 'board' || msg.kind === 'manual') : null;
 
     if (msg.asTreasure && seen) {
       // Доска снята, а окно подарков уже открыто: обновить по ней доску,
@@ -249,8 +260,13 @@ export class OwnAdvisor {
     await this.advise(msg, { ...pos, state, allowed }, ctx, size);
   }
 
-  private read(frame: Frame): ReturnType<typeof read>['view'] {
-    const r = this.readFrame(frame, this.geo);
+  private read(frame: Frame, expectBoard: boolean): ReturnType<typeof read>['view'] {
+    const recalibrate = expectBoard || this.geoMisses >= GEO_MISSES;
+    const r = this.readFrame(frame, this.geo, { recalibrate });
+    // Промах — «другой экран» при геометрии этого размера: доска сдвинулась
+    // или её тут нет. После поиска заново счёт с нуля.
+    const sameSize = !!this.geo && this.geo.width === frame.width && this.geo.height === frame.height;
+    this.geoMisses = r.view.screen === 'other' && sameSize && !recalibrate ? this.geoMisses + 1 : 0;
     if (r.geo && r.geo !== this.geo) {
       const moved = !this.geo || this.geo.width !== r.geo.width || this.geo.height !== r.geo.height || Math.abs(this.geo.s - r.geo.s) > 0.002 || Math.abs(this.geo.tx - r.geo.tx) > 2 || Math.abs(this.geo.ty - r.geo.ty) > 2;
       this.geo = r.geo;

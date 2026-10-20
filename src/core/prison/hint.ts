@@ -4,7 +4,7 @@
  * распознанного экрана: BoardView.at, PickView.boxes, места подарков.
  */
 
-import { GIFT_IDS, OFFICE, TOOL_IDS, TOOL_NAMES, type Action, type GiftId, type ToolId } from './model.js';
+import { GIFT_IDS, GIFT_NAMES, OFFICE, TOOL_IDS, TOOL_NAMES, type Action, type GiftId, type ToolId } from './model.js';
 import type { BoardView, Box, PickView } from './view.js';
 
 export type HintMark =
@@ -38,13 +38,6 @@ export interface HintContext {
   /** Короткая причина хода от стратегии. */
   reason?: string;
 }
-
-const GIFT_NAMES: Record<GiftId, string> = {
-  ring: 'Трёхглавое кольцо',
-  horn: 'Медный боевой рог',
-  wine: 'Багряное вино',
-  brand: 'Клеймо первородного греха',
-};
 
 /** Русское название орудия или подарка (без прозвища зверя после двоеточия). */
 export function itemName(id: ToolId | GiftId): string {

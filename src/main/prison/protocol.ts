@@ -36,6 +36,11 @@ export interface PrisonShotMessage {
   savePath: string | null;
 }
 
+/** Игрок сходил: расчёт по прошлому кадру бросить, его ответы уже не про этот экран. */
+export interface PrisonCancelMessage {
+  type: 'cancel';
+}
+
 /** Где доска на кадре (геометрия распознавания): сохраняется между запусками. */
 export type SavedNear = Geometry;
 

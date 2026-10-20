@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { DEFAULT_PARAMS, EVENT, EVENT_POOL, LION, MAMMOTH, WOLF } from '../../src/core/prison/model.js';
 import { startRun } from '../../src/core/prison/engine/actions.js';
 import { Rng } from '../../src/core/prison/engine/rng.js';
+import { eventWeight } from '../../src/core/prison/engine/rules.js';
 import {
   DAY, DOORS, DOORS_N, EVT, FLAGS, F_VIS_TIER, PHASE, PRE_BEAST, PRE_TIER, P_EVENT, P_PATROL, State, USURP, WARDEN,
 } from '../../src/core/prison/engine/state.js';
@@ -87,6 +88,30 @@ describe('проверка вариантами', () => {
     k.m.set(s.m);
     redeterminize(k, new Rng(1), true);
     expect(k.m[EVT + 7]).toBe(EVENT.ratway + 1);
+  });
+
+  it('вид события за «!» перебрасывается по весам движка, а не поровну', () => {
+    const s = blank();
+    s.m[EVT + 7] = EVENT.ratway + 1; // камера 7 заперта
+    const seen = new Map<number, number>();
+    const N = 4000;
+    for (let i = 0; i < N; i++) {
+      const t = new State();
+      t.m.set(s.m);
+      redeterminize(t, new Rng(i), false);
+      const e = t.m[EVT + 7]! - 1;
+      seen.set(e, (seen.get(e) ?? 0) + 1);
+    }
+    const pool = [...EVENT_POOL.map((id) => EVENT[id]), s.m[USURP]!];
+    let total = 0;
+    for (const e of pool) total += eventWeight(s, DEFAULT_PARAMS, e, 7);
+    for (const e of pool) {
+      const w = eventWeight(s, DEFAULT_PARAMS, e, 7);
+      const n = seen.get(e) ?? 0;
+      // Недопустимое для запертой камеры не выпадает; прочее — по своей доле.
+      if (w === 0) expect(n).toBe(0);
+      else expect(Math.abs(n / N - w / total)).toBeLessThan(0.03);
+    }
   });
 
   it('событие в окне (фаза события, камера надзирателя) не перебрасывается', () => {

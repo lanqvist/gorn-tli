@@ -8,8 +8,9 @@ import { PrisonPresence } from '../../core/prison/presence.js';
 import { planPrune, shotOutcome, type ShotEntry } from '../../core/prisonShots.js';
 import { PrisonTriggers, stampMs, type PrisonShot } from '../../core/prisonTriggers.js';
 import { ArrowLayer } from './arrowLayer.js';
+import { writeAtomic } from './atomicWrite.js';
 import { ScreenStream, type Frame } from './screenStream.js';
-import type { PrisonShotMessage, PrisonWorkerReply, SavedNear } from './protocol.js';
+import type { PrisonCancelMessage, PrisonShotMessage, PrisonWorkerReply, SavedNear } from './protocol.js';
 
 /** Экран должен столько не меняться, чтобы его снять (анимации осели). */
 const STABLE_MS = 300;
@@ -107,7 +108,7 @@ export class PrisonAssist {
   }
 
   private saveDisplay(): void {
-    void writeFile(this.displayFile, JSON.stringify({ id: this.gameDisplayId, near: this.near })).catch(() => undefined);
+    void writeAtomic(this.displayFile, JSON.stringify({ id: this.gameDisplayId, near: this.near })).catch(() => undefined);
   }
 
   private get displayFile(): string {
@@ -197,6 +198,10 @@ export class PrisonAssist {
       if (lines.some((l) => PLAYER_ACTION.test(l))) {
         this.stream.boost();
         this.layer.thinking(display);
+        // Ответы на прежние кадры больше не показывать: досчитанное
+        // «уточнено» перекрыло бы «смотрю…» ходом, которого уже нет.
+        this.nextId++;
+        this.worker?.postMessage({ type: 'cancel' } satisfies PrisonCancelMessage);
       }
     }
     this.triggers.feed(lines);
@@ -225,11 +230,6 @@ export class PrisonAssist {
     if (!this.enabled) return;
     this.layer.thinking(this.gameDisplay());
     void this.capture({ kind: 'board', fresh: false, after: '', treasureView: false, rerolled: false, treasureClosed: false, theme: null, day: this.triggers.lastDay, lines: [] }, true);
-  }
-
-  /** Начать забег с чистой доски (сохранённое состояние не подходит). */
-  resetRun(): void {
-    this.worker?.postMessage({ type: 'reset' });
   }
 
   dispose(): void {
@@ -495,7 +495,7 @@ export class PrisonAssist {
     this.stateTimer = null;
     if (!this.state) return;
     void mkdir(dirname(this.dirs.state), { recursive: true })
-      .then(() => writeFile(this.dirs.state, JSON.stringify(this.state)))
+      .then(() => writeAtomic(this.dirs.state, JSON.stringify(this.state)))
       .catch((err: unknown) => console.warn('[тюрьма] состояние не сохранено:', err instanceof Error ? err.message : err));
   }
 

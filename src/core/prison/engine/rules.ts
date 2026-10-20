@@ -131,7 +131,7 @@ export function eventWeight(s: State, p: Params, ev: number, c: number): number 
  * «сначала камера, потом событие под её состояние» — допущение: порядок
  * выбора у сервера не найден.
  */
-function randomEvent(s: State, r: Rng, p: Params, c: number): number {
+export function randomEvent(s: State, r: Rng, p: Params, c: number): number {
   const u = s.m[USURP]!;
   let total = 0;
   for (let i = 0; i < POOL.length; i++) total += eventWeight(s, p, POOL[i]!, c);
@@ -945,7 +945,9 @@ export function swap(s: State, r: Rng, p: Params): void {
   const tusk = (m[FLAGS + c]! & F_TUSK) !== 0;
   forget(s, c);
 
-  let tier: number;
+  // Петля: Обычные и Магические больше не появляются. Крюк — только двери
+  // (текст 117 про пункты назначения), замену он не трогает.
+  let floor = hasTool(s, TOOL.rope) ? 2 : 0;
   const others = inmateMask(s) & ~(1 << c);
   if (hasTool(s, TOOL.scapegoat) && popcount(others) >= p.scapegoatRemoves) {
     let mask = others;
@@ -955,12 +957,9 @@ export function swap(s: State, r: Rng, p: Params): void {
       remove(s, r, p, t);
     }
     // Клиент 121: «редкость после замены гарантированно повышается». [догадка: бросок замены не ниже прежней + 1]
-    tier = rollTier(r, p.replaceOdds, Math.min(oldTier + 1, PRISMATIC));
-  } else {
-    let floor = hasTool(s, TOOL.rope) ? 2 : 0;
-    if (floor < 1 && hasTool(s, TOOL.hook)) floor = 1;
-    tier = rollTier(r, p.replaceOdds, floor);
+    floor = Math.max(floor, Math.min(oldTier + 1, PRISMATIC));
   }
+  let tier = rollTier(r, p.replaceOdds, floor);
   let beast = r.int(4);
   if (hasTool(s, TOOL.stake) && oldTier < LEGENDARY && tier < LEGENDARY && r.chance(p.stakeChance)) tier = LEGENDARY;
   if (hasTool(s, TOOL.pestle)) beast = oldBeast;

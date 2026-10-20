@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { DEFAULT_PARAMS, EVENT, LION, MAMMOTH, OBJECTIVE, START_EVENT, TOOL, WOLF } from '../../src/core/prison/model.js';
+import { DEFAULT_PARAMS, EVENT, LION, MAMMOTH, OBJECTIVE, START_EVENT, TOOL, TOOL_IDS, WOLF } from '../../src/core/prison/model.js';
 import { PrisonAdapter, blankMemory, loadMemory } from '../../src/core/prison/adapter.js';
 import { A_HUNT, Rng, applyCode, codeBuffer, decode, encode, legalCodes } from '../../src/core/prison/engine/actions.js';
 import {
-  BEAST, CHAIN_EATER, DAY, DAY_LIMIT, DOORS, DOORS_N, EVT, FLAGS, F_VIS_TIER, LOCK, NEST, NEXT, OBJECTIVE_ID, OFFER, OFFER_GIFT,
+  BEAST, CHAIN_EATER, DAY, DAY_LIMIT, DOORS, DOORS_N, EVT, FLAGS, F_SCRATCH, F_VIS_TIER, LOCK, NEST, NEXT, OBJECTIVE_ID, OBJ_DONE, OFFER, OFFER_GIFT,
   OFFER_KIND, OFFER_N, PHASE, PICK_GIFTS, PREY_LEFT, PREY_LION, PRE_TIER, P_CHAIN, P_DAYEND, P_MANAGE, P_PATROL, P_PICK, REROLLS, START, STORAGE,
   TIER, TOOLS, WARDEN, type State,
 } from '../../src/core/prison/engine/state.js';
@@ -371,13 +371,13 @@ describe('адаптер: куда вернуться после выбора, �
 describe('адаптер: орудия из выбора и день из лога', () => {
   it('выбор → доска с неузнанной иконкой: взято посоветованное («предположительно»), панель подтверждает', () => {
     const a = new PrisonAdapter();
-    a.pick(pick(['maiden', 'forged', 'guillotine']), true, false);
+    a.pick(pick(['maiden', 'saw', 'crown']), true, false);
     a.advised('maiden');
     const b = board({ warden: 1, doors: [3] });
     b.toolSlots = [null];
     a.board(b);
     expect(a.mem.tools).toEqual(['maiden']);
-    expect(a.mem.assumed).toEqual([{ tool: 'maiden', offer: ['maiden', 'forged', 'guillotine'] }]);
+    expect(a.mem.assumed).toEqual([{ tool: 'maiden', offer: ['maiden', 'saw', 'crown'] }]);
     expect(ok(a).state.m[TOOLS]).toBe(1 << TOOL.maiden);
     // Панель узнала иконку — «предположительно» снято.
     const c = board({ warden: 1, doors: [3], tools: ['maiden'] });
@@ -389,16 +389,16 @@ describe('адаптер: орудия из выбора и день из лог
 
   it('панель узнала другое орудие из того же выбора — «предположительное» исправляется', () => {
     const a = new PrisonAdapter();
-    a.pick(pick(['maiden', 'forged', 'guillotine']), true, false);
-    a.advised('forged');
+    a.pick(pick(['maiden', 'saw', 'crown']), true, false);
+    a.advised('saw');
     const b = board({ warden: 1, doors: [3] });
     b.toolSlots = [null];
     a.board(b);
-    expect(a.mem.tools).toEqual(['forged']);
-    const c = board({ warden: 1, doors: [3], tools: ['guillotine'] });
-    c.toolSlots = ['guillotine'];
+    expect(a.mem.tools).toEqual(['saw']);
+    const c = board({ warden: 1, doors: [3], tools: ['crown'] });
+    c.toolSlots = ['crown'];
     a.board(c);
-    expect(a.mem.tools).toEqual(['guillotine']);
+    expect(a.mem.tools).toEqual(['crown']);
     expect(a.mem.assumed).toEqual([]);
   });
 
@@ -477,5 +477,112 @@ describe('адаптер: орудия другого забега не заде
       a.board(b);
     }
     expect(a.mem.tools).toEqual(['maul', 'fire']);
+  });
+});
+
+describe('адаптер: находки аудита 20.10', () => {
+  /** Эталоны панели — у всех, кроме Когтей и Жетона (как будто их иконок не собрали). */
+  const KNOWN = new Set(TOOL_IDS.filter((t) => t !== 'claws' && t !== 'dogtag'));
+
+  it('выбор в награду: цель выполнена — у движка её больше нет', () => {
+    const a = new PrisonAdapter();
+    a.board(board({ warden: 1, doors: [3], objective: 'jungle' }));
+    expect(ok(a).state.m[OBJECTIVE_ID]).toBe(OBJECTIVE.jungle);
+    a.pick(pick(['saw', 'crown', 'whip'], true, true), false, false);
+    expect(ok(a).state.m[OBJECTIVE_ID]).toBe(-1);
+    // Панель ещё показывает прежнюю цель — она выполнена.
+    a.board(board({ warden: 1, doors: [3], objective: 'jungle' }));
+    const s = ok(a).state;
+    expect([s.m[OBJECTIVE_ID], s.m[OBJ_DONE]]).toEqual([-1, 1]);
+    // Переживает сохранение; новый забег — цель снова активна.
+    expect(new PrisonAdapter(JSON.parse(JSON.stringify(a.mem))).mem.objectiveDone).toBe(true);
+    a.startRun();
+    expect(a.mem.objectiveDone).toBe(false);
+  });
+
+  it('в выборе орудие без эталона панели — посоветованное «предположительно» не записывается', () => {
+    const a = new PrisonAdapter(undefined, DEFAULT_PARAMS, KNOWN);
+    a.pick(pick(['maiden', 'claws', 'saw']), true, false);
+    a.advised('maiden');
+    const b = board({ warden: 1, doors: [3] });
+    b.toolSlots = [null];
+    a.board(b);
+    // Неузнанная иконка могла быть Когтями.
+    expect(a.mem.tools).toEqual([]);
+    expect(a.mem.assumed).toEqual([]);
+  });
+
+  it('орудие без эталона на панели не выключает забывание чужих орудий', () => {
+    const a = new PrisonAdapter(undefined, DEFAULT_PARAMS, KNOWN);
+    a.mem.tools = ['maul', 'fire', 'claws'];
+    const b = () => {
+      const v = board({ warden: 1, doors: [3], tools: ['fire'] });
+      v.toolSlots = ['fire', null];
+      return v;
+    };
+    for (let i = 0; i < 3; i++) a.board(b());
+    // Неузнанная иконка — Когти; Молота на панели нет три кадра — забыт.
+    expect(a.mem.tools).toEqual(['fire', 'claws']);
+    // Иконка без объяснения (Когтей в памяти нет) — как прежде, не трогаем.
+    const c = new PrisonAdapter(undefined, DEFAULT_PARAMS, KNOWN);
+    c.mem.tools = ['maul', 'fire'];
+    for (let i = 0; i < 4; i++) c.board(b());
+    expect(c.mem.tools).toEqual(['maul', 'fire']);
+    // Панель без неузнанных иконок: Когтей на ней нет — забыты.
+    const d = new PrisonAdapter(undefined, DEFAULT_PARAMS, KNOWN);
+    d.mem.tools = ['fire', 'claws'];
+    for (let i = 0; i < 3; i++) {
+      const v = board({ warden: 1, doors: [3], tools: ['fire'] });
+      v.toolSlots = ['fire'];
+      d.board(v);
+    }
+    expect(d.mem.tools).toEqual(['fire']);
+  });
+
+  it('«Расточительность»: подарок взят — выборов на один меньше, окно снова — счёт не сбрасывается', () => {
+    const a = new PrisonAdapter();
+    a.theme(2);
+    a.treasure('consume');
+    expect(a.mem.gifts).toBe(3);
+    a.giftTaken();
+    a.treasure('');
+    expect(a.mem.gifts).toBe(2);
+    a.treasure('view');
+    expect(ok(a).state.m[PICK_GIFTS]).toBe(2);
+    a.giftTaken();
+    a.giftTaken();
+    // Все три взяты — следующий призматический снова даёт три.
+    a.treasure('');
+    expect(a.mem.gifts).toBe(3);
+  });
+
+  it('Когти: «поцарапана» только камера с редкостью, показанной утром', () => {
+    const a = new PrisonAdapter();
+    a.mem.tools = ['claws'];
+    a.logDay({ cur: 5, max: 20 });
+    // Утро: метка Когтей на №7.
+    a.board(board({ inmates: { 4: 'wolf2' }, warden: 4, daysLeft: null, doors: [6, 8], shown: { 7: 2 } }));
+    // Днём редкость показали Весы на №9 — это не метка.
+    a.board(board({ inmates: { 4: 'wolf2' }, warden: 4, daysLeft: null, decision: MANAGE_ALL, kinds: ['consume', 'replace', 'end'], shown: { 7: 2, 9: 2 } }));
+    const s = ok(a).state;
+    expect(s.m[FLAGS + C(7)]! & F_SCRATCH).toBe(F_SCRATCH);
+    expect(s.m[FLAGS + C(9)]! & F_SCRATCH).toBe(0);
+    expect(s.m[FLAGS + C(9)]! & F_VIS_TIER).toBe(F_VIS_TIER);
+    // Метка держится и после сохранения.
+    const b = new PrisonAdapter(JSON.parse(JSON.stringify(a.mem)));
+    expect(ok(b).state.m[FLAGS + C(7)]! & F_SCRATCH).toBe(F_SCRATCH);
+  });
+
+  it('выбор цели до первого укуса помнит ряд решений: без карточки «Замена» её не советуем', () => {
+    const a = new PrisonAdapter();
+    const inmates = { 5: 'mammoth2', 8: 'lion2' };
+    a.board(board({ inmates, warden: 5, decision: { kind: 'manage', consume: true, replace: false, end: true }, kinds: ['consume', 'end'] }));
+    a.board(board({ inmates, warden: 5, daysLeft: null, chain: [8] }));
+    expect(a.mem.firstBite).toBe(true);
+    expect(a.mem.decision).toMatchObject({ replace: false });
+    const pos = ok(a);
+    const kinds = legal(pos.state).filter(pos.allowed).map((c) => decode(c).type);
+    expect(kinds).not.toContain('swap');
+    expect(kinds).toContain('devour');
   });
 });

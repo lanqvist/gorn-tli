@@ -267,3 +267,63 @@ describe('свой путь: тема забега', () => {
   });
 });
 
+
+describe('свой путь: находки аудита 20.10', () => {
+  const msg = (id: number, over: Partial<PrisonShotMessage> = {}): PrisonShotMessage => ({
+    type: 'shot', id, kind: 'board', fresh: false, after: '', treasureView: false, rerolled: false,
+    treasureClosed: false, asTreasure: false, theme: null, day: null, width: 1920, height: 1080, buffer: new ArrayBuffer(0), format: 'rgba',
+    budgetMs: 60_000, savePath: null, ...over,
+  });
+
+  it('доску ждём по логу или хоткею — поиск заново; иначе после трёх промахов подряд', async () => {
+    const calls: boolean[] = [];
+    const own = new OwnAdvisor(() => undefined, {
+      sleep: () => Promise.resolve(),
+      read: (_f, _g, opts) => {
+        calls.push(!!opts?.recalibrate);
+        return { view: { screen: 'other' }, geo: GEO };
+      },
+    });
+    own.init(null, GEO);
+    await own.handle(msg(1), FRAME);
+    await own.handle(msg(2, { kind: 'manual' }), FRAME);
+    for (let i = 0; i < 5; i++) await own.handle(msg(3 + i, { kind: 'instruments' }), FRAME);
+    expect(calls).toEqual([true, true, false, false, false, true, false]);
+  });
+
+  it('ход игрока (cancel) обрывает досчёт: «уточнено» по прошлому кадру не приходит', async () => {
+    const replies: PrisonWorkerReply[] = [];
+    let own: OwnAdvisor;
+    let slept = 0;
+    own = new OwnAdvisor((m) => replies.push(m), {
+      // Первая пауза досчёта — игрок сходил.
+      sleep: () => {
+        if (++slept === 1) own.cancel();
+        return Promise.resolve();
+      },
+      quickMs: 0,
+      stop: { minRounds: 100_000, maxRounds: 100_000 },
+      read: () => ({ view: { screen: 'board', board: board({ warden: 1, daysLeft: 20, doors: [3, 5, 6] }) }, geo: GEO }),
+    });
+    own.init(null, null);
+    await own.handle(msg(1), FRAME);
+    const hints = replies.filter((r) => r.type === 'hint' || r.type === 'settled');
+    expect(hints).toHaveLength(1);
+    expect(hints[0]!.type === 'hint' && hints[0]!.phase).toBe('instant');
+  });
+
+  it('«Расточительность»: окно, закрытое подтверждением, — подарок взят, выборов меньше', async () => {
+    const { shot, own } = setup();
+    await shot(null, { kind: 'theme', theme: 2 });
+    await shot({ screen: 'board', board: board({ inmates: { 5: 'wolf4', 9: 'rat4' }, warden: 5, decision: MANAGE_ALL, kinds: ['consume', 'replace', 'end'] }) });
+    await shot(null, { kind: 'treasure', after: 'consume' });
+    expect(own.memory).toMatchObject({ gifts: 3 });
+    const after = board({ inmates: { 11: 'lion2' }, warden: 5, chromatic: 1 });
+    await shot({ screen: 'board', board: after }, { treasureClosed: true });
+    await shot(null, { kind: 'treasure', after: '' });
+    expect(own.memory).toMatchObject({ gifts: 2 });
+    // Просмотр доски из окна — не подарок.
+    await shot({ screen: 'board', board: after }, { treasureView: true, treasureClosed: true });
+    expect(own.memory).toMatchObject({ gifts: 2 });
+  });
+});

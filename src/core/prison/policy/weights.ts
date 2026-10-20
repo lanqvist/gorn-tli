@@ -19,30 +19,26 @@ export const W_GIFT = 10;
 export const W_DOOR = 11;
 /** Событие «!» на поле. */
 export const W_EVENT = 12;
-/** Узник, у которого сейчас есть еда. */
-export const W_FED = 13;
 /** Сдвиг ценности Замены. */
-export const W_SWAP = 14;
+export const W_SWAP = 13;
 /** «Подстрекнуть»: за каждое поставленное событие. */
-export const W_INSTIGATE = 15;
+export const W_INSTIGATE = 14;
 /** Обновить выбор, если лучшая карта стоит меньше. */
-export const W_REROLL = 16;
+export const W_REROLL = 15;
 /** Сдвиг решения «есть дальше» в цепочке. */
-export const W_CHAIN = 17;
-/** Ожидающий выбор орудия. */
-export const W_TOOLPICK = 18;
+export const W_CHAIN = 16;
 /** Предпочтение дальнего хода, за шаг. */
-export const W_FAR = 19;
+export const W_FAR = 17;
 /** «Клеймо первородного греха»: за узника, которому оно даст еду. */
-export const W_BRAND = 20;
+export const W_BRAND = 18;
 /** Обход: ценность камер впереди двери (1–6 шагов за ней, среднее). */
-export const W_AHEAD = 21;
+export const W_AHEAD = 19;
 /** Обход: потеря от камер, которые ход проскакивает (сумма). */
-export const W_SKIP = 22;
+export const W_SKIP = 20;
 /** «Трёхглавое кольцо»: добавка за каждую открытую дверь (сверх нового узника). */
-export const W_RING = 23;
+export const W_RING = 21;
 /** Ценность орудия при выборе, по TOOL. */
-export const W_TOOL = 24;
+export const W_TOOL = 22;
 export const W_SIZE = W_TOOL + TOOL_IDS.length;
 
 export interface WeightsJson {
@@ -51,12 +47,10 @@ export interface WeightsJson {
   gift: number;
   door: number;
   event: number;
-  fed: number;
   swap: number;
   instigate: number;
   reroll: number;
   chain: number;
-  toolPick: number;
   far: number;
   brand?: number;
   ahead?: number;
@@ -66,8 +60,8 @@ export interface WeightsJson {
 }
 
 const SCALARS = [
-  ['gift', W_GIFT], ['door', W_DOOR], ['event', W_EVENT], ['fed', W_FED], ['swap', W_SWAP],
-  ['instigate', W_INSTIGATE], ['reroll', W_REROLL], ['chain', W_CHAIN], ['toolPick', W_TOOLPICK], ['far', W_FAR], ['brand', W_BRAND], ['ahead', W_AHEAD], ['skip', W_SKIP], ['ring', W_RING],
+  ['gift', W_GIFT], ['door', W_DOOR], ['event', W_EVENT], ['swap', W_SWAP],
+  ['instigate', W_INSTIGATE], ['reroll', W_REROLL], ['chain', W_CHAIN], ['far', W_FAR], ['brand', W_BRAND], ['ahead', W_AHEAD], ['skip', W_SKIP], ['ring', W_RING],
 ] as const;
 
 /** Имя веса по индексу (для отчётов настройки). */
@@ -107,12 +101,10 @@ export const HAND: WeightsJson = {
   gift: 0.3,
   door: 0.03,
   event: 0.05,
-  fed: 0.02,
   swap: 0,
   instigate: 0.03,
   reroll: 0.3,
   chain: 0,
-  toolPick: 0.3,
   far: 0,
   brand: 0.05,
   ahead: 0,
