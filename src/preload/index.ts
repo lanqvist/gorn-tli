@@ -123,6 +123,11 @@ contextBridge.exposeInMainWorld('gorn', {
       ipcRenderer.on('capture:stop', handler);
       return () => ipcRenderer.removeListener('capture:stop', handler);
     },
+    onBoost: (callback: () => void) => {
+      const handler = () => callback();
+      ipcRenderer.on('capture:boost', handler);
+      return () => ipcRenderer.removeListener('capture:boost', handler);
+    },
     onGrab: (callback: (id: number, stableMs: number, maxMs: number, okAgeMs: number) => void) => {
       const handler = (_e: unknown, id: number, stableMs: number, maxMs: number, okAgeMs: number) => callback(id, stableMs, maxMs, okAgeMs);
       ipcRenderer.on('capture:grab', handler);

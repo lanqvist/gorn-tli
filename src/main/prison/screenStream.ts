@@ -88,6 +88,11 @@ export class ScreenStream {
     });
   }
 
+  /** Экран вот-вот сменится (ход игрока): поток — на полную частоту на несколько секунд. */
+  boost(): void {
+    if (this.live && this.window && !this.window.isDestroyed()) this.window.webContents.send('capture:boost');
+  }
+
   stop(): void {
     if (this.window && !this.window.isDestroyed()) this.window.webContents.send('capture:stop');
     this.live = false;
