@@ -4,9 +4,6 @@ export type ConfigBaseId = number;
 /** Flame Elementium — основная торговая валюта. Проверено на логах: PageId 102, SlotId 0. */
 export const FE_ID: ConfigBaseId = 100300;
 
-/** Flame Sand — низшая ступень топлива. */
-export const FLAME_SAND_ID: ConfigBaseId = 100200;
-
 /**
  * Связанные (непередаваемые) предметы всегда стоят 0 ФЕ: их нельзя продать.
  * Признак связанности — название в справочнике («Bound …», «绑定…»),

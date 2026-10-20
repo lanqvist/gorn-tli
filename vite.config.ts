@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 
 /**
  * Конфигурация только для renderer. Main и preload собираются esbuild-ом
- * (scripts/build.mjs) — так меньше движущихся частей, чем у связок вроде
+ * (scripts/build-electron.mjs) — так меньше движущихся частей, чем у связок вроде
  * electron-vite, и нет конфликтов версий Vite.
  */
 export default defineConfig({
@@ -21,7 +21,7 @@ export default defineConfig({
     // страницы грузятся с диска, размер чанка здесь не про скорость сети.
     chunkSizeWarningLimit: 1000,
     rollupOptions: {
-      // Три окна — три страницы: дашборд, оверлей и слой всплывающего дохода.
+      // Окно — страница: дашборд, оверлей, слой плашек, пульт, стрелки тюрьмы и скрытое окно захвата экрана.
       input: {
         index: resolve(import.meta.dirname, 'src/renderer/index.html'),
         overlay: resolve(import.meta.dirname, 'src/renderer/overlay.html'),

@@ -16,14 +16,6 @@ export function formatNumber(value: number, fractionDigits = 0): string {
     .replace(/\s/g, NBSP);
 }
 
-/** Крупные суммы сокращаем, но только начиная с десятков тысяч. */
-export function formatCompact(value: number): string {
-  const abs = Math.abs(value);
-  if (abs >= 1_000_000) return `${formatNumber(value / 1_000_000, 1)}${NBSP}млн`;
-  if (abs >= 10_000) return `${formatNumber(value / 1000, 1)}${NBSP}тыс`;
-  return formatNumber(value);
-}
-
 /** 1 ч 39 м · 50 с · 2 м 47 с */
 export function formatDuration(ms: number): string {
   const total = Math.round(ms / 1000);
@@ -33,14 +25,6 @@ export function formatDuration(ms: number): string {
   if (h > 0) return m > 0 ? `${h}${NBSP}ч ${m}${NBSP}м` : `${h}${NBSP}ч`;
   if (m > 0) return s > 0 ? `${m}${NBSP}м ${s}${NBSP}с` : `${m}${NBSP}м`;
   return `${s}${NBSP}с`;
-}
-
-/** Короткая форма для таймера забега: 1:12 */
-export function formatClock(ms: number): string {
-  const total = Math.max(0, Math.round(ms / 1000));
-  const m = Math.floor(total / 60);
-  const s = total % 60;
-  return `${m}:${String(s).padStart(2, '0')}`;
 }
 
 export function formatDateTime(ts: number): string {

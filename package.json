@@ -46,7 +46,6 @@
         "to": "data",
         "filter": [
           "items.json",
-          "names-ru.json",
           "maps.json"
         ]
       },

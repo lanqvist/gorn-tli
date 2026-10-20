@@ -12,7 +12,6 @@ export type Beast = (typeof BEASTS)[number];
 
 /** Обычная (0) … Призматическая (5). */
 export type Tier = 0 | 1 | 2 | 3 | 4 | 5;
-export const TIER_NAMES = ['Обычная', 'Магическая', 'Редкая', 'Легендарная', 'Величайшая', 'Призматическая'] as const;
 
 export const MAMMOTH = 0;
 export const LION = 1;

@@ -40,11 +40,6 @@ export function readToolSlots(frame: Frame, geo: Geometry, t: ScreensTemplate): 
   return out;
 }
 
-/** Узнанные орудия на панели (неузнанные иконки пропускаются). */
-export function readTools(frame: Frame, geo: Geometry, t: ScreensTemplate): ToolId[] {
-  return readToolSlots(frame, geo, t).filter((x): x is ToolId => x !== null);
-}
-
 /**
  * Призматических в хранилище: занятые места (портрет, а не пустая ячейка).
  * −1 — панель скрыта (режим «Посмотреть состояние тюрьмы», затемнение):

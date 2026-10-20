@@ -88,18 +88,6 @@ export function dot(a: ArrayLike<number>, b: ArrayLike<number>): number {
   return s;
 }
 
-/** Нормированная картинка области: готова к сравнению скалярным произведением. */
-export function vec(frame: Frame, geo: Geometry, box: Box, w: number, h: number, channels: 1 | 3 = 1): Float32Array {
-  const v = sample(frame, geo, box, w, h, channels);
-  normalize(v);
-  return v;
-}
-
-/** Рамка вокруг точки: центр (x, y), полуширина rx, полувысота ry. */
-export function around(x: number, y: number, rx: number, ry: number = rx): Box {
-  return [x - rx, y - ry, x + rx, y + ry];
-}
-
 /** Перевод опорных координат в пиксели кадра. */
 export function toFrame(geo: Geometry, x: number, y: number): [number, number] {
   return [x * geo.s + geo.tx, y * geo.s + geo.ty];

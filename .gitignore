@@ -10,6 +10,8 @@ build/icon.ico
 .DS_Store
 .env
 .vite/
+# Локальные настройки Claude Code и его рабочие деревья.
+.claude/
 coverage/
 *.db
 *.db-wal

@@ -417,19 +417,6 @@ function fedCount(x: Int32Array): number {
   return fed;
 }
 
-/** Оценка доски (те же веса и день, что у подготовленного состояния). */
-export function boardValue(s: State): number {
-  const x = s.m;
-  let v = x[STORAGE]! + x[PICK_GIFTS]! * W[W_GIFT]! + x[PICK_TOOLS]! * W[W_TOOLPICK]!;
-  for (let c = 1; c < CELLS; c++) {
-    if (x[LOCK + c] === 1) v += W[W_DOOR]! * frac;
-    if (x[EVT + c] !== 0) v += W[W_EVENT]! * frac;
-    const t = x[TIER + c]!;
-    if (t >= 0) v += val[t]!;
-  }
-  return v + fedCount(x) * W[W_FED]! * frac;
-}
-
 // ── решения ─────────────────────────────────────────────────────────────────
 
 /** Почему выбран ход: для подписи. */

@@ -581,22 +581,6 @@ export function embers(dur: number, r: Random, density: (t: number) => number): 
   return mix.data;
 }
 
-/** Вжух: шум в полосе, проходящей вверх и обратно, с переездом слева направо. */
-export function whoosh(dur: number, r: Random, from = 300, peak = 3000): Stereo {
-  const shape = (t: number) => Math.sin((Math.PI * Math.min(dur, Math.max(0, t))) / dur);
-  const s = biquad(noise(dur, r), 'bandpass', (t) => from * Math.pow(peak / from, shape(t)), 1.2);
-  const l = new Float32Array(s.length);
-  const rr = new Float32Array(s.length);
-  for (let i = 0; i < s.length; i++) {
-    const t = i / SR;
-    const a = shape(t) ** 2;
-    const angle = ((-0.8 + 1.6 * (t / dur) + 1) * Math.PI) / 4;
-    l[i] = s[i]! * a * Math.cos(angle);
-    rr[i] = s[i]! * a * Math.sin(angle);
-  }
-  return { l, r: rr };
-}
-
 /**
  * «Вдох»: зал от звука src, развёрнутый задом наперёд и обрезанный
  * до len — нарастает и обрывается ровно в точке удара.

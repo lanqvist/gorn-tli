@@ -51,7 +51,6 @@ export const VISIT = {
   many: 'заходов',
   en: ['visit', 'visits'],
 } as const;
-export const LOT = { one: 'лот', few: 'лота', many: 'лотов', en: ['listing', 'listings'] } as const;
 
 /** «47 забегов» — число и правильная форма слова. */
 export function pluralize(count: number, forms: PluralForms): string {
