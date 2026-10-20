@@ -38,12 +38,22 @@ const prisonCtx = await context({
   format: 'cjs',
 });
 
+// Потоки решателя внутри процесса подсказок (worker_threads).
+const solverCtx = await context({
+  ...common,
+  entryPoints: ['src/core/prison/solver/poolWorker.ts'],
+  outfile: 'dist/main/prisonSolver.cjs',
+  format: 'cjs',
+});
+
 await mainCtx.rebuild();
 await preloadCtx.rebuild();
 await prisonCtx.rebuild();
+await solverCtx.rebuild();
 await mainCtx.watch();
 await preloadCtx.watch();
 await prisonCtx.watch();
+await solverCtx.watch();
 
 const server = await createServer();
 await server.listen();
@@ -58,7 +68,7 @@ const child = spawn(electronPath, ['dist/main/index.js'], {
 });
 
 const shutdown = async () => {
-  await Promise.all([mainCtx.dispose(), preloadCtx.dispose(), prisonCtx.dispose(), server.close()]);
+  await Promise.all([mainCtx.dispose(), preloadCtx.dispose(), prisonCtx.dispose(), solverCtx.dispose(), server.close()]);
   process.exit(0);
 };
 

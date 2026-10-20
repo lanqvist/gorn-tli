@@ -14,8 +14,10 @@ import { dirname } from 'node:path';
 import { promisify } from 'node:util';
 import { deflate as deflateCb } from 'node:zlib';
 import { constants, setPriority } from 'node:os';
+import { join } from 'node:path';
 
 import type { Frame } from '../../core/prison/recognize/types.js';
+import { defaultSolveThreads, startSolvePool } from '../../core/prison/solver/pool.js';
 import { OwnAdvisor } from './ownAdvisor.js';
 import type { PrisonCancelMessage, PrisonShotMessage, PrisonWorkerReply, SavedNear } from './protocol.js';
 
@@ -27,6 +29,10 @@ try {
 } catch {
   // Нет прав на смену приоритета — считаем как есть.
 }
+// Решатель делит раунды между потоками (ядра − 2, не больше 4); потоки
+// наследуют пониженный приоритет процесса. Файл потока собирается рядом
+// (scripts/build-electron.mjs).
+startSolvePool({ threads: defaultSolveThreads(), entry: join(__dirname, 'prisonSolver.cjs') });
 
 /** BGRA/RGBA → RGBA без уменьшения: распознавание берёт выборки и не зависит от размера кадра. */
 function toFrame(width: number, height: number, buf: Uint8Array, rgba: boolean): Frame {
