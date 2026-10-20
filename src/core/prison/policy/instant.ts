@@ -414,15 +414,20 @@ function pickTool(): number {
   return code(A_TOOL, best);
 }
 
-/** Укус «Медного рога»: без цепочки, цель — та, что дана. */
+/**
+ * Укус «Медного рога»: без цепочки, цель — та, что дана. Скачок Молота
+ * (мамонт — на 2 выше съеденного) Рогу не засчитывается: тот же укус даёт
+ * и обычное Пожирание мамонта, Рог его лишь забирает у подарка получше.
+ * A/B 20.10 на 2 × 100 000 сидов: с засчитанным скачком мгновенная стратегия
+ * теряет 0,003–0,006 призм. на забег против укуса за +1.
+ */
 function hornBite(e: number, j: number): number {
   const te = m[TIER + e]!;
   const be = m[BEAST + e]!;
   if (m[LOCK + j] === 1) return riseV(te, P.clawsGain) - val[te]!;
   const tt = m[TIER + j]!;
   const bt = m[BEAST + j]!;
-  const food = bt === FIRST_FOOD[be] || bt === SECOND_FOOD[be];
-  return -val[tt]! + riseV(te, baseGain(be, te, food, tt, bt === RAT)) - val[te]!;
+  return -val[tt]! + riseV(te, baseGain(be, te, false, tt, bt === RAT)) - val[te]!;
 }
 
 /**
