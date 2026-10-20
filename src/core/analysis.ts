@@ -76,7 +76,28 @@ export function mergeRuns(...lists: Run[][]): Run[] {
  */
 export const IDLE_CAP_MS = 180_000;
 
+/**
+ * Активное время закрытых забегов. Срез спрашивает его по нескольку раз
+ * на забег (темп, стратегии, карты, дни, сессии), а сортировка событий
+ * у тысяч забегов — заметная доля всего среза. Забег, вернувшийся в карту
+ * порталом, снова открывается и дописывается — поэтому запись сверяется
+ * с концом и числом событий.
+ */
+const activeCache = new WeakMap<Run, { end: number; events: number; value: number }>();
+
 export function activeDuration(run: Run, idleCapMs = IDLE_CAP_MS, until?: number): number {
+  const cacheable = run.endedAt !== null && idleCapMs === IDLE_CAP_MS;
+  const events = run.drops.length + run.costs.length;
+  if (cacheable) {
+    const hit = activeCache.get(run);
+    if (hit && hit.end === run.endedAt && hit.events === events) return hit.value;
+  }
+  const value = computeActive(run, idleCapMs, until);
+  if (cacheable) activeCache.set(run, { end: run.endedAt!, events, value });
+  return value;
+}
+
+function computeActive(run: Run, idleCapMs: number, until?: number): number {
   const end = run.endedAt ?? until ?? run.startedAt;
   const total = Math.max(0, end - run.startedAt);
   if (total <= idleCapMs) return total;
@@ -214,48 +235,55 @@ export interface MissingPrice {
  * прибыль напрямую. Поэтому сначала расходники, затем то, что встречается
  * в большем числе забегов, и только потом количество.
  */
-export function missingPrices(runs: Run[], pricing: RunPricing): MissingPrice[] {
-  const totals = new Map<
-    ConfigBaseId,
-    { qty: number; runs: Set<number>; isCost: boolean }
-  >();
-
-  const note = (
-    delta: ItemDelta,
-    index: number,
-    isCost: boolean,
-    priceOf: PriceLookup,
-  ): void => {
-    if (priceOf(delta.configBaseId) !== null) return;
-    const entry = totals.get(delta.configBaseId) ?? {
-      qty: 0,
-      runs: new Set<number>(),
-      isCost: false,
-    };
-    entry.qty += delta.qty;
-    entry.runs.add(index);
-    entry.isCost ||= isCost;
-    totals.set(delta.configBaseId, entry);
-  };
-
-  for (const [index, run] of runs.entries()) {
-    const priceOf = pricesFor(pricing, run);
-    for (const drop of run.drops) note(drop, index, false, priceOf);
-    for (const cost of run.costs) note(cost, index, true, priceOf);
-  }
-
+export function missingPrices(
+  runs: Run[],
+  pricing: RunPricing,
+  base?: MissingTally,
+): MissingPrice[] {
+  const totals = tallyMissing(runs, pricing, base ? copyTally(base) : new Map());
   return [...totals.entries()]
-    .map(([configBaseId, e]) => ({
-      configBaseId,
-      qty: e.qty,
-      runs: e.runs.size,
-      isCost: e.isCost,
-    }))
+    .map(([configBaseId, e]) => ({ configBaseId, ...e }))
     .sort((a, b) => {
       if (a.isCost !== b.isCost) return a.isCost ? -1 : 1;
       if (a.runs !== b.runs) return b.runs - a.runs;
       return b.qty - a.qty;
     });
+}
+
+/**
+ * Недостающие цены, ещё не упорядоченные: закрытые забеги считаются
+ * один раз, а открытый досчитывается поверх копии на каждом срезе.
+ * Порядок вставки сохраняется — при равенстве он решает и в missingPrices.
+ */
+export type MissingTally = Map<ConfigBaseId, Omit<MissingPrice, 'configBaseId'>>;
+
+export function tallyMissing(
+  runs: Run[],
+  pricing: RunPricing,
+  into: MissingTally = new Map(),
+): MissingTally {
+  for (const run of runs) {
+    const priceOf = pricesFor(pricing, run);
+    const inRun = new Set<ConfigBaseId>();
+    const note = (delta: ItemDelta, isCost: boolean): void => {
+      if (priceOf(delta.configBaseId) !== null) return;
+      let entry = into.get(delta.configBaseId);
+      if (!entry) into.set(delta.configBaseId, (entry = { qty: 0, runs: 0, isCost: false }));
+      entry.qty += delta.qty;
+      if (!inRun.has(delta.configBaseId)) {
+        inRun.add(delta.configBaseId);
+        entry.runs++;
+      }
+      entry.isCost ||= isCost;
+    };
+    for (const drop of run.drops) note(drop, false);
+    for (const cost of run.costs) note(cost, true);
+  }
+  return into;
+}
+
+function copyTally(tally: MissingTally): MissingTally {
+  return new Map([...tally].map(([id, e]) => [id, { ...e }]));
 }
 
 /**
@@ -294,8 +322,14 @@ export interface TopDrop {
  * Сессия без сброса — вся история сезона, поэтому без сортировки всего
  * подряд: держим только `limit` лучших.
  */
-export function topDrops(runs: Run[], pricing: RunPricing, limit = 3): TopDrop[] {
-  const top: TopDrop[] = [];
+export function topDrops(
+  runs: Run[],
+  pricing: RunPricing,
+  limit = 3,
+  /** Лучшие из уже просмотренных забегов: открытый досчитывается поверх. */
+  seed: TopDrop[] = [],
+): TopDrop[] {
+  const top = [...seed];
   for (const run of runs) {
     const priceOf = pricesFor(pricing, run);
     const byItem = new Map<ConfigBaseId, { qty: number; at: number }>();
