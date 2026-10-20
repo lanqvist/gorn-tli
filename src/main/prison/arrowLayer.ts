@@ -6,6 +6,12 @@ import type { PrisonHint, PrisonMark } from './protocol.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
+/**
+ * «Смотрю…» без подсказки дольше этого — убрать. Самый долгий путь кадра
+ * (ожидание потока, переоткрытие, толчки, снимок, расчёт, два повтора) — ~12 с.
+ */
+const THINKING_MAX_MS = 20_000;
+
 /** Подсказка в координатах окна (DIP), как её рисует prison.html. */
 export interface PrisonLayerHint {
   text: string;
@@ -30,6 +36,7 @@ export class ArrowLayer {
   private window: BrowserWindow | null = null;
   private ready = false;
   private pending: PrisonLayerHint | null = null;
+  private thinkTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
     // Готовность сообщает сама страница, когда подписалась на подсказки:
@@ -76,9 +83,15 @@ export class ArrowLayer {
   thinking(display: Display): void {
     const b = display.bounds;
     this.present(display, { text: '', marks: [], live: false, phase: 'instant', anchor: [b.width / 2, b.height * 0.1], thinking: true });
+    // Не каждый клик ведёт к кадру (карта, переход в камеру): без подсказки
+    // «смотрю…» висел бы во весь монитор с вечным спиннером, а окно поверх
+    // игры заставляет Windows пересобирать экран.
+    this.thinkTimer = setTimeout(() => this.clear(), THINKING_MAX_MS);
   }
 
   private present(display: Display, payload: PrisonLayerHint): void {
+    if (this.thinkTimer) clearTimeout(this.thinkTimer);
+    this.thinkTimer = null;
     const win = this.ensure(display);
     const b = display.bounds;
     const cur = win.getBounds();
@@ -110,6 +123,8 @@ export class ArrowLayer {
 
   /** Убрать подсказку и спрятать окно. */
   clear(): void {
+    if (this.thinkTimer) clearTimeout(this.thinkTimer);
+    this.thinkTimer = null;
     this.pending = null;
     if (!this.window || this.window.isDestroyed()) return;
     if (this.ready) this.window.webContents.send('prison:hint', null);
@@ -117,6 +132,7 @@ export class ArrowLayer {
   }
 
   destroy(): void {
+    if (this.thinkTimer) clearTimeout(this.thinkTimer);
     if (this.window && !this.window.isDestroyed()) this.window.destroy();
     this.window = null;
   }

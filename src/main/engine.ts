@@ -78,6 +78,8 @@ export interface DropView {
 /** Источник цены для интерфейса: исключённый предмет стоит ноль по воле игрока. */
 export type ViewPriceSource = PriceSource | 'excluded';
 
+type PickedPrice = { fe: number; source: ViewPriceSource };
+
 /** Строка блока «Цены». */
 export interface PriceRow {
   configBaseId: ConfigBaseId;
@@ -326,6 +328,17 @@ export class Engine extends EventEmitter {
   private segmenter = new RunSegmenter();
   private trade = new TradeLedger();
 
+  /**
+   * Что уже записано в базу. Забег — с отпечатком (длительность и состав):
+   * вернувшись в карту порталом, его дописывают, и тогда он сохраняется снова.
+   * Без этого каждый вход в зону переписывал все забеги и всю торговлю сессии.
+   */
+  private persistedRuns = new WeakMap<Run, string>();
+  private persistedTrade = new WeakSet<object>();
+
+  /** Цены на время одного среза: сезон → предмет → цена (см. buildSnapshot). */
+  private priceMemo: Map<number | null, Map<ConfigBaseId, PickedPrice | null>> | null = null;
+
   private tailer: LogTailer | null = null;
   private logDir: string | null = null;
   private seasonId: number | null = null;
@@ -518,6 +531,8 @@ export class Engine extends EventEmitter {
     // Свои пробивки — только текущего сезона: база уже знает сезон каждой.
     this.loadSeasonPrices();
     this.storage.saveTrade(scan.trade.listings, scan.trade.receipts);
+    // Торговля из базы и из логов теперь записана целиком.
+    this.markTradePersisted();
     this.storage.savePlayers(scan.players);
     for (const p of this.storage.loadPlayers()) this.knownPlayers.set(p.playerId, p);
 
@@ -772,11 +787,30 @@ export class Engine extends EventEmitter {
 
   /** Закрытые забеги сразу уходят в базу: лог может ротироваться в любой момент. */
   private persistFinished(): void {
-    const all = this.segmenter.all;
-    const finished = all.filter((r) => r.endedAt !== null);
-    if (finished.length === 0) return;
-    this.storage.saveRuns(finished, this.seasonId);
-    this.storage.saveTrade(this.trade.listings, this.trade.receipts);
+    const stamp = (r: Run) => `${r.durationMs}:${r.drops.length}:${r.costs.length}`;
+    const finished = this.segmenter.all.filter(
+      (r) => r.endedAt !== null && this.persistedRuns.get(r) !== stamp(r),
+    );
+    if (finished.length > 0) {
+      this.storage.saveRuns(finished, this.seasonId);
+      for (const r of finished) this.persistedRuns.set(r, stamp(r));
+    }
+
+    const listings = this.trade.listings.filter((l) => !this.persistedTrade.has(l));
+    // Выплаты одной миллисекунды нумеруются по порядку (saveTrade) — их
+    // пишем вместе с уже записанными соседями, иначе номер начнётся заново.
+    const freshTs = new Set(
+      this.trade.receipts.filter((r) => !this.persistedTrade.has(r)).map((r) => r.ts),
+    );
+    const receipts = this.trade.receipts.filter((r) => freshTs.has(r.ts));
+    if (listings.length === 0 && receipts.length === 0) return;
+    this.storage.saveTrade(listings, receipts);
+    this.markTradePersisted();
+  }
+
+  private markTradePersisted(): void {
+    for (const l of this.trade.listings) this.persistedTrade.add(l);
+    for (const r of this.trade.receipts) this.persistedTrade.add(r);
   }
 
   /** Предметы, которые игроку уже падали или которые он выставлял. */
@@ -844,10 +878,17 @@ export class Engine extends EventEmitter {
    * из своей и сообщества берётся та, что новее. Исключение из учёта
    * действует во всех сезонах: мусор остаётся мусором.
    */
-  private pickPrice(
-    id: ConfigBaseId,
-    season: number | null = this.seasonId,
-  ): { fe: number; source: ViewPriceSource } | null {
+  private pickPrice(id: ConfigBaseId, season: number | null = this.seasonId): PickedPrice | null {
+    const memo = this.priceMemo;
+    if (!memo) return this.pickPriceNow(id, season);
+    let bySeason = memo.get(season);
+    if (!bySeason) memo.set(season, (bySeason = new Map()));
+    let picked = bySeason.get(id);
+    if (picked === undefined) bySeason.set(id, (picked = this.pickPriceNow(id, season)));
+    return picked;
+  }
+
+  private pickPriceNow(id: ConfigBaseId, season: number | null): PickedPrice | null {
     if (this.prices.isFixed(id)) return { fe: this.prices.priceOf(id) ?? 0, source: 'own' };
     if (this.excluded.has(id)) return { fe: 0, source: 'excluded' };
     const past = season === null || season === this.seasonId ? null : this.pastSeasonPrices(season);
@@ -1230,7 +1271,23 @@ export class Engine extends EventEmitter {
     return { allRuns, liveOpen, open, farming };
   }
 
+  /**
+   * Срез обходит всю историю раз десять, и каждая цена — это выбор между
+   * своей пробивкой и базой сообщества (объекты, Date.parse). На время среза
+   * выбор запоминается: при тысячах забегов срез в 10+ раз быстрее, а он
+   * пересобирается на каждую пачку строк лога.
+   */
   private buildSnapshot(): Snapshot {
+    if (this.priceMemo) return this.buildSnapshotNow();
+    this.priceMemo = new Map();
+    try {
+      return this.buildSnapshotNow();
+    } finally {
+      this.priceMemo = null;
+    }
+  }
+
+  private buildSnapshotNow(): Snapshot {
     const { allRuns, liveOpen, open, farming } = this.visibleRuns();
     // Каждый забег — по ценам своего сезона: в «Все сезоны» медиана SS13
     // иначе считалась бы по ценам SS14.

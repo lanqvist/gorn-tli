@@ -360,6 +360,10 @@ export class PrisonAssist {
     const lineAt = shot.lines.length ? stampMs(shot.lines[shot.lines.length - 1]!) : null;
     const lag = lineAt ? `строка ${((t0 - lineAt) / 1000).toFixed(1)} с назад` : 'вручную';
     const id = ++this.nextId;
+    // Брошенный ради нового кадра расчёт ответа не присылает — его записи
+    // остались бы навсегда. Показывается и так только ответ на последний кадр.
+    for (const old of this.shots.keys()) if (old < id - 20) this.shots.delete(old);
+    for (const old of this.shotDisplay.keys()) if (old < id - 20) this.shotDisplay.delete(old);
     this.shots.set(id, { shot, manual, retry: this.retries.get(shot) ?? 0 });
     // Окно подарков без снимка — только JSON (что к нему привело, строки лога): повтор забега без него не знает, утро это или Замена.
     const noted = this.saveRoot ? this.noteShot(id, manual ? 'manual' : shot.kind, shot) : null;
